@@ -269,10 +269,11 @@
   /* the same inset top and bottom, written once: the column must not look like
      it sits higher than it is */
   padding: var(--jse-pad, 6px);
-  background-color: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
+  /* no plate behind the icons: they sit straight on the sheet */
+  background-color: transparent;
+  border: 1px solid transparent;
   border-radius: var(--touch-size-l, 52px);
-  box-shadow: var(--shadow-s);
+  box-shadow: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;

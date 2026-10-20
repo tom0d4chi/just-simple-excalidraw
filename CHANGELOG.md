@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.36 - 2026-10-20
+
+- The column has no plate behind it any more: no background, no border, no
+  shadow. The icons sit straight on the sheet. The popovers keep their surface,
+  since they hold text and swatches.
+
 ## 0.1.35 - 2026-10-20
 
 - The gesture decides, as the finger lands: on an element the selection tool is
