@@ -127,6 +127,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   const contentUnderScheduled = useRef(false);
   // Level to come back to when a double tap zooms back out.
   const zoomBaseRef = useRef(1);
+  const zoomFrameRef = useRef<number | null>(null);
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   useEffect(() => {
@@ -249,14 +250,33 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         const rect = canvas.getBoundingClientRect();
         const clientX = rect.left + (scene.x + state.scrollX) * zoom;
         const clientY = rect.top + (scene.y + state.scrollY) * zoom;
-        api.updateScene({
-          appState: {
-            // Excalidraw brands its normalised zoom; the value is a plain number.
-            zoom: { value: target as never },
-            scrollX: (clientX - rect.left) / target - scene.x,
-            scrollY: (clientY - rect.top) / target - scene.y
+        // A zoom that jumps is disorienting on a sheet: it is stepped over ~240 ms, the
+        // anchored point held still on every frame. Timers rather than animation frames,
+        // because a throttled or hidden view stops frames and would leave the zoom stuck
+        // halfway — a timer still finishes, and the last step always applies the target.
+        if (zoomFrameRef.current !== null) {
+          window.clearTimeout(zoomFrameRef.current);
+        }
+        const startZoom = zoom;
+        const started = performance.now();
+        const step = (): void => {
+          const progress = Math.min(1, (performance.now() - started) / 240);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const value = startZoom + (target - startZoom) * eased;
+          api?.updateScene({
+            appState: {
+              zoom: { value: value as never },
+              scrollX: (clientX - rect.left) / value - scene.x,
+              scrollY: (clientY - rect.top) / value - scene.y
+            }
+          });
+          if (progress < 1) {
+            zoomFrameRef.current = window.setTimeout(step, 16);
+          } else {
+            zoomFrameRef.current = null;
           }
-        });
+        };
+        zoomFrameRef.current = window.setTimeout(step, 16);
         return true;
       },
       onGestureEnd: (before) => {
@@ -275,6 +295,10 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
     return () => {
       interaction.detach();
       cancelMarqueeRef.current = null;
+      if (zoomFrameRef.current !== null) {
+        window.clearTimeout(zoomFrameRef.current);
+        zoomFrameRef.current = null;
+      }
     };
   }, [api]);
 
