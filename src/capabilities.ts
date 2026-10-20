@@ -51,10 +51,19 @@ export function anyCapability(capabilities: Capabilities): boolean {
   return Object.values(capabilities).some(Boolean);
 }
 
-/** The drawing defaults shown when nothing is selected. */
+/**
+ * The drawing defaults shown when nothing is selected. A tool that draws nothing — the
+ * hand, the cursor, the eraser — has nothing to style, and the palette stays away.
+ */
 export function capabilitiesForTool(tool: string): Capabilities {
   if (tool === "text") {
     return { ...NONE, stroke: true, text: true };
   }
-  return { stroke: true, fill: true, width: true, style: true, corners: true, text: false };
+  if (tool === "freedraw") {
+    return { ...NONE, stroke: true, width: true };
+  }
+  if (["rectangle", "diamond", "ellipse", "line", "arrow", "frame"].includes(tool)) {
+    return { ...capabilitiesForType(tool) };
+  }
+  return { ...NONE };
 }

@@ -27,6 +27,11 @@ eq("mixed selection keeps the common ground", keys(capabilitiesForTypes(["rectan
 eq("nothing selected -> nothing to show", keys(capabilitiesForTypes([])), []);
 eq("text tool offers colour and size", keys(capabilitiesForTool("text")), ["stroke", "text"]);
 eq("shape tool offers the drawing defaults", keys(capabilitiesForTool("rectangle")), ["stroke", "fill", "width", "style", "corners"]);
+eq("line tool offers what a line can take", keys(capabilitiesForTool("line")), ["stroke", "width", "style"]);
+eq("pen tool offers colour and thickness", keys(capabilitiesForTool("freedraw")), ["stroke", "width"]);
+eq("hand: nothing to style", [keys(capabilitiesForTool("hand")), anyCapability(capabilitiesForTool("hand"))], [[], false]);
+eq("cursor: nothing to style", keys(capabilitiesForTool("selection")), []);
+eq("eraser: nothing to style", keys(capabilitiesForTool("eraser")), []);
 
 console.log(fails === 0 ? "ALL PASS" : `${fails} FAILURE(S)`);
 process.exit(fails === 0 ? 0 : 1);
