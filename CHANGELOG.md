@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.37 - 2026-10-20
+
+- Every tool button is a switch: pressing the one that is already active gives the
+  sheet back to the hand (cursor, pen, text, eraser, and each shape in the list).
+
 ## 0.1.36 - 2026-10-20
 
 - The column has no plate behind it any more: no background, no border, no

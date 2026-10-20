@@ -166,12 +166,18 @@ export function CanvasToolbar({
   const [lastShape, setLastShape] = useState<ToolName>("rectangle");
   const activeShape = SHAPES.includes(activeTool as ToolName) ? (activeTool as ToolName) : null;
 
+  /*
+   * Every button that changes what a finger does is a switch, not a one-way trap:
+   * pressing the tool that is already active gives the sheet back to the hand.
+   */
   const selectTool = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
-    if (api) {
-      api.setActiveTool({ type: tool });
+    if (!api) {
+      return;
     }
+    const current = api.getAppState().activeTool.type;
+    api.setActiveTool({ type: current === tool ? "hand" : tool });
   };
 
   const insertImage = (event: ReactMouseEvent<HTMLButtonElement>): void => {
