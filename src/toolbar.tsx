@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { ICONS, type IconName } from "./icons";
+import { AppearanceMenu, type StylePatch, type StyleState } from "./appearance";
 
 type ToolName = "hand" | "selection" | "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "freedraw" | "text" | "image" | "eraser";
 
@@ -49,8 +50,7 @@ interface CanvasToolbarProps {
   api: ExcalidrawImperativeAPI | null;
   activeTool: string;
   locked: boolean;
-  styleOpen: boolean;
-  styleAvailable: boolean;
+  style: StyleState;
   selectionCount: number;
   textSelected: boolean;
   canRedo: boolean;
@@ -151,8 +151,7 @@ export function CanvasToolbar({
   api,
   activeTool,
   locked,
-  styleOpen,
-  styleAvailable,
+  style,
   selectionCount,
   textSelected,
   canRedo,
@@ -160,6 +159,7 @@ export function CanvasToolbar({
   getCanvasElement
 }: CanvasToolbarProps) {
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  const [styleMenuOpen, setStyleMenuOpen] = useState(false);
   const [entered, setEntered] = useState(false);
 
   const [lastShape, setLastShape] = useState<ToolName>("rectangle");
@@ -266,12 +266,48 @@ export function CanvasToolbar({
     setShapeMenuOpen((value) => !value);
   };
 
-  const toggleStyle = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+  const toggleStyleMenu = (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
-    if (api) {
-      api.updateScene({ appState: { openMenu: styleOpen ? null : "shape" } });
+    setStyleMenuOpen((value) => !value);
+  };
+
+  /*
+   * Excalidraw applies a style to the selection itself when its own panel is
+   * used; through the API the elements have to be written, with a new version so
+   * the change is a real edit and lands in the history.
+   */
+  const applyStyle = (patch: StylePatch): void => {
+    if (!api) {
+      return;
     }
+    const appState = api.getAppState();
+    const selected = new Set(Object.keys(appState.selectedElementIds ?? {}));
+    const stamp = Date.now();
+    const elements = api.getSceneElements().map((element) => {
+      if (!selected.has(element.id) || element.isDeleted) {
+        return element;
+      }
+      const next = {
+        ...element,
+        ...patch,
+        version: element.version + 1,
+        versionNonce: Math.floor(Math.random() * 1e9),
+        updated: stamp
+      };
+      if (patch.roundness !== undefined) {
+        next.roundness = patch.roundness === null ? null : ({ type: patch.roundness } as never);
+      }
+      return next;
+    });
+    const nextState: Record<string, unknown> = {};
+    if (patch.strokeColor !== undefined) nextState.currentItemStrokeColor = patch.strokeColor;
+    if (patch.backgroundColor !== undefined) nextState.currentItemBackgroundColor = patch.backgroundColor;
+    if (patch.strokeWidth !== undefined) nextState.currentItemStrokeWidth = patch.strokeWidth;
+    if (patch.strokeStyle !== undefined) nextState.currentItemStrokeStyle = patch.strokeStyle;
+    if (patch.fillStyle !== undefined) nextState.currentItemFillStyle = patch.fillStyle;
+    if (patch.fontSize !== undefined) nextState.currentItemFontSize = patch.fontSize;
+    api.updateScene({ elements: elements as never, appState: nextState as never });
   };
 
   useEffect(() => {
@@ -280,17 +316,18 @@ export function CanvasToolbar({
   }, []);
 
   useEffect(() => {
-    if (!shapeMenuOpen) {
+    if (!shapeMenuOpen && !styleMenuOpen) {
       return;
     }
     const onOutside = (event: PointerEvent): void => {
       if (!(event.target instanceof HTMLElement) || !event.target.closest(".jse-shapes")) {
         setShapeMenuOpen(false);
+        setStyleMenuOpen(false);
       }
     };
     document.addEventListener("pointerdown", onOutside, true);
     return () => document.removeEventListener("pointerdown", onOutside, true);
-  }, [shapeMenuOpen]);
+  }, [shapeMenuOpen, styleMenuOpen]);
 
   const toolButton = ({ tool, icon, label }: ToolDefinition, onClick = selectTool) => createElement("button", {
     key: tool,
@@ -360,6 +397,28 @@ export function CanvasToolbar({
     locked
   );
 
+  const appearanceButton = createElement("div", { className: "jse-shapes", key: "appearance" },
+    createElement("button", {
+      type: "button",
+      className: `jse-tool jse-tool--action clickable-icon${styleMenuOpen ? " is-open" : ""}`,
+      "aria-label": "Apariencia",
+      "aria-expanded": styleMenuOpen,
+      onClick: toggleStyleMenu
+    }, createElement(Icon, { name: "palette" })),
+    createElement("div", {
+      className: `jse-shapes__menu jse-appearance-menu${entered ? " jse-anim" : ""}${styleMenuOpen ? "" : " is-closed"}`,
+      role: "menu",
+      "aria-hidden": !styleMenuOpen,
+      onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
+    },
+    createElement(AppearanceMenu, {
+      style,
+      showText: textSelected || activeTool === "text",
+      showEdges: Boolean(activeShape) || selectionCount > 0,
+      onPick: applyStyle
+    }))
+  );
+
   const shapeButton = createElement("div", { className: "jse-shapes", key: "shapes" },
     createElement("button", {
       type: "button",
@@ -412,7 +471,7 @@ export function CanvasToolbar({
           toolButton(TOOL_DEFINITIONS.eraser)
         ]
       : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool])),
-    actionButton("style", "palette", "Color y grosor", toggleStyle, styleOpen, !styleAvailable),
+    appearanceButton,
     isTouchDevice ? null : lockButton,
     actionButton("undo", "undo-2", "Deshacer", (event) => {
       event.preventDefault();

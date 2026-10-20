@@ -619,3 +619,127 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-root .jse-tools__pill > .jse-shapes:last-child {
   margin-bottom: 0;
 }
+
+/*
+ * Appearance controls, in the same column-of-a-menu as the shape picker: the
+ * group of a row is a fixed grid, so the swatches line up whatever the theme.
+ */
+.jse-appearance-menu {
+  width: auto;
+  align-items: stretch;
+  /* taller than the shape list, and its button sits low in the column: it grows
+     upwards from the button instead of running off the bottom edge */
+  top: auto;
+  bottom: 0;
+  padding: var(--size-4-2, 8px);
+  border-radius: var(--radius-m, 12px);
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.jse-appearance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2, 8px);
+}
+
+.jse-appearance__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1, 4px);
+}
+
+.jse-appearance__label {
+  font-size: var(--font-ui-smaller, 11px);
+  color: var(--text-muted);
+  padding-left: 2px;
+  letter-spacing: 0.02em;
+}
+
+.jse-appearance__choices {
+  display: grid;
+  grid-template-columns: repeat(5, 40px);
+  gap: var(--size-4-1, 4px);
+}
+
+.jse-appearance__chip {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--radius-s, 8px);
+  border: 1px solid transparent;
+  background-color: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.jse-appearance__chip.is-active {
+  border-color: var(--interactive-accent);
+  background-color: var(--background-modifier-active-hover);
+}
+
+.jse-appearance__dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.jse-appearance__none {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px dashed var(--text-faint);
+  overflow: hidden;
+}
+
+.jse-appearance__none::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    135deg,
+    transparent 45%,
+    var(--text-faint) 45%,
+    var(--text-faint) 55%,
+    transparent 55%
+  );
+}
+
+.jse-appearance__line {
+  display: block;
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background-color: var(--text-normal);
+}
+
+.jse-appearance__line--dashed {
+  background: repeating-linear-gradient(90deg, var(--text-normal) 0 4px, transparent 4px 7px);
+}
+
+.jse-appearance__line--dotted {
+  background: repeating-linear-gradient(90deg, var(--text-normal) 0 2px, transparent 2px 6px);
+}
+
+.jse-appearance__shape {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--text-normal);
+  border-radius: 2px;
+}
+
+.jse-appearance__shape.is-round {
+  border-radius: 8px;
+}
+
+.jse-appearance__size {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-normal);
+}

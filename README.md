@@ -86,7 +86,10 @@ The column is centred on the right edge, nine buttons tall: selection, pen, one
 shape button opens a vertical list aligned with its icon — rectangle, diamond,
 ellipse, arrow, line — plus a lock to keep the chosen shape between drawings; it
 wears the icon of the last shape you picked. The image button opens the system
-picker and drops the picture in the middle of the view, selected.
+picker and drops the picture in the middle of the view, selected. The palette
+button opens the appearance menu — stroke, fill, thickness, line style, corners,
+and text size — showing the selected element's own values and applying a pick to
+it and to the next thing you draw.
 
 Excalidraw's own bar is gone. What it held now lives in the column, and appears
 only when the app has something to act on: duplicate and delete for any

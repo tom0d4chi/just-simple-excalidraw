@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.25 - 2026-10-20
+
+- The appearance controls are back, in the same kind of menu as the shape picker:
+  stroke colour, fill, thickness, line style, corners, and text size when a text
+  is involved. It opens out of its button, upwards, with the same in/out motion.
+- With something selected the menu shows that element's own style, not the tool
+  defaults, and every pick rewrites the selected elements (new version, so it is
+  a real step in the history) as well as the defaults for the next one.
+- Excalidraw's own property panel stays hidden.
+
 ## 0.1.24 - 2026-10-20
 
 - The column now centres on the drawing area Obsidian actually leaves free: the

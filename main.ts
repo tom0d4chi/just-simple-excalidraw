@@ -15,6 +15,7 @@ import type {
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { CanvasToolbar } from "./src/toolbar";
 import { trackBottomUiInset } from "./src/layout";
+import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { keepViewportInSync } from "./src/viewport";
 
@@ -111,7 +112,16 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const isTouchDevice = Platform.isMobile;
   const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(() => defaultActiveTool(isTouchDevice));
-  const [styleOpen, setStyleOpen] = useState(false);
+  const [style, setStyle] = useState<StyleState>({
+    strokeColor: "#1e1e1e",
+    backgroundColor: "transparent",
+    strokeWidth: 2,
+    strokeStyle: "solid",
+    fillStyle: "hachure",
+    fontSize: 20,
+    roundness: null
+  });
+  const styleSignatureRef = useRef("");
   const [selectionCount, setSelectionCount] = useState(0);
   const selectionCountRef = useRef(0);
   const [textSelected, setTextSelected] = useState(false);
@@ -184,7 +194,26 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
       activeToolRef.current = nextTool;
       setActiveTool(nextTool);
     }
-    setStyleOpen(appState?.openMenu === "shape");
+    const selectedElement = elements.find((element) => (
+      !element.isDeleted && Object.hasOwn(appState?.selectedElementIds ?? {}, element.id)
+    ));
+    // With something selected the menu shows that element's style, not the
+    // tool's defaults: the swatch you see lit is the one you are looking at.
+    const nextStyle: StyleState = {
+      strokeColor: selectedElement?.strokeColor ?? appState?.currentItemStrokeColor ?? "#1e1e1e",
+      backgroundColor: selectedElement?.backgroundColor ?? appState?.currentItemBackgroundColor ?? "transparent",
+      strokeWidth: selectedElement?.strokeWidth ?? appState?.currentItemStrokeWidth ?? 2,
+      strokeStyle: selectedElement?.strokeStyle ?? appState?.currentItemStrokeStyle ?? "solid",
+      fillStyle: selectedElement?.fillStyle ?? appState?.currentItemFillStyle ?? "hachure",
+      fontSize: (selectedElement?.type === "text" ? selectedElement.fontSize : null)
+        ?? appState?.currentItemFontSize ?? 20,
+      roundness: selectedElement?.roundness?.type ?? null
+    };
+    const signature = JSON.stringify(nextStyle);
+    if (signature !== styleSignatureRef.current) {
+      styleSignatureRef.current = signature;
+      setStyle(nextStyle);
+    }
     const selectedIds = Object.keys(appState?.selectedElementIds ?? {});
     const selected = selectedIds.length;
     if (selected !== selectionCountRef.current) {
@@ -243,12 +272,10 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
       api,
       activeTool: activeTool.type,
       locked: activeTool.locked,
-      styleOpen,
+      style,
       selectionCount,
       textSelected,
       canRedo,
-      styleAvailable: selectionCount > 0 ||
-        (activeTool.type !== "hand" && activeTool.type !== "selection" && activeTool.type !== "eraser"),
       isTouchDevice,
       getCanvasElement
     })
