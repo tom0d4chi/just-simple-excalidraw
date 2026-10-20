@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.22 - 2026-10-20
+
+- The column is centred on the canvas, not on a band inset by the safe area: the
+  bottom inset (the gesture bar) was pushing the middle up by half of it, which
+  is why it looked slightly high, and why it grew lopsided. It now sits on the
+  exact middle of the drawing area and stays there when it expands.
+
 ## 0.1.21 - 2026-10-20
 
 - Every animation now runs both ways. The shape list fades and slides out the
