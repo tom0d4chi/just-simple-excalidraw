@@ -1012,3 +1012,48 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
     animation: none;
   }
 }
+
+/*
+ * The column carries no plate of its own — until a shape or an image slides beneath it,
+ * where a bare icon would be unreadable. Then a translucent plate fades in behind the
+ * pill and behind the menus, without moving anything: it is painted on a pseudo-element
+ * that reaches outside the layout box.
+ */
+.jse-tools__pill,
+.jse-shapes__menu {
+  position: relative;
+  isolation: isolate;
+}
+
+.jse-tools__pill::before,
+.jse-shapes__menu::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--size-4-1, 6px));
+  z-index: -1;
+  border-radius: var(--radius-l, 16px);
+  background-color: transparent;
+  box-shadow: 0 0 0 0 transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    backdrop-filter 160ms ease;
+  pointer-events: none;
+}
+
+.jse-tools.has-content-under .jse-tools__pill::before,
+.jse-tools.has-content-under .jse-shapes__menu::before {
+  background-color: color-mix(in srgb, var(--background-primary) 58%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-tools__pill::before,
+  .jse-shapes__menu::before {
+    transition: none;
+  }
+}

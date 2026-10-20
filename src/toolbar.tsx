@@ -58,6 +58,9 @@ interface CanvasToolbarProps {
   textSelected: boolean;
   /** What the current selection (or tool) can actually be styled with. */
   capabilities: Capabilities;
+  /** True when a shape or an image sits under the column: it then needs a backing. */
+  contentUnder?: boolean;
+  onMenusToggled?: () => void;
   selectionArmed: boolean;
   onToggleSelection: () => void;
   canRedo: boolean;
@@ -149,6 +152,8 @@ export function CanvasToolbar({
   selectionCount,
   textSelected,
   capabilities,
+  contentUnder = false,
+  onMenusToggled = () => {},
   selectionArmed,
   onToggleSelection,
   canRedo,
@@ -281,6 +286,7 @@ export function CanvasToolbar({
   };
 
   const toggleShapeMenu = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+    onMenusToggled();
     event.preventDefault();
     event.stopPropagation();
     setShapeMenuOpen((value) => !value);
@@ -290,6 +296,7 @@ export function CanvasToolbar({
     event.preventDefault();
     event.stopPropagation();
     setStyleMenuOpen((value) => !value);
+    onMenusToggled();
   };
 
   /*
@@ -538,7 +545,7 @@ export function CanvasToolbar({
   );
 
   return createElement("div", {
-    className: "jse-tools",
+    className: `jse-tools${contentUnder ? " has-content-under" : ""}`,
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
   createElement("div", { className: `jse-tools__pill${entered ? " jse-anim" : ""}` },

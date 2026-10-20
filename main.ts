@@ -20,6 +20,7 @@ import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { attachInteraction } from "./src/interaction";
 import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
 import { capabilitiesForTool, capabilitiesForTypes, anyCapability } from "./src/capabilities";
+import { anyElementUnder } from "./src/overlap";
 import { snapElements } from "./src/snap";
 import { keepViewportInSync } from "./src/viewport";
 
@@ -120,8 +121,15 @@ function withDefaultTool(scene: StoredScene, isTouchDevice: boolean): StoredScen
 }
 
 function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, shouldSnapToGrid, ...props }: ExcalidrawCanvasProps) {
+  // Declared before any hook that could run immediately (the test harness calls effects
+  // eagerly), so nothing reaches a ref that has not been initialised yet.
+  const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  const contentUnderScheduled = useRef(false);
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
+  useEffect(() => {
+    apiRef.current = api;
+  }, [api]);
   const isTouchDevice = Platform.isMobile;
   const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(() => defaultActiveTool(isTouchDevice));
   const [style, setStyle] = useState<StyleState>({
@@ -138,6 +146,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   const selectionCountRef = useRef(0);
   const [textSelected, setTextSelected] = useState(false);
   const [capabilities, setCapabilities] = useState(capabilitiesForTool("hand"));
+  const [contentUnder, setContentUnder] = useState(false);
   const capabilitySignatureRef = useRef(JSON.stringify(capabilitiesForTool("hand")));
   const textSelectedRef = useRef(false);
   const [selectionArmed, setSelectionArmed] = useState(false);
@@ -249,6 +258,50 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
     });
   }, [api]);
 
+  /*
+   * The column has no background of its own. It gets one only when a shape or an image
+   * passes beneath it, where a bare icon would be unreadable. The same goes for the menus
+   * that open from it.
+   */
+  const scheduleContentUnder = useCallback((): void => {
+    if (contentUnderScheduled.current) {
+      return;
+    }
+    contentUnderScheduled.current = true;
+    const schedule = typeof window.requestAnimationFrame === "function"
+      ? window.requestAnimationFrame.bind(window)
+      : (callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 16);
+    schedule(() => {
+      contentUnderScheduled.current = false;
+      const current = apiRef.current;
+      if (!current || typeof document?.querySelectorAll !== "function") {
+        return;
+      }
+      const panels = [
+        ...document.querySelectorAll<HTMLElement>(".jse-tools"),
+        ...document.querySelectorAll<HTMLElement>(".jse-shapes__menu:not(.is-closed)")
+      ];
+      const rects = panels
+        .map((panel) => panel.getBoundingClientRect())
+        .filter((rect) => rect.width > 0 && rect.height > 0)
+        .map((rect) => ({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }));
+      if (rects.length === 0) {
+        return;
+      }
+      const state = current.getAppState();
+      const canvas = document.querySelector<HTMLElement>(".excalidraw__canvas.interactive")
+        ?? document.querySelector<HTMLElement>(".excalidraw__canvas");
+      const origin = canvas?.getBoundingClientRect();
+      setContentUnder(anyElementUnder(current.getSceneElements(), rects, {
+        scrollX: state.scrollX,
+        scrollY: state.scrollY,
+        zoom: state.zoom.value || 1,
+        originX: origin?.left ?? 0,
+        originY: origin?.top ?? 0
+      }));
+    });
+  }, []);
+
   const syncHistoryState = useCallback((): void => {
     const schedule = typeof window.requestAnimationFrame === "function"
       ? window.requestAnimationFrame.bind(window)
@@ -337,6 +390,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
     }
 
     syncHistoryState();
+    scheduleContentUnder();
     props.onChange?.(elements, appState, files);
   }, [props.onChange, syncHistoryState]);
 
@@ -388,6 +442,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       selectionCount,
       textSelected,
       capabilities,
+      contentUnder,
+      onMenusToggled: scheduleContentUnder,
       selectionArmed,
       onToggleSelection: toggleSelection,
       canRedo,
