@@ -139,6 +139,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
   const canRedoRef = useRef(false);
   const manualSelectionRef = useRef(false);
   const selectionArmedRef = useRef(false);
+  const cancelMarqueeRef = useRef<(() => void) | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const excalidrawElementRef = useRef<HTMLElement | null>(null);
@@ -225,12 +226,12 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
           api.updateScene({ appState: { selectedElementIds: { [id]: true } } });
         }
         if (tool !== "selection") {
-          api.setActiveTool({ type: "selection" });
+          api.setActiveTool({ type: "selection", locked: false });
         }
         return;
       }
       if (tool === "selection" && !selectionArmedRef.current) {
-        api.setActiveTool({ type: "hand" });
+        api.setActiveTool({ type: "hand", locked: false });
       }
     };
 
@@ -249,7 +250,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
         if (state.activeTool.type === "selection" && Object.keys(state.selectedElementIds ?? {}).length === 0) {
           selectionArmedRef.current = false;
           setSelectionArmed(false);
-          api.setActiveTool({ type: "hand" });
+          api.setActiveTool({ type: "hand", locked: false });
         }
       }, 0);
     };
@@ -359,6 +360,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       endBox(event);
     };
 
+    cancelMarqueeRef.current = cancelBox;
+
     host.addEventListener("pointerdown", onDownBox, true);
     host.addEventListener("pointermove", onMove, true);
     host.addEventListener("pointerup", onUpBox, true);
@@ -375,6 +378,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       if (interactiveCanvas) {
         interactiveCanvas.style.removeProperty("opacity");
       }
+      cancelMarqueeRef.current = null;
     };
   }, [api]);
 
@@ -393,7 +397,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
     setSelectionArmed((armed) => {
       const next = !armed;
       selectionArmedRef.current = next;
-      api?.setActiveTool({ type: next ? "selection" : "hand" });
+      api?.setActiveTool({ type: next ? "selection" : "hand", locked: false });
       return next;
     });
   }, [api]);
@@ -449,8 +453,11 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       styleSignatureRef.current = signature;
       setStyle(nextStyle);
     }
-    // Any tool that is not the cursor disarms it: an armed marquee must never
-    // survive a switch to the pen, the eraser or a shape.
+    // A mode change ends any marquee still being drawn, and disarms the cursor:
+    // neither may survive a switch to the pen, the eraser or a shape.
+    if (nextTool && previousTool && nextTool.type !== previousTool.type) {
+      cancelMarqueeRef.current?.();
+    }
     if (activeToolRef.current.type !== "selection" && selectionArmedRef.current) {
       selectionArmedRef.current = false;
       setSelectionArmed(false);
@@ -476,9 +483,9 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
      */
     if (isTouchDevice && api) {
       if (selected > 0 && activeToolRef.current.type === "hand") {
-        api.setActiveTool({ type: "selection" });
+        api.setActiveTool({ type: "selection", locked: false });
       } else if (selected === 0 && previouslySelected > 0 && activeToolRef.current.type === "selection") {
-        api.setActiveTool({ type: "hand" });
+        api.setActiveTool({ type: "hand", locked: false });
       }
     }
     syncHistoryState();

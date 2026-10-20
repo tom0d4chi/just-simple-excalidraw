@@ -171,6 +171,13 @@ export function CanvasToolbar({
   const activeShape = SHAPES.includes(activeTool as ToolName) ? (activeTool as ToolName) : null;
 
   /*
+   * The appearance menu is worth showing whenever a pick has somewhere to go: with
+   * a selection it restyles it, with a drawing tool it sets what the next stroke
+   * will look like — that is how the pen gets its thickness.
+   */
+  const stylingTarget = selectionCount > 0 || Boolean(activeShape) || activeTool === "freedraw" || activeTool === "text";
+
+  /*
    * Every button that changes what a finger does is a switch, not a one-way trap:
    * pressing the tool that is already active gives the sheet back to the hand.
    */
@@ -181,7 +188,8 @@ export function CanvasToolbar({
       return;
     }
     const current = api.getAppState().activeTool.type;
-    api.setActiveTool({ type: current === tool ? "hand" : tool });
+    // switching tools always drops a "keep the shape" lock: it belongs to one tool
+    api.setActiveTool({ type: current === tool ? "hand" : tool, locked: false });
   };
 
   const insertImage = (event: ReactMouseEvent<HTMLButtonElement>): void => {
@@ -326,6 +334,18 @@ export function CanvasToolbar({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // A mode change closes whatever was open for the previous one.
+  useEffect(() => {
+    setShapeMenuOpen(false);
+    setStyleMenuOpen(false);
+  }, [activeTool]);
+
+  useEffect(() => {
+    if (!stylingTarget) {
+      setStyleMenuOpen(false);
+    }
+  }, [stylingTarget]);
+
   useEffect(() => {
     if (!shapeMenuOpen && !styleMenuOpen) {
       return;
@@ -416,13 +436,6 @@ export function CanvasToolbar({
     locked
   );
 
-  /*
-   * The appearance menu is worth showing whenever a pick has somewhere to go: with
-   * a selection it restyles it, with a drawing tool it sets what the next stroke
-   * will look like — that is how the pen gets its thickness.
-   */
-  const stylingTarget = selectionCount > 0 || Boolean(activeShape) || activeTool === "freedraw" || activeTool === "text";
-
   // While the slider moves, only the default changes: rewriting the selection on
   // every pixel would fill the history with intermediate widths.
   const previewStyle = (patch: StylePatch): void => {
@@ -451,6 +464,7 @@ export function CanvasToolbar({
       onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
     },
     createElement(AppearanceMenu, {
+      open: styleMenuOpen,
       style,
       showText: textSelected || activeTool === "text",
       showEdges: Boolean(activeShape) || selectionCount > 0,

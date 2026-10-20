@@ -1,5 +1,6 @@
 import {
   createElement,
+  useEffect,
   useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode
@@ -72,6 +73,7 @@ export interface StylePatch {
 }
 
 interface AppearanceMenuProps {
+  open: boolean;
   style: StyleState;
   showText: boolean;
   showEdges: boolean;
@@ -97,11 +99,18 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
   }, content);
 }
 
-export function AppearanceMenu({ style, showText, showEdges, onPick, onPreview }: AppearanceMenuProps) {
+export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPreview }: AppearanceMenuProps) {
   // The slider has its own value while it is being dragged: the element is only
   // rewritten on release, so its style would otherwise lag a whole round trip.
   const [dragging, setDragging] = useState<number | null>(null);
   const width = dragging ?? style.strokeWidth;
+
+  // Closing the menu ends any half-finished drag of the slider.
+  useEffect(() => {
+    if (!open) {
+      setDragging(null);
+    }
+  }, [open]);
 
   const pick = (patch: StylePatch) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
