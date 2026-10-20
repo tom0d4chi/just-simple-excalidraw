@@ -66,11 +66,20 @@ related heavy dependency tree.
 
 ## Drawing controls
 
-The first tool is **Desplazar** (hand): dragging the canvas moves the view, and
-tapping **Seleccionar** switches back to selection. The floating bar holds the
-eleven drawing tools, the tool lock, undo and redo; it is drawn with Obsidian's
-own colours, radii, icon set and stroke width, so it follows the active theme and
-the font scale instead of looking like a web app dropped into the vault.
+The first tool is **Desplazar** (hand): a single drag moves the view. Selection
+is one tap away, and a **double tap followed by a drag** draws a selection
+marquee without leaving the canvas; a double tap on its own switches to the
+selection tool, and once that selection is dropped the hand tool comes back.
+
+The floating bar holds the eleven drawing tools, the colour / stroke sheet, the
+tool lock, undo and redo — fifteen controls, all visible at once, no scrolling:
+
+- on a phone they wrap onto two rows of eight and seven;
+- from a tablet, or the inner screen of a folding phone, all fifteen fit on one
+  row.
+
+Everything is drawn with Obsidian's own tokens and Lucide glyphs, so colours,
+radii, icon size and stroke width follow the theme and the font scale.
 
 Choose its place in **Settings → Just Simple Excalidraw → Posición de la barra
 de herramientas**:
@@ -78,14 +87,11 @@ de herramientas**:
 - **Abajo (horizontal)** — a pill centred above Obsidian's mobile navbar.
 - **Derecha (vertical)** — a column pinned to the right edge, centred vertically.
 
-On a phone the bar scrolls horizontally when the screen is too narrow for all
-fourteen buttons; on a tablet or an unfolded phone the whole bar fits.
-
-Excalidraw's own toolbar, its duplicate undo/redo pair and its contextual shape
-actions are hidden so the same control never appears twice. The main menu
-(hamburger, top left) is kept for canvas actions such as clearing the canvas or
-changing the background colour; on Obsidian mobile that menu lives inside the
-hidden bottom bar, so those two actions are desktop-only.
+Excalidraw's canvas menu (clear canvas, background colour), its duplicate and
+delete actions and its colour sheet are kept — not hidden — and restyled: they
+live in a small pill in the top right corner, where Obsidian keeps view actions,
+so the bottom of the screen belongs to the drawing tools. The colour sheet opens
+under that pill, from the **Color y grosor** button.
 
 ## Canvas coordinates follow the view
 

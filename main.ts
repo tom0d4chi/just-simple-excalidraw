@@ -16,6 +16,7 @@ import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/ty
 import { CanvasToolbar } from "./src/toolbar";
 import { DEFAULT_SETTINGS, JustSimpleExcalidrawSettingTab, normalizeSettings, type JustSimpleExcalidrawSettings } from "./src/settings";
 import { keepViewportInSync } from "./src/viewport";
+import { mountDoubleTapSelection } from "./src/gestures";
 
 const VIEW_TYPE_EXCALIDRAW = "just-simple-excalidraw-view";
 const AUTOSAVE_DELAY_MS = 750;
@@ -110,6 +111,9 @@ function ExcalidrawCanvas({
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(DEFAULT_ACTIVE_TOOL);
+  const [styleOpen, setStyleOpen] = useState(false);
+  const [selectionCount, setSelectionCount] = useState(0);
+  const selectionCountRef = useRef(0);
   const toolbarPosition = useSyncExternalStore(settingsStore.subscribeSettings, settingsStore.getSettingsSnapshot).toolbarPosition;
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const excalidrawElementRef = useRef<HTMLElement | null>(null);
@@ -142,12 +146,26 @@ function ExcalidrawCanvas({
     return keepViewportInSync(api, getCanvasElement);
   }, [api, getCanvasElement]);
 
+  // Double tap then drag selects, while the hand tool stays the base tool.
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+    return mountDoubleTapSelection(api, getCanvasElement, () => canvasHostRef.current);
+  }, [api, getCanvasElement]);
+
   const handleChange = useCallback((elements: readonly OrderedExcalidrawElement[], appState: AppState, files: BinaryFiles): void => {
     const nextTool = appState?.activeTool;
     const previousTool = activeToolRef.current;
     if (nextTool && (nextTool.type !== previousTool.type || nextTool.locked !== previousTool.locked)) {
       activeToolRef.current = nextTool;
       setActiveTool(nextTool);
+    }
+    setStyleOpen(appState?.openMenu === "shape");
+    const selected = appState?.selectedElementIds ? Object.keys(appState.selectedElementIds).length : 0;
+    if (selected !== selectionCountRef.current) {
+      selectionCountRef.current = selected;
+      setSelectionCount(selected);
     }
     props.onChange?.(elements, appState, files);
   }, [props.onChange]);
@@ -189,6 +207,9 @@ function ExcalidrawCanvas({
       api,
       activeTool: activeTool.type,
       locked: activeTool.locked,
+      styleOpen,
+      styleAvailable: selectionCount > 0 ||
+        (activeTool.type !== "hand" && activeTool.type !== "selection" && activeTool.type !== "eraser"),
       position: toolbarPosition,
       getCanvasElement
     })

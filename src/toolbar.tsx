@@ -1,4 +1,10 @@
-import { createElement, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  createElement,
+  useEffect,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { ICONS, type IconName } from "./icons";
 import type { ToolbarPosition } from "./settings";
@@ -11,25 +17,30 @@ interface ToolDefinition {
   label: string;
 }
 
-/** Same order as Excalidraw's shapes panel, with the hand tool first. */
+/**
+ * Most used tools first: a phone screen shows the first row, the rest wraps
+ * under it. Every tool stays one tap away, nothing scrolls.
+ */
 const TOOLS: readonly ToolDefinition[] = [
   { tool: "hand", icon: "hand", label: "Desplazar" },
   { tool: "selection", icon: "mouse-pointer-2", label: "Seleccionar" },
+  { tool: "freedraw", icon: "pencil", label: "Dibujo a mano" },
+  { tool: "eraser", icon: "eraser", label: "Borrador" },
   { tool: "rectangle", icon: "square", label: "Rectángulo" },
   { tool: "diamond", icon: "diamond", label: "Rombo" },
   { tool: "ellipse", icon: "circle", label: "Elipse" },
   { tool: "arrow", icon: "arrow-up-right", label: "Flecha" },
   { tool: "line", icon: "minus", label: "Línea" },
-  { tool: "freedraw", icon: "pencil", label: "Dibujo a mano" },
   { tool: "text", icon: "type", label: "Texto" },
-  { tool: "image", icon: "image", label: "Imagen" },
-  { tool: "eraser", icon: "eraser", label: "Borrador" }
+  { tool: "image", icon: "image", label: "Imagen" }
 ];
 
 interface CanvasToolbarProps {
   api: ExcalidrawImperativeAPI | null;
   activeTool: string;
   locked: boolean;
+  styleOpen: boolean;
+  styleAvailable: boolean;
   position: ToolbarPosition;
   getCanvasElement: () => HTMLElement | null;
 }
@@ -80,7 +91,35 @@ function replayShortcut(getCanvasElement: () => HTMLElement | null, key: string,
   }));
 }
 
-export function CanvasToolbar({ api, activeTool, locked, position, getCanvasElement }: CanvasToolbarProps) {
+export function CanvasToolbar({ api, activeTool, locked, styleOpen, styleAvailable, position, getCanvasElement }: CanvasToolbarProps) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+
+  // Excalidraw's own bar (menu, duplicate/delete, style sheet) stacks above this
+  // one, so it needs to know how much room the tools take.
+  useEffect(() => {
+    const element = hostRef.current;
+    if (!element) {
+      return;
+    }
+    const root = element.closest<HTMLElement>(".jse-root");
+    if (!root) {
+      return;
+    }
+    const publish = (): void => {
+      const rect = element.getBoundingClientRect();
+      root.style.setProperty("--jse-tools-height", `${Math.round(rect.height)}px`);
+      root.style.setProperty("--jse-tools-top", `${Math.round(window.innerHeight - rect.top)}px`);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(element);
+    window.addEventListener("resize", publish);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", publish);
+    };
+  }, []);
+
   const selectTool = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -95,6 +134,14 @@ export function CanvasToolbar({ api, activeTool, locked, position, getCanvasElem
     const current = TOOLS.find((definition) => definition.tool === activeTool)?.tool;
     if (api && current) {
       api.setActiveTool({ type: current, locked: !locked });
+    }
+  };
+
+  const toggleStyle = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (api) {
+      api.updateScene({ appState: { openMenu: styleOpen ? null : "shape" } });
     }
   };
 
@@ -120,16 +167,18 @@ export function CanvasToolbar({ api, activeTool, locked, position, getCanvasElem
     className: `jse-tool jse-tool--action clickable-icon${active ? " is-active" : ""}`,
     "aria-label": label,
     title: label,
+    "aria-pressed": active,
     onClick
   }, createElement(Icon, { name: icon }));
 
   return createElement("div", {
+    ref: hostRef,
     className: `jse-tools jse-tools--${position}`,
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
   createElement("div", { className: "jse-tools__pill mod-raised" },
     TOOLS.map(toolButton),
-    createElement("div", { className: "jse-tools__divider", role: "presentation" }),
+    styleAvailable ? actionButton("style", "palette", "Color y grosor", toggleStyle, styleOpen) : null,
     actionButton(
       "lock",
       locked ? "lock" : "lock-open",

@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.12 - 2026-10-20
+
+- Double tap and drag on the canvas draws a selection marquee, so selecting no
+  longer needs a trip to the toolbar; a double tap without dragging switches to
+  the selection tool, and that automatic switch hands back to the hand tool as
+  soon as nothing is selected.
+- Toolbar rebuilt so every control is reachable without scrolling: eight buttons
+  on the first row, the rest wrapped under it, all fifteen on one row from a
+  tablet or an unfolded folding phone.
+- The toolbar now carries the colour / stroke sheet ("Color y grosor"), which
+  matters on a phone where Excalidraw hides it behind its own bar.
+- Excalidraw's own bar (canvas menu, duplicate, delete) is kept and moved to the
+  top right, drawn with the same tokens, instead of being hidden.
+
 ## 0.1.11 - 2026-10-20
 
 - The hand tool is now the default, so a drag pans the canvas; selection is one

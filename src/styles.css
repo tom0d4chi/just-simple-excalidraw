@@ -23,37 +23,115 @@
 }
 
 /*
- * Excalidraw renders its toolbar, its undo/redo pair and its contextual shape
- * actions in a bottom bar. That whole bar is replaced by the Obsidian-style bar
- * below; only the main menu (top left) is kept, so canvas actions such as
- * "clear canvas" or the background colour stay reachable.
+ * Excalidraw's top shape switcher and its undo/redo pair are replaced by the
+ * Obsidian-style bar below. Its bottom bar is kept, because that is where
+ * Excalidraw puts the canvas menu, duplicate/delete for the current selection
+ * and the colour / stroke sheet: it is restyled into a second, smaller pill
+ * that stacks just above the tools.
  */
-.jse-root .excalidraw .App-bottom-bar,
 .jse-root .excalidraw .App-toolbar-container,
 .jse-root .excalidraw .shapes-section,
 .jse-root .excalidraw .undo-redo-buttons {
   display: none;
 }
 
-/* Main menu trigger, drawn like the rest of the Obsidian chrome. */
-.jse-root .excalidraw .main-menu-trigger {
+/*
+ * Excalidraw's bar is parked in the top right corner, where Obsidian itself
+ * keeps view actions, so the bottom of the screen belongs to the drawing tools.
+ * Its style sheet opens under it: hence the reversed column.
+ */
+.jse-root .excalidraw .App-bottom-bar {
+  position: absolute;
+  inset: var(--size-4-2, 8px) var(--size-4-2, 8px) auto auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  width: auto;
+  padding: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.jse-root .excalidraw .App-bottom-bar > .Island {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column-reverse;
+  width: auto;
+  min-width: 0;
+  max-width: calc(100vw - var(--size-4-4, 16px));
+  padding: 0;
+  background-color: var(--background-primary);
+  border-radius: var(--touch-size-l, 52px);
+  box-shadow: var(--raised, var(--shadow-s));
+}
+
+/* Duplicated by the Obsidian-style bar. */
+.jse-root .excalidraw .App-toolbar-content > div:last-child {
+  display: none;
+}
+
+.jse-root .excalidraw .App-toolbar-content {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1, 4px);
+  padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
+}
+
+.jse-root .excalidraw .App-toolbar-content > button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--touch-size-m, 44px);
-  height: var(--touch-size-m, 44px);
+  width: var(--jse-tool-size, 42px);
+  min-width: var(--jse-tool-size, 42px);
+  height: var(--jse-tool-size, 42px);
+  margin: 0;
   padding: 0;
   border: 0;
-  border-radius: var(--touch-size-m, 44px);
-  background-color: var(--background-primary);
-  box-shadow: var(--raised, var(--shadow-s));
+  border-radius: var(--jse-tool-size, 42px);
+  background-color: transparent;
   color: var(--icon-color, var(--text-muted));
 }
 
-.jse-root .excalidraw .main-menu-trigger svg {
-  width: var(--icon-l, 24px);
-  height: var(--icon-l, 24px);
+/* Keep Excalidraw's own "hidden until selection" behaviour. */
+.jse-root .excalidraw .App-toolbar-content > button.ToolIcon_type_button--hide {
+  display: none;
+}
+
+.jse-root .excalidraw .App-toolbar-content > button[aria-pressed="true"],
+.jse-root .excalidraw .App-toolbar-content > button.active {
+  background-color: var(--background-modifier-active-hover);
+  color: var(--icon-color-active, var(--text-accent));
+}
+
+.jse-root .excalidraw .App-toolbar-content > button svg {
+  width: var(--jse-icon-size, 22px);
+  height: var(--jse-icon-size, 22px);
   stroke-width: var(--icon-l-stroke-width, 1.75px);
+}
+
+/* Colour / stroke sheet, opened from the palette button. */
+.jse-root .excalidraw .App-mobile-menu {
+  max-height: 45vh;
+  overflow-y: auto;
+  padding: var(--size-4-2, 8px) var(--size-4-3, 12px) 0;
+  background-color: var(--background-primary);
+  border-radius: var(--touch-size-l, 52px) var(--touch-size-l, 52px) 0 0;
+}
+
+.jse-root .excalidraw .App-mobile-menu .panelColumn > h3,
+.jse-root .excalidraw .App-mobile-menu legend {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+/* Selection marquee for the double tap + drag gesture. */
+.jse-marquee {
+  position: absolute;
+  z-index: 5;
+  border: 1.5px dashed var(--text-accent, #6965db);
+  border-radius: 2px;
+  background-color: color-mix(in oklch, var(--text-accent, #6965db) 8%, transparent);
+  pointer-events: none;
 }
 
 /*
@@ -86,54 +164,58 @@
   );
 }
 
+/*
+ * A grid rather than a scroller: eight buttons on the first row, the rest on a
+ * second row. Every control stays visible, so nothing has to be scrolled to.
+ * From 660px (a tablet, or the inner screen of a folding phone) all fifteen fit
+ * on a single row.
+ */
 .jse-tools__pill {
+  --jse-tool-size: 42px;
+  --jse-icon-size: 22px;
   pointer-events: auto;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: var(--size-4-1, 4px);
-  padding: 0 var(--size-4-2, 8px);
-  height: var(--touch-size-l, 52px);
-  max-width: calc(100vw - var(--size-4-8, 32px));
+  display: grid;
+  grid-template-columns: repeat(8, var(--jse-tool-size));
+  gap: 2px;
+  padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
+  max-width: calc(100vw - var(--size-4-4, 16px));
   background-color: var(--background-primary);
   border-radius: var(--touch-size-l, 52px);
   box-shadow: var(--raised, var(--shadow-s));
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
 }
 
-.jse-tools__pill::-webkit-scrollbar {
-  display: none;
+@media (min-width: 660px) {
+  .jse-tools__pill {
+    --jse-tool-size: 40px;
+    grid-template-columns: repeat(15, var(--jse-tool-size));
+  }
 }
 
 .jse-tools--right .jse-tools__pill {
-  flex-direction: column;
-  height: auto;
+  grid-template-columns: var(--jse-tool-size);
   max-height: calc(100% - var(--size-4-12, 48px) * 2);
-  padding: var(--size-4-2, 8px) var(--size-4-1, 4px);
-  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
 }
 
 .jse-root .jse-tool.clickable-icon {
-  --icon-size: var(--icon-l, 24px);
+  --icon-size: var(--jse-icon-size, 22px);
   --icon-stroke: var(--icon-l-stroke-width, 1.75px);
-  flex: 0 0 auto;
-  width: var(--touch-size-m, 44px);
-  min-width: var(--touch-size-m, 44px);
-  height: var(--touch-size-m, 44px);
-  min-height: var(--touch-size-m, 44px);
+  width: var(--jse-tool-size, 42px);
+  height: var(--jse-tool-size, 42px);
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: var(--touch-size-m, 44px);
+  border-radius: var(--jse-tool-size, 42px);
   background-color: transparent;
   box-shadow: none;
   color: var(--icon-color, var(--text-muted));
-  transition: none;
+  transition: transform 0.08s ease-in-out, background-color 0.12s ease-in-out;
+}
+
+.jse-root .jse-tool.clickable-icon:active {
+  transform: scale(0.92);
 }
 
 .jse-root .jse-tool.clickable-icon:hover {
@@ -154,20 +236,7 @@
   stroke-width: var(--icon-stroke);
 }
 
-.jse-tools__divider {
-  flex: 0 0 auto;
-  align-self: center;
-  width: 1px;
-  height: 22px;
-  margin: 0 var(--size-4-1, 4px);
-  background-color: var(--background-modifier-border);
-}
 
-.jse-tools--right .jse-tools__divider {
-  width: 22px;
-  height: 1px;
-  margin: var(--size-4-1, 4px) 0;
-}
 
 /*
  * The canvas context menu uses <hr> separators and plain buttons. Reset the
