@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## 0.1.44 - 2026-10-20
 
+- Removed a marquee rule left over from the first touch implementation: it was
+  still painting its own thin dashed border in --text-accent (orange on a warm
+  theme) on top of the new one, hence the double frame.
+
+## 0.1.43 - 2026-10-20
+
 - The marquee is drawn by the plugin now, in Obsidian's accent with a hint of fill,
   rounded corners and dashes that march while the drag lasts. Excalidraw's own is
   square and violet, and its colour is not exposed to CSS, so its interactive

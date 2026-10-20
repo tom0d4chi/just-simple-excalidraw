@@ -215,16 +215,6 @@
   font-size: 0.7rem;
 }
 
-/* Selection marquee for the double tap + drag gesture. */
-.jse-marquee {
-  position: absolute;
-  z-index: 5;
-  border: 1.5px dashed var(--text-accent, #6965db);
-  border-radius: 2px;
-  background-color: color-mix(in oklch, var(--text-accent, #6965db) 8%, transparent);
-  pointer-events: none;
-}
-
 /*
  * Floating toolbar, built like Obsidian's mobile navbar: a raised pill that
  * uses Obsidian's own tokens, so colours, radii, icon size and stroke follow
