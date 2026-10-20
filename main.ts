@@ -17,6 +17,7 @@ import { CanvasToolbar } from "./src/toolbar";
 import { trackBottomUiInset } from "./src/layout";
 import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
+import { attachInteraction } from "./src/interaction";
 import { keepViewportInSync } from "./src/viewport";
 
 const VIEW_TYPE_EXCALIDRAW = "just-simple-excalidraw-view";
@@ -192,192 +193,20 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
     if (!host || !api) {
       return undefined;
     }
-    const elementUnder = (event: PointerEvent): string | null => {
-      const state = api.getAppState();
-      const bounds = host.getBoundingClientRect();
-      const zoom = state.zoom.value || 1;
-      const sceneX = (event.clientX - bounds.left) / zoom - state.scrollX;
-      const sceneY = (event.clientY - bounds.top) / zoom - state.scrollY;
-      const hit = [...api.getSceneElements()].reverse().find((element) => (
-        !element.isDeleted &&
-        sceneX >= element.x &&
-        sceneX <= element.x + element.width &&
-        sceneY >= element.y &&
-        sceneY <= element.y + element.height
-      ));
-      return hit ? hit.id : null;
-    };
-
-    let tap: { pointerId: number; x: number; y: number; at: number } | null = null;
-
-    const onDown = (event: PointerEvent): void => {
-      if (event.pointerType === "mouse") {
-        return;
+    const interaction = attachInteraction({
+      host,
+      api,
+      armed: () => selectionArmedRef.current,
+      setArmed: (next) => {
+        selectionArmedRef.current = next;
+        setSelectionArmed(next);
+      },
+      onMarqueeCancel: (cancel) => {
+        cancelMarqueeRef.current = cancel;
       }
-      const state = api.getAppState();
-      const tool = state.activeTool.type;
-      if (tool !== "hand" && tool !== "selection") {
-        return;
-      }
-      const id = elementUnder(event);
-      tap = id ? null : { pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: Date.now() };
-      if (id) {
-        if (!Object.hasOwn(state.selectedElementIds ?? {}, id)) {
-          api.updateScene({ appState: { selectedElementIds: { [id]: true } } });
-        }
-        if (tool !== "selection") {
-          api.setActiveTool({ type: "selection", locked: false });
-        }
-        return;
-      }
-      if (tool === "selection" && !selectionArmedRef.current) {
-        api.setActiveTool({ type: "hand", locked: false });
-      }
-    };
-
-    /* A tap on empty paper leaves the cursor mode, however it was armed. */
-    const onUp = (event: PointerEvent): void => {
-      const origin = tap;
-      tap = null;
-      if (!origin || origin.pointerId !== event.pointerId) {
-        return;
-      }
-      if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10 || Date.now() - origin.at > 350) {
-        return;
-      }
-      window.setTimeout(() => {
-        const state = api.getAppState();
-        if (state.activeTool.type === "selection" && Object.keys(state.selectedElementIds ?? {}).length === 0) {
-          selectionArmedRef.current = false;
-          setSelectionArmed(false);
-          api.setActiveTool({ type: "hand", locked: false });
-        }
-      }, 0);
-    };
-
-    host.addEventListener("pointerdown", onDown, true);
-    host.addEventListener("pointerup", onUp, true);
-
-    /*
-     * Excalidraw draws its marquee into the interactive canvas, square and in its
-     * own violet, and that colour is not exposed to CSS. So for the duration of the
-     * gesture that canvas is hidden and a div is drawn instead: Obsidian's accent,
-     * a hint of fill, rounded corners and marching dashes.
-     */
-    let interactiveCanvas: HTMLElement | null = null;
-    let boxStart: { x: number; y: number; pointerId: number } | null = null;
-    let box: HTMLDivElement | null = null;
-    const fingers = new Set<number>();
-    let multiTouch = false;
-
-    const drawBox = (event: PointerEvent): void => {
-      if (!boxStart || event.pointerId !== boxStart.pointerId || !box) {
-        return;
-      }
-      const bounds = host.getBoundingClientRect();
-      const left = Math.min(boxStart.x, event.clientX) - bounds.left;
-      const top = Math.min(boxStart.y, event.clientY) - bounds.top;
-      box.style.left = `${left}px`;
-      box.style.top = `${top}px`;
-      box.style.width = `${Math.abs(event.clientX - boxStart.x)}px`;
-      box.style.height = `${Math.abs(event.clientY - boxStart.y)}px`;
-      const rect = box.querySelector("rect");
-      if (rect) {
-        rect.setAttribute("width", `${Math.max(0, Math.abs(event.clientX - boxStart.x) - 2)}`);
-        rect.setAttribute("height", `${Math.max(0, Math.abs(event.clientY - boxStart.y) - 2)}`);
-      }
-    };
-
-    const startBox = (event: PointerEvent): void => {
-      const state = api.getAppState();
-      if (state.activeTool.type !== "selection" || !selectionArmedRef.current || elementUnder(event)) {
-        return;
-      }
-      boxStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
-      interactiveCanvas = host.querySelector<HTMLElement>(".excalidraw__canvas.interactive");
-      if (interactiveCanvas) {
-        interactiveCanvas.style.opacity = "0";
-      }
-      box = document.createElement("div");
-      box.className = "jse-marquee";
-      // An SVG rectangle, so the dashes follow the rounded corners (a border
-      // cannot be animated, and gradient sides cannot turn a corner).
-      box.innerHTML = '<svg class="jse-marquee__svg"><rect class="jse-marquee__rect" x="1" y="1" rx="6" ry="6"/></svg>';
-      host.appendChild(box);
-      drawBox(event);
-    };
-
-    const endBox = (event: PointerEvent): void => {
-      if (!boxStart || event.pointerId !== boxStart.pointerId) {
-        return;
-      }
-      boxStart = null;
-      box?.remove();
-      box = null;
-      if (interactiveCanvas) {
-        interactiveCanvas.style.removeProperty("opacity");
-        interactiveCanvas = null;
-      }
-    };
-
-    const onMove = (event: PointerEvent): void => drawBox(event);
-    const cancelBox = (): void => {
-      boxStart = null;
-      box?.remove();
-      box = null;
-      if (interactiveCanvas) {
-        interactiveCanvas.style.removeProperty("opacity");
-        interactiveCanvas = null;
-      }
-    };
-
-    const onDownBox = (event: PointerEvent): void => {
-      if (event.pointerType === "mouse") {
-        return;
-      }
-      fingers.add(event.pointerId);
-      /*
-       * A second finger is a pan or a pinch, never a selection: the marquee is
-       * dropped and stays dropped until every finger is up.
-       */
-      if (boxStart && boxStart.pointerId !== event.pointerId) {
-        multiTouch = true;
-        cancelBox();
-        return;
-      }
-      if (!multiTouch) {
-        startBox(event);
-      }
-    };
-    const onUpBox = (event: PointerEvent): void => {
-      if (event.pointerType === "mouse") {
-        return;
-      }
-      fingers.delete(event.pointerId);
-      if (fingers.size === 0) {
-        multiTouch = false;
-      }
-      endBox(event);
-    };
-
-    cancelMarqueeRef.current = cancelBox;
-
-    host.addEventListener("pointerdown", onDownBox, true);
-    host.addEventListener("pointermove", onMove, true);
-    host.addEventListener("pointerup", onUpBox, true);
-    host.addEventListener("pointercancel", onUpBox, true);
-
+    });
     return () => {
-      host.removeEventListener("pointerdown", onDown, true);
-      host.removeEventListener("pointerup", onUp, true);
-      host.removeEventListener("pointerdown", onDownBox, true);
-      host.removeEventListener("pointermove", onMove, true);
-      host.removeEventListener("pointerup", onUpBox, true);
-      host.removeEventListener("pointercancel", onUpBox, true);
-      box?.remove();
-      if (interactiveCanvas) {
-        interactiveCanvas.style.removeProperty("opacity");
-      }
+      interaction.detach();
       cancelMarqueeRef.current = null;
     };
   }, [api]);
