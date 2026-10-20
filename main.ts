@@ -18,6 +18,7 @@ import { trackBottomUiInset } from "./src/layout";
 import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { attachInteraction } from "./src/interaction";
+import { drawingFolder, drawingName } from "./src/naming";
 import { keepViewportInSync } from "./src/viewport";
 
 const VIEW_TYPE_EXCALIDRAW = "just-simple-excalidraw-view";
@@ -91,10 +92,7 @@ function imageByteLength(dataURL: string): number {
   return Math.floor((payloadLength * 3) / 4);
 }
 
-function formatDrawingName(now: Date): string {
-  const pad = (value: number): string => value.toString().padStart(2, "0");
-  return `Drawing ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(now.getSeconds())}`;
-}
+
 
 /**
  * Scenes saved by older versions (or by Excalidraw itself) may not carry an
@@ -368,15 +366,19 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
 
 export interface JustSimpleExcalidrawSettings {
   dotGrid: boolean;
+  /** Vault folder for new drawings; empty means beside the note. */
+  drawingFolder: string;
+  /** Prefix for new file names; empty means the timestamp alone. */
+  drawingPrefix: string;
 }
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
   private readonly fileOwners = new Map<TFile, ExcalidrawView>();
-  settings: JustSimpleExcalidrawSettings = { dotGrid: true };
+  settings: JustSimpleExcalidrawSettings = { dotGrid: true, drawingFolder: "", drawingPrefix: "Drawing" };
 
   async onload(): Promise<void> {
     const stored = await this.loadData() as Partial<JustSimpleExcalidrawSettings> | null;
-    this.settings = { dotGrid: true, ...(stored ?? {}) };
+    this.settings = { dotGrid: true, drawingFolder: "", drawingPrefix: "Drawing", ...(stored ?? {}) };
     this.applyDotGrid();
     this.addSettingTab(new JustSimpleExcalidrawSettingTab(this.app, this));
     this.registerView(VIEW_TYPE_EXCALIDRAW, (leaf) => new ExcalidrawView(leaf, this));
@@ -406,13 +408,18 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
   }
 
   async createDrawing(parentPath = ""): Promise<TFile> {
-    const baseName = formatDrawingName(new Date());
+    const naming = { folder: this.settings.drawingFolder, prefix: this.settings.drawingPrefix };
+    const folder = drawingFolder(naming, parentPath);
+    if (folder) {
+      await this.ensureFolder(folder);
+    }
+    const baseName = drawingName(new Date(), naming);
     let sequence = 1;
-    let path = normalizePath(`${parentPath ? `${parentPath}/` : ""}${baseName}.excalidraw`);
+    let path = normalizePath(`${folder ? `${folder}/` : ""}${baseName}.excalidraw`);
 
     while (this.app.vault.getAbstractFileByPath(path)) {
       sequence += 1;
-      path = normalizePath(`${parentPath ? `${parentPath}/` : ""}${baseName} ${sequence}.excalidraw`);
+      path = normalizePath(`${folder ? `${folder}/` : ""}${baseName} ${sequence}.excalidraw`);
     }
 
     const file = await this.app.vault.create(path, JSON.stringify({
@@ -423,6 +430,23 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     }, null, 2));
     await this.app.workspace.getLeaf("tab").openFile(file);
     return file;
+  }
+
+  /** Creates the folder and its parents when they do not exist yet. */
+  private async ensureFolder(path: string): Promise<void> {
+    const parts = path.split("/").filter(Boolean);
+    let current = "";
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part;
+      if (!this.app.vault.getAbstractFileByPath(current)) {
+        try {
+          await this.app.vault.createFolder(current);
+        } catch {
+          // Raced with another creation, or the path is not a folder: the write will
+          // report the real problem.
+        }
+      }
+    }
   }
 
   claimFile(file: TFile, view: ExcalidrawView): boolean {
