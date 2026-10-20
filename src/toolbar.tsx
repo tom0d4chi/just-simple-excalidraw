@@ -1,6 +1,7 @@
 import {
   createElement,
   useEffect,
+  useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent
@@ -164,6 +165,11 @@ export function CanvasToolbar({
   getCanvasElement
 }: CanvasToolbarProps) {
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  // "Keep the tool" is a preference of the column, not a property of Excalidraw's
+  // current tool: it can be armed before choosing a shape, and it then applies to
+  // whatever is picked next.
+  const [keepTool, setKeepTool] = useState(locked);
+  const keepToolRef = useRef(locked);
   const [styleMenuOpen, setStyleMenuOpen] = useState(false);
   const [entered, setEntered] = useState(false);
 
@@ -188,8 +194,8 @@ export function CanvasToolbar({
       return;
     }
     const current = api.getAppState().activeTool.type;
-    // switching tools always drops a "keep the shape" lock: it belongs to one tool
-    api.setActiveTool({ type: current === tool ? "hand" : tool, locked: false });
+    const next = current === tool ? "hand" : tool;
+    api.setActiveTool({ type: next, locked: next === "hand" ? false : keepToolRef.current });
   };
 
   const insertImage = (event: ReactMouseEvent<HTMLButtonElement>): void => {
@@ -273,9 +279,13 @@ export function CanvasToolbar({
   const toggleLock = (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
-    const current = TOOL_DEFINITIONS[activeTool as ToolName]?.tool;
-    if (api && current) {
-      api.setActiveTool({ type: current, locked: !locked });
+    const next = !keepToolRef.current;
+    keepToolRef.current = next;
+    setKeepTool(next);
+    const current = api?.getAppState().activeTool.type;
+    // Armed before a tool is chosen: it simply applies to the next pick.
+    if (api && current && current !== "hand" && current !== "selection") {
+      api.setActiveTool({ type: current as ToolName, locked: next });
     }
   };
 
@@ -506,10 +516,10 @@ export function CanvasToolbar({
       createElement("button", {
         type: "button",
         role: "menuitem",
-        className: `jse-tool clickable-icon jse-tool--shape jse-shapes__item${shapeMenuOpen ? " is-entering" : ""}${locked ? " is-active" : ""}`,
+        className: `jse-tool clickable-icon jse-tool--shape jse-shapes__item${shapeMenuOpen ? " is-entering" : ""}${keepTool ? " is-active" : ""}`,
         style: { animationDelay: "0ms" },
-        "aria-label": locked ? t("stopKeepingShape") : t("keepShape"),
-        "aria-pressed": locked,
+        "aria-label": keepTool ? t("stopKeepingShape") : t("keepShape"),
+        "aria-pressed": keepTool,
         onClick: toggleLock
       }, createElement(Icon, { name: locked ? "lock" : "lock-open" }))
     )

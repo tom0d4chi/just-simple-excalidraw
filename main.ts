@@ -476,18 +476,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       textSelectedRef.current = onlyText;
       setTextSelected(onlyText);
     }
-    /*
-     * A finger drag pans, except while something is selected: there the pointer
-     * has to move and resize it, so the selection tool takes over on its own.
-     * Tapping empty space ends that and hands the sheet back to the hand tool.
-     */
-    if (isTouchDevice && api) {
-      if (selected > 0 && activeToolRef.current.type === "hand") {
-        api.setActiveTool({ type: "selection", locked: false });
-      } else if (selected === 0 && previouslySelected > 0 && activeToolRef.current.type === "selection") {
-        api.setActiveTool({ type: "hand", locked: false });
-      }
-    }
+
     syncHistoryState();
     props.onChange?.(elements, appState, files);
   }, [props.onChange, syncHistoryState]);
