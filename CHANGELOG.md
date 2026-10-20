@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.31 - 2026-10-20
+
+- On touch, a finger drag pans by default again: the hand is the base tool, and
+  the marquee only appears when the cursor button is picked.
+- While something is selected the selection tool takes over on its own, so the
+  drag moves and resizes the element instead of panning; emptying the selection
+  (tap on empty canvas) hands the sheet back to the hand tool.
+
 ## 0.1.30 - 2026-10-20
 
 - "Edit text" works: it pressed Excalidraw's own Edit button, which is enabled but

@@ -52,7 +52,9 @@ type ExcalidrawCanvasProps = Omit<ComponentProps<typeof Excalidraw>, "initialDat
  */
 function defaultActiveTool(isTouchDevice: boolean): AppState["activeTool"] {
   return {
-    type: isTouchDevice ? "selection" : "hand",
+    // A finger drag pans. The marquee only appears once the cursor tool is
+    // picked, so the sheet behaves like paper until asked otherwise.
+    type: "hand",
     customType: null,
     locked: false,
     lastActiveTool: null
@@ -230,6 +232,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
     }
     const selectedIds = Object.keys(appState?.selectedElementIds ?? {});
     const selected = selectedIds.length;
+    const previouslySelected = selectionCountRef.current;
     if (selected !== selectionCountRef.current) {
       selectionCountRef.current = selected;
       setSelectionCount(selected);
@@ -240,6 +243,18 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
     if (onlyText !== textSelectedRef.current) {
       textSelectedRef.current = onlyText;
       setTextSelected(onlyText);
+    }
+    /*
+     * A finger drag pans, except while something is selected: there the pointer
+     * has to move and resize it, so the selection tool takes over on its own.
+     * Tapping empty space ends that and hands the sheet back to the hand tool.
+     */
+    if (isTouchDevice && api) {
+      if (selected > 0 && activeToolRef.current.type === "hand") {
+        api.setActiveTool({ type: "selection" });
+      } else if (selected === 0 && previouslySelected > 0 && activeToolRef.current.type === "selection") {
+        api.setActiveTool({ type: "hand" });
+      }
     }
     syncHistoryState();
     props.onChange?.(elements, appState, files);
