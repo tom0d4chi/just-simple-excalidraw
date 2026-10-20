@@ -143,32 +143,23 @@
   position: absolute;
   z-index: 6;
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   pointer-events: none;
-}
-
-.jse-tools--bottom {
-  left: 0;
-  right: 0;
-  justify-content: center;
-  bottom: calc(
-    var(--safe-area-inset-bottom, 0px) + var(--navbar-height, 0px) +
-      var(--size-4-2, 8px)
-  );
-}
-
-.jse-tools--right {
-  top: 50%;
-  transform: translateY(-50%);
+  /* A definite band, so the column can cap its height and scroll instead of
+     running off the screen on a short viewport. */
+  top: calc(var(--size-4-3, 12px) + var(--touch-size-l, 52px));
+  bottom: calc(var(--safe-area-inset-bottom, 0px) + var(--size-4-3, 12px));
   right: calc(
     var(--safe-area-inset-right, 0px) + var(--size-4-2, 8px)
   );
 }
 
 /*
- * A grid rather than a scroller: eight buttons on the first row, the rest on a
- * second row. Every control stays visible, so nothing has to be scrolled to.
- * From 660px (a tablet, or the inner screen of a folding phone) all fifteen fit
- * on a single row.
+ * A single column on the right edge: every control is visible, nothing scrolls
+ * on a phone in portrait. The column is capped so it never runs under
+ * Excalidraw's menu pill in the top right corner; on a short screen (landscape)
+ * it scrolls rather than shrinking the touch targets.
  */
 .jse-tools__pill {
   --jse-tool-size: 42px;
@@ -176,27 +167,20 @@
   pointer-events: auto;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: repeat(8, var(--jse-tool-size));
+  grid-template-columns: var(--jse-tool-size);
   gap: 2px;
   padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
-  max-width: calc(100vw - var(--size-4-4, 16px));
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
   background-color: var(--background-primary);
   border-radius: var(--touch-size-l, 52px);
   box-shadow: var(--raised, var(--shadow-s));
 }
 
-@media (min-width: 660px) {
-  .jse-tools__pill {
-    --jse-tool-size: 40px;
-    grid-template-columns: repeat(15, var(--jse-tool-size));
-  }
-}
-
-.jse-tools--right .jse-tools__pill {
-  grid-template-columns: var(--jse-tool-size);
-  max-height: calc(100% - var(--size-4-12, 48px) * 2);
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
+.jse-tools__pill::-webkit-scrollbar {
+  display: none;
 }
 
 .jse-root .jse-tool.clickable-icon {

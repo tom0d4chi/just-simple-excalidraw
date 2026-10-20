@@ -1,23 +1,11 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab } from "obsidian";
 import type JustSimpleExcalidrawPlugin from "../main";
 
-export type ToolbarPosition = "bottom" | "right";
-
-export interface JustSimpleExcalidrawSettings {
-  toolbarPosition: ToolbarPosition;
-}
-
-export const DEFAULT_SETTINGS: JustSimpleExcalidrawSettings = {
-  toolbarPosition: "bottom"
-};
-
-export function normalizeSettings(value: unknown): JustSimpleExcalidrawSettings {
-  const stored = typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
-  return {
-    toolbarPosition: stored.toolbarPosition === "right" ? "right" : DEFAULT_SETTINGS.toolbarPosition
-  };
-}
-
+/**
+ * No user options: the toolbar is fixed to the right edge. This tab only
+ * reports which build is actually loaded, so an update that did not land is
+ * visible at a glance.
+ */
 export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
   constructor(app: App, private readonly plugin: JustSimpleExcalidrawPlugin) {
     super(app, plugin);
@@ -27,16 +15,10 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl)
-      .setName("Posición de la barra de herramientas")
-      .setDesc("Abajo en horizontal, como la barra de Obsidian en el móvil, o pegada al borde derecho en vertical.")
-      .addDropdown((dropdown) => dropdown
-        .addOption("bottom", "Abajo (horizontal)")
-        .addOption("right", "Derecha (vertical)")
-        .setValue(this.plugin.settings.toolbarPosition)
-        .onChange(async (value) => {
-          this.plugin.updateSettings({ toolbarPosition: value === "right" ? "right" : "bottom" });
-          await this.plugin.saveSettings();
-        }));
+    containerEl.createEl("h2", { text: "Just Simple Excalidraw" });
+    containerEl.createEl("p", { text: `Versión instalada: ${this.plugin.manifest.version}` });
+    containerEl.createEl("p", {
+      text: "La barra de herramientas está fija en el borde derecho, en vertical. Un arrastre desplaza el lienzo; un doble toque y arrastre selecciona."
+    });
   }
 }

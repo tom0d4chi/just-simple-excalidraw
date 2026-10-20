@@ -53,10 +53,10 @@ supports the people building Excalidraw.
   overwrites.
 - Reports malformed drawings without changing the original file.
 - Follows Obsidian's light and dark theme.
-- Starts on the hand tool, so dragging pans the canvas and a tap on the
-  selection tool switches to selecting.
+- Starts on the hand tool, so dragging pans the canvas; a double tap and drag
+  selects, and a tap on the selection tool switches to selecting.
 - Replaces Excalidraw's toolbar with one styled like Obsidian's mobile chrome,
-  placed either at the bottom (horizontal) or along the right edge (vertical).
+  fixed along the right edge as a vertical column.
 
 It deliberately does **not** add Markdown embedding, OCR, AI, collaboration,
 cloud sync, a drawing library, an account, or an export workflow. Those are
@@ -71,21 +71,16 @@ is one tap away, and a **double tap followed by a drag** draws a selection
 marquee without leaving the canvas; a double tap on its own switches to the
 selection tool, and once that selection is dropped the hand tool comes back.
 
-The floating bar holds the eleven drawing tools, the colour / stroke sheet, the
-tool lock, undo and redo — fifteen controls, all visible at once, no scrolling:
-
-- on a phone they wrap onto two rows of eight and seven;
-- from a tablet, or the inner screen of a folding phone, all fifteen fit on one
-  row.
+The floating bar sits on the right edge as a single vertical column: the eleven
+drawing tools, the colour / stroke sheet, the tool lock, undo and redo. All of
+them are visible at once — nothing scrolls on a phone in portrait, and the
+column only scrolls on a short viewport such as a phone held sideways.
 
 Everything is drawn with Obsidian's own tokens and Lucide glyphs, so colours,
 radii, icon size and stroke width follow the theme and the font scale.
 
-Choose its place in **Settings → Just Simple Excalidraw → Posición de la barra
-de herramientas**:
-
-- **Abajo (horizontal)** — a pill centred above Obsidian's mobile navbar.
-- **Derecha (vertical)** — a column pinned to the right edge, centred vertically.
+The plugin settings tab has no options to set: it reports the installed version,
+so an update that did not land is visible at a glance.
 
 Excalidraw's canvas menu (clear canvas, background colour), its duplicate and
 delete actions and its colour sheet are kept — not hidden — and restyled: they

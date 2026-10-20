@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.13 - 2026-10-20
+
+- The toolbar is fixed to the right edge, one vertical column. The horizontal
+  bottom placement and its setting are gone.
+- The settings tab no longer has options; it reports the installed version, so
+  an update that did not land is visible immediately.
+
 ## 0.1.12 - 2026-10-20
 
 - Double tap and drag on the canvas draws a selection marquee, so selecting no

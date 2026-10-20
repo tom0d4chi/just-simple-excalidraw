@@ -1,13 +1,6 @@
-import {
-  createElement,
-  useEffect,
-  useRef,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent
-} from "react";
+import { createElement, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { ICONS, type IconName } from "./icons";
-import type { ToolbarPosition } from "./settings";
 
 type ToolName = "hand" | "selection" | "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "freedraw" | "text" | "image" | "eraser";
 
@@ -41,7 +34,6 @@ interface CanvasToolbarProps {
   locked: boolean;
   styleOpen: boolean;
   styleAvailable: boolean;
-  position: ToolbarPosition;
   getCanvasElement: () => HTMLElement | null;
 }
 
@@ -91,35 +83,7 @@ function replayShortcut(getCanvasElement: () => HTMLElement | null, key: string,
   }));
 }
 
-export function CanvasToolbar({ api, activeTool, locked, styleOpen, styleAvailable, position, getCanvasElement }: CanvasToolbarProps) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
-
-  // Excalidraw's own bar (menu, duplicate/delete, style sheet) stacks above this
-  // one, so it needs to know how much room the tools take.
-  useEffect(() => {
-    const element = hostRef.current;
-    if (!element) {
-      return;
-    }
-    const root = element.closest<HTMLElement>(".jse-root");
-    if (!root) {
-      return;
-    }
-    const publish = (): void => {
-      const rect = element.getBoundingClientRect();
-      root.style.setProperty("--jse-tools-height", `${Math.round(rect.height)}px`);
-      root.style.setProperty("--jse-tools-top", `${Math.round(window.innerHeight - rect.top)}px`);
-    };
-    publish();
-    const observer = new ResizeObserver(publish);
-    observer.observe(element);
-    window.addEventListener("resize", publish);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", publish);
-    };
-  }, []);
-
+export function CanvasToolbar({ api, activeTool, locked, styleOpen, styleAvailable, getCanvasElement }: CanvasToolbarProps) {
   const selectTool = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -172,8 +136,7 @@ export function CanvasToolbar({ api, activeTool, locked, styleOpen, styleAvailab
   }, createElement(Icon, { name: icon }));
 
   return createElement("div", {
-    ref: hostRef,
-    className: `jse-tools jse-tools--${position}`,
+    className: "jse-tools",
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
   createElement("div", { className: "jse-tools__pill mod-raised" },

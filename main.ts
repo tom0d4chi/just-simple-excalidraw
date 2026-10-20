@@ -1,5 +1,5 @@
 import { FileView, Notice, Plugin, TFile, WorkspaceLeaf, normalizePath } from "obsidian";
-import { createElement, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ComponentProps } from "react";
+import { createElement, useCallback, useEffect, useRef, useState, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
   Excalidraw,
@@ -14,7 +14,7 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { CanvasToolbar } from "./src/toolbar";
-import { DEFAULT_SETTINGS, JustSimpleExcalidrawSettingTab, normalizeSettings, type JustSimpleExcalidrawSettings } from "./src/settings";
+import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { keepViewportInSync } from "./src/viewport";
 import { mountDoubleTapSelection } from "./src/gestures";
 
@@ -48,11 +48,6 @@ const DEFAULT_ACTIVE_TOOL: AppState["activeTool"] = {
   locked: false,
   lastActiveTool: null
 };
-
-interface SettingsStore {
-  subscribeSettings: (listener: () => void) => () => void;
-  getSettingsSnapshot: () => JustSimpleExcalidrawSettings;
-}
 
 function emptyScene(): StoredScene {
   return { elements: [], appState: {}, files: {} };
@@ -103,18 +98,13 @@ function withDefaultTool(scene: StoredScene): StoredScene {
   };
 }
 
-function ExcalidrawCanvas({
-  initialData,
-  settingsStore,
-  ...props
-}: ExcalidrawCanvasProps & { settingsStore: SettingsStore }) {
+function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(DEFAULT_ACTIVE_TOOL);
   const [styleOpen, setStyleOpen] = useState(false);
   const [selectionCount, setSelectionCount] = useState(0);
   const selectionCountRef = useRef(0);
-  const toolbarPosition = useSyncExternalStore(settingsStore.subscribeSettings, settingsStore.getSettingsSnapshot).toolbarPosition;
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const excalidrawElementRef = useRef<HTMLElement | null>(null);
   const activeToolRef = useRef(activeTool);
@@ -210,7 +200,6 @@ function ExcalidrawCanvas({
       styleOpen,
       styleAvailable: selectionCount > 0 ||
         (activeTool.type !== "hand" && activeTool.type !== "selection" && activeTool.type !== "eraser"),
-      position: toolbarPosition,
       getCanvasElement
     })
   );
@@ -218,11 +207,7 @@ function ExcalidrawCanvas({
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
   private readonly fileOwners = new Map<TFile, ExcalidrawView>();
-  private readonly settingsListeners = new Set<() => void>();
-  settings: JustSimpleExcalidrawSettings = { ...DEFAULT_SETTINGS };
-
-  async onload(): Promise<void> {
-    this.settings = normalizeSettings(await this.loadData());
+  onload(): void {
     this.addSettingTab(new JustSimpleExcalidrawSettingTab(this.app, this));
     this.registerView(VIEW_TYPE_EXCALIDRAW, (leaf) => new ExcalidrawView(leaf, this));
     this.registerExtensions(["excalidraw"], VIEW_TYPE_EXCALIDRAW);
@@ -233,24 +218,6 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       callback: () => void this.createDrawing()
     });
     this.addRibbonIcon("pencil-ruler", "Create new Excalidraw drawing", () => void this.createDrawing());
-  }
-
-  subscribeSettings = (listener: () => void): (() => void) => {
-    this.settingsListeners.add(listener);
-    return () => this.settingsListeners.delete(listener);
-  };
-
-  getSettingsSnapshot = (): JustSimpleExcalidrawSettings => this.settings;
-
-  updateSettings(patch: Partial<JustSimpleExcalidrawSettings>): void {
-    this.settings = { ...this.settings, ...patch };
-    for (const listener of this.settingsListeners) {
-      listener();
-    }
-  }
-
-  async saveSettings(): Promise<void> {
-    await this.saveData(this.settings);
   }
 
   async createDrawing(parentPath = ""): Promise<TFile> {
@@ -428,7 +395,6 @@ class ExcalidrawView extends FileView {
     this.root.render(createElement(ExcalidrawCanvas, {
       key: file.path,
       initialData: scene,
-      settingsStore: this.plugin,
       onPaste: (_data: unknown, event: ClipboardEvent | null): boolean => {
         const image = Array.from(event?.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
         if (image && image.size > MAX_IMAGE_BYTES) {
