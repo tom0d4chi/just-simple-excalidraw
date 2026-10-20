@@ -243,7 +243,9 @@
    * drawing area, and the column then looks off-centre and grows lopsided.
    */
   top: 0;
-  bottom: 0;
+  /* Obsidian's floating navbar and its gap do not belong to the drawing area
+     (the plugin measures them and publishes the footprint) */
+  bottom: var(--jse-bottom-ui, 0px);
   right: calc(
     var(--safe-area-inset-right, 0px) + var(--size-4-2, 8px)
   );
@@ -314,7 +316,7 @@
   .jse-tools__pill.jse-anim,
   .jse-root .jse-tool .jse-icon,
   .jse-shapes__menu.jse-anim,
-  .jse-root .jse-tools__pill > .jse-tool--context.jse-anim {
+  .jse-root .jse-tools__pill > .jse-tool--collapsible.jse-anim {
     animation: none;
     transition: none;
   }
@@ -514,24 +516,24 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * Selection actions open and close the same way: the slot grows or shrinks, so
  * the rest of the column slides instead of jumping, in both directions.
  */
-.jse-root .jse-tools__pill > .jse-tool--context {
+.jse-root .jse-tools__pill > .jse-tool--collapsible {
   overflow: hidden;
   height: var(--jse-tool-size, 42px);
   opacity: 1;
 }
 
-.jse-root .jse-tools__pill > .jse-tool--context.is-collapsed {
+.jse-root .jse-tools__pill > .jse-tool--collapsible.is-collapsed {
   height: 0;
   margin-bottom: 0;
   opacity: 0;
   pointer-events: none;
 }
 
-.jse-root .jse-tools__pill > .jse-tool--context.jse-anim {
+.jse-root .jse-tools__pill > .jse-tool--collapsible.jse-anim {
   animation: jse-tool-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
-.jse-root .jse-tools__pill > .jse-tool--context.jse-anim.is-collapsed {
+.jse-root .jse-tools__pill > .jse-tool--collapsible.jse-anim.is-collapsed {
   animation: jse-tool-out 180ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
@@ -600,7 +602,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   margin-bottom: 0;
 }
 
-.jse-root .jse-tools__pill > .jse-tool--context.is-collapsed {
+.jse-root .jse-tools__pill > .jse-tool--collapsible.is-collapsed {
   margin-bottom: 0;
 }
 

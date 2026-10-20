@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.24 - 2026-10-20
+
+- The column now centres on the drawing area Obsidian actually leaves free: the
+  mobile navbar and the gap under it are measured and subtracted, so the middle
+  of the column sits in the middle of what you can draw on. It follows the bar
+  when it grows, hides or the device rotates.
+- Redo only appears when there is something to redo — it folds away with the same
+  animation as the selection actions.
+- Undo, redo, duplicate, delete and edit text now click Excalidraw's own buttons
+  instead of replaying key presses: same handler, same history entry, no guessing
+  at modifiers.
+
 ## 0.1.23 - 2026-10-20
 
 - The column's inset is written once for both ends (6px, border included), and no

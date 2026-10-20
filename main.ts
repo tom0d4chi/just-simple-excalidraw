@@ -14,6 +14,7 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import { CanvasToolbar } from "./src/toolbar";
+import { trackBottomUiInset } from "./src/layout";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { keepViewportInSync } from "./src/viewport";
 
@@ -115,7 +116,10 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
   const selectionCountRef = useRef(0);
   const [textSelected, setTextSelected] = useState(false);
   const textSelectedRef = useRef(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const canRedoRef = useRef(false);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const excalidrawElementRef = useRef<HTMLElement | null>(null);
   const activeToolRef = useRef(activeTool);
 
@@ -146,6 +150,33 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
     return keepViewportInSync(api, getCanvasElement);
   }, [api, getCanvasElement]);
 
+  useEffect(() => {
+    const root = rootRef.current;
+    return root ? trackBottomUiInset(root) : undefined;
+  }, []);
+
+
+  /*
+   * Excalidraw keeps its history private; the only honest window on it is its
+   * own redo button, which is disabled exactly when the stack is empty. Read it
+   * after the commit that follows a change.
+   */
+  const syncHistoryState = useCallback((): void => {
+    const schedule = typeof window.requestAnimationFrame === "function"
+      ? window.requestAnimationFrame.bind(window)
+      : (callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 16);
+    schedule(() => {
+      const button = typeof document.querySelector === "function"
+        ? document.querySelector<HTMLButtonElement>('[data-testid="button-redo"]')
+        : null;
+      const next = button ? !button.disabled : false;
+      if (next !== canRedoRef.current) {
+        canRedoRef.current = next;
+        setCanRedo(next);
+      }
+    });
+  }, []);
+
   const handleChange = useCallback((elements: readonly OrderedExcalidrawElement[], appState: AppState, files: BinaryFiles): void => {
     const nextTool = appState?.activeTool;
     const previousTool = activeToolRef.current;
@@ -167,10 +198,15 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
       textSelectedRef.current = onlyText;
       setTextSelected(onlyText);
     }
+    syncHistoryState();
     props.onChange?.(elements, appState, files);
-  }, [props.onChange]);
+  }, [props.onChange, syncHistoryState]);
 
-  return createElement("div", { className: "jse-root" },
+  useEffect(() => {
+    syncHistoryState();
+  }, [api, syncHistoryState]);
+
+  return createElement("div", { className: "jse-root", ref: rootRef },
     createElement("div", { className: "jse-canvas", ref: canvasHostRef },
       createElement(Excalidraw, {
         initialData: withDefaultTool(initialData ?? emptyScene(), isTouchDevice),
@@ -210,6 +246,7 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
       styleOpen,
       selectionCount,
       textSelected,
+      canRedo,
       styleAvailable: selectionCount > 0 ||
         (activeTool.type !== "hand" && activeTool.type !== "selection" && activeTool.type !== "eraser"),
       isTouchDevice,

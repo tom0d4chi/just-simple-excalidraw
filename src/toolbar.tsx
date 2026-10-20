@@ -53,6 +53,7 @@ interface CanvasToolbarProps {
   styleAvailable: boolean;
   selectionCount: number;
   textSelected: boolean;
+  canRedo: boolean;
   isTouchDevice: boolean;
   getCanvasElement: () => HTMLElement | null;
 }
@@ -88,6 +89,23 @@ function Icon({ name }: { name: IconName }) {
     "aria-hidden": "true",
     dangerouslySetInnerHTML: { __html: ICONS[name] }
   });
+}
+
+/**
+ * Excalidraw renders its own buttons for these actions (in the bar this plugin
+ * hides). Clicking them is exact — it runs the same handler, with the same
+ * history entry — where a synthesized key press has to guess at modifiers.
+ */
+function pressExcalidrawButton(selector: string): boolean {
+  if (typeof document?.querySelector !== "function") {
+    return false;
+  }
+  const button = document.querySelector<HTMLButtonElement>(selector);
+  if (!button || button.disabled) {
+    return false;
+  }
+  button.click();
+  return true;
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -137,6 +155,7 @@ export function CanvasToolbar({
   styleAvailable,
   selectionCount,
   textSelected,
+  canRedo,
   isTouchDevice,
   getCanvasElement
 }: CanvasToolbarProps) {
@@ -311,17 +330,26 @@ export function CanvasToolbar({
   };
 
   const contextClass = (available: boolean): string =>
-    `jse-tool--context${entered ? " jse-anim" : ""}${available ? "" : " is-collapsed"}`;
+    `jse-tool--context jse-tool--collapsible${entered ? " jse-anim" : ""}${available ? "" : " is-collapsed"}`;
   const contextButtons = [
     actionButton("edit-text", "type", "Editar texto", (event) =>
-      stopAndRun(event, () => replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter")),
-      false, false, contextClass(textSelected)),
+      stopAndRun(event, () => {
+        if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Edit"]')) {
+          replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter");
+        }
+      }), false, false, contextClass(textSelected)),
     actionButton("duplicate", "copy", "Duplicar", (event) =>
-      stopAndRun(event, () => replayShortcut(getCanvasElement, "d", false, true, 68, "KeyD")),
-      false, false, contextClass(selectionCount > 0)),
+      stopAndRun(event, () => {
+        if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Duplicate"]')) {
+          replayShortcut(getCanvasElement, "d", false, true, 68, "KeyD");
+        }
+      }), false, false, contextClass(selectionCount > 0)),
     actionButton("delete", "trash-2", "Eliminar", (event) =>
-      stopAndRun(event, () => replayShortcut(getCanvasElement, "Delete", false, false, 46, "Delete")),
-      false, false, contextClass(selectionCount > 0))
+      stopAndRun(event, () => {
+        if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Delete"]')) {
+          replayShortcut(getCanvasElement, "Delete", false, false, 46, "Delete");
+        }
+      }), false, false, contextClass(selectionCount > 0))
   ];
 
   const lockButton = actionButton(
@@ -389,12 +417,16 @@ export function CanvasToolbar({
     actionButton("undo", "undo-2", "Deshacer", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      replayShortcut(getCanvasElement, "z");
+      if (!pressExcalidrawButton('[data-testid="button-undo"]')) {
+        replayShortcut(getCanvasElement, "z");
+      }
     }),
     actionButton("redo", "redo-2", "Rehacer", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      replayShortcut(getCanvasElement, "z", true);
-    })
+      if (!pressExcalidrawButton('[data-testid="button-redo"]')) {
+        replayShortcut(getCanvasElement, "z", true);
+      }
+    }, false, false, `jse-tool--collapsible${entered ? " jse-anim" : ""}${canRedo ? "" : " is-collapsed"}`)
   ));
 }
