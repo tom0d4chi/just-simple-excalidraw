@@ -40,6 +40,7 @@ type StoredScene = ExcalidrawInitialDataState & {
 
 type ExcalidrawCanvasProps = Omit<ComponentProps<typeof Excalidraw>, "initialData"> & {
   initialData: StoredScene;
+  dotGrid?: boolean;
 };
 
 /*
@@ -102,12 +103,17 @@ function withDefaultTool(scene: StoredScene, isTouchDevice: boolean): StoredScen
     ...scene,
     appState: {
       ...scene.appState,
-      activeTool: defaultActiveTool(isTouchDevice)
+      activeTool: defaultActiveTool(isTouchDevice),
+      // Excalidraw paints its grid into the canvas bitmap, where no stylesheet can
+      // touch it. The plugin draws a dot grid on the sheet instead, so its own
+      // grid is kept off and the canvas is left transparent for it to show.
+      gridModeEnabled: false,
+      viewBackgroundColor: "transparent"
     }
   };
 }
 
-function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
+function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawCanvasProps) {
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const isTouchDevice = Platform.isMobile;
@@ -209,6 +215,14 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
         ?? appState?.currentItemFontSize ?? 20,
       roundness: selectedElement?.roundness?.type ?? null
     };
+    const root = rootRef.current;
+    if (root) {
+      const scale = appState?.zoom?.value ?? 1;
+      const size = (appState?.gridSize ?? 20) * scale;
+      root.style.setProperty("--jse-dot-size", `${size}px`);
+      root.style.setProperty("--jse-dot-x", `${(appState?.scrollX ?? 0) * scale}px`);
+      root.style.setProperty("--jse-dot-y", `${(appState?.scrollY ?? 0) * scale}px`);
+    }
     const signature = JSON.stringify(nextStyle);
     if (signature !== styleSignatureRef.current) {
       styleSignatureRef.current = signature;
@@ -235,7 +249,10 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
     syncHistoryState();
   }, [api, syncHistoryState]);
 
-  return createElement("div", { className: "jse-root", ref: rootRef },
+  return createElement("div", {
+    className: `jse-root${dotGrid ? " has-dots" : ""}`,
+    ref: rootRef
+  },
     createElement("div", { className: "jse-canvas", ref: canvasHostRef },
       createElement(Excalidraw, {
         initialData: withDefaultTool(initialData ?? emptyScene(), isTouchDevice),
@@ -282,9 +299,18 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
   );
 }
 
+export interface JustSimpleExcalidrawSettings {
+  dotGrid: boolean;
+}
+
 export default class JustSimpleExcalidrawPlugin extends Plugin {
   private readonly fileOwners = new Map<TFile, ExcalidrawView>();
-  onload(): void {
+  settings: JustSimpleExcalidrawSettings = { dotGrid: true };
+
+  async onload(): Promise<void> {
+    const stored = await this.loadData() as Partial<JustSimpleExcalidrawSettings> | null;
+    this.settings = { dotGrid: true, ...(stored ?? {}) };
+    this.applyDotGrid();
     this.addSettingTab(new JustSimpleExcalidrawSettingTab(this.app, this));
     this.registerView(VIEW_TYPE_EXCALIDRAW, (leaf) => new ExcalidrawView(leaf, this));
     this.registerExtensions(["excalidraw"], VIEW_TYPE_EXCALIDRAW);
@@ -295,6 +321,21 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       callback: () => void this.createDrawing()
     });
     this.addRibbonIcon("pencil-ruler", "Create new Excalidraw drawing", () => void this.createDrawing());
+  }
+
+  /** Live switch: the class is all the stylesheet needs. */
+  applyDotGrid(): void {
+    if (typeof document?.querySelectorAll !== "function") {
+      return;
+    }
+    document.querySelectorAll(".jse-root").forEach((root) => {
+      root.classList.toggle("has-dots", this.settings.dotGrid);
+    });
+  }
+
+  async saveSettings(): Promise<void> {
+    await this.saveData(this.settings);
+    this.applyDotGrid();
   }
 
   async createDrawing(parentPath = ""): Promise<TFile> {
@@ -472,6 +513,7 @@ class ExcalidrawView extends FileView {
     this.root.render(createElement(ExcalidrawCanvas, {
       key: file.path,
       initialData: scene,
+      dotGrid: this.plugin.settings.dotGrid,
       onPaste: (_data: unknown, event: ClipboardEvent | null): boolean => {
         const image = Array.from(event?.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
         if (image && image.size > MAX_IMAGE_BYTES) {

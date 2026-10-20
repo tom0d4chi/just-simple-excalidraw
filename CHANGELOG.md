@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.29 - 2026-10-20
+
+- The ruled grid is replaced by a dot grid. Excalidraw paints its grid into the
+  canvas bitmap, where no stylesheet can reach, so its grid is kept off and the
+  canvas is left transparent: the paper (background plus dots) is drawn behind it
+  and follows pan and zoom. The background now comes from Obsidian's theme, so a
+  drawing reads correctly in light and dark.
+- A setting turns the dots off.
+
 ## 0.1.28 - 2026-10-20
 
 - "Edit text" no longer borrows the text tool's T: it has its own glyph (a square

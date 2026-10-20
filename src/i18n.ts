@@ -52,6 +52,8 @@ const DICTIONARIES = {
     huge: "Énorme",
     colourStroke: "Trait",
     colourFill: "Remplissage",
+    dotGrid: "Fond de points",
+    dotGridDesc: "Dessine une grille de points à la place du quadrillage d'Excalidraw. Le fond suit le thème d'Obsidian.",
     settingsVersion: "Version installée",
     settingsBody: "La barre d'outils est fixée au bord droit, à la verticale. Sur mobile, un doigt utilise l'outil actif et deux doigts déplacent et zooment ; sur ordinateur, on déplace avec l'outil main."
   },
@@ -99,6 +101,8 @@ const DICTIONARIES = {
     huge: "Huge",
     colourStroke: "Stroke",
     colourFill: "Fill",
+    dotGrid: "Dot grid",
+    dotGridDesc: "Draws a dot grid instead of Excalidraw's ruled grid. The background follows Obsidian's theme.",
     settingsVersion: "Installed version",
     settingsBody: "The toolbar is fixed to the right edge, vertically. On mobile one finger uses the active tool and two fingers pan and zoom; on desktop you pan with the hand tool."
   },
@@ -146,6 +150,8 @@ const DICTIONARIES = {
     huge: "Enorme",
     colourStroke: "Trazo",
     colourFill: "Fondo",
+    dotGrid: "Fondo de puntos",
+    dotGridDesc: "Dibuja una cuadrícula de puntos en lugar de la retícula de Excalidraw. El fondo sigue el tema de Obsidian.",
     settingsVersion: "Versión instalada",
     settingsBody: "La barra de herramientas está fija en el borde derecho, en vertical. En el móvil, un dedo usa la herramienta activa y dos dedos desplazan y hacen zoom; en el escritorio se arrastra con la herramienta de mano."
   }

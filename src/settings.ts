@@ -1,11 +1,10 @@
-import { App, PluginSettingTab } from "obsidian";
+import { App, PluginSettingTab, Setting, type ToggleComponent } from "obsidian";
 import type JustSimpleExcalidrawPlugin from "../main";
 import { t } from "./i18n";
 
 /**
- * No user options: the toolbar is fixed to the right edge. This tab only
- * reports which build is actually loaded, so an update that did not land is
- * visible at a glance.
+ * One option (the dot grid) plus the build that is actually loaded, so an update
+ * that did not land is visible at a glance.
  */
 export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
   constructor(app: App, private readonly plugin: JustSimpleExcalidrawPlugin) {
@@ -17,6 +16,18 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     containerEl.createEl("h2", { text: "Just Simple Excalidraw" });
+
+    new Setting(containerEl)
+      .setName(t("dotGrid"))
+      .setDesc(t("dotGridDesc"))
+      .addToggle((toggle: ToggleComponent) => {
+        toggle.setValue(this.plugin.settings.dotGrid);
+        toggle.onChange((value: boolean) => {
+          this.plugin.settings.dotGrid = value;
+          void this.plugin.saveSettings();
+        });
+      });
+
     containerEl.createEl("p", { text: `${t("settingsVersion")}: ${this.plugin.manifest.version}` });
     containerEl.createEl("p", {
       text: t("settingsBody")
