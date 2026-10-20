@@ -51,7 +51,12 @@ export function selectionPreviewRects(
     const top = view.originY + (element.y + view.scrollY) * zoom;
     const width = element.width * zoom;
     const height = element.height * zoom;
-    const caught = left < boxRight && left + width > boxLeft && top < boxBottom && top + height > boxTop;
+    /*
+     * Excalidraw's marquee only takes what it encloses whole, so a shape merely
+     * brushing the box must not be tinted: the preview has to promise exactly what
+     * the release will do.
+     */
+    const caught = left >= boxLeft && left + width <= boxRight && top >= boxTop && top + height <= boxBottom;
     return caught ? [{ id: element.id, left, top, width, height }] : [];
   });
 }

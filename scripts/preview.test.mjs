@@ -26,13 +26,19 @@ const boxA = { left: 40, top: 180, right: 200, bottom: 330 };
 eq("caught near box A", selectionPreviewRects(els, view, boxA), [{ id: "a", left: 80, top: 220, width: 120, height: 80 }]);
 const boxMoved = { left: 300, top: 400, right: 460, bottom: 700 };
 eq("same rect when the box starts elsewhere", selectionPreviewRects(els, view, { left: 60, top: 180, right: 320, bottom: 700 }),
-   [{ id: "a", left: 80, top: 220, width: 120, height: 80 }, { id: "b", left: 300, top: 600, width: 60, height: 40 }]);
+   [{ id: "a", left: 80, top: 220, width: 120, height: 80 }]);
 eq("far box catches nothing", selectionPreviewRects(els, view, { left: 900, top: 900, right: 950, bottom: 950 }), []);
 
 // 2. scroll + zoom + canvas origin are applied to the element, not to the box
 const zoomed = { scrollX: 100, scrollY: -50, zoom: 1.5, originX: 10, originY: 20 };
 eq("zoomed/scrolled rect", selectionPreviewRects(els, zoomed, { left: 0, top: 0, right: 9999, bottom: 9999 }).filter(r => r.id === "a"),
    [{ id: "a", left: 10 + (80 + 100) * 1.5, top: 20 + (220 - 50) * 1.5, width: 180, height: 120 }]);
+
+// 2b. only elements enclosed whole are caught, not the ones the box merely touches
+eq("touching the box is not enough",
+   selectionPreviewRects(els, view, { left: 60, top: 180, right: 190, bottom: 330 }).map(r => r.id), []);
+eq("enclosing it whole does catch it",
+   selectionPreviewRects(els, view, { left: 60, top: 180, right: 210, bottom: 310 }).map(r => r.id), ["a"]);
 
 // 3. the container can start anywhere in the window (Obsidian's chrome above it):
 //    the same finger position must give the same rectangle.
