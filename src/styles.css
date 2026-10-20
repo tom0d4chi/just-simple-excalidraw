@@ -1019,9 +1019,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * pill and behind the menus, without moving anything: it is painted on a pseudo-element
  * that reaches outside the layout box.
  */
-.jse-tools__pill,
-.jse-shapes__menu {
+/* Stacking context only: the menus must keep their own absolute placement. */
+.jse-tools__pill {
   position: relative;
+  isolation: isolate;
+}
+
+.jse-shapes__menu {
   isolation: isolate;
 }
 
