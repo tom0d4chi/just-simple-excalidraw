@@ -124,15 +124,17 @@ export function CanvasToolbar({ api, activeTool, locked, styleOpen, styleAvailab
     icon: IconName,
     label: string,
     onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void,
-    active = false
+    active = false,
+    disabled = false
   ) => createElement("button", {
     key,
     type: "button",
-    className: `jse-tool jse-tool--action clickable-icon${active ? " is-active" : ""}`,
+    className: `jse-tool jse-tool--action clickable-icon${active ? " is-active" : ""}${disabled ? " is-disabled" : ""}`,
     "aria-label": label,
     title: label,
     "aria-pressed": active,
-    onClick
+    "aria-disabled": disabled,
+    onClick: disabled ? undefined : onClick
   }, createElement(Icon, { name: icon }));
 
   return createElement("div", {
@@ -141,7 +143,9 @@ export function CanvasToolbar({ api, activeTool, locked, styleOpen, styleAvailab
   },
   createElement("div", { className: "jse-tools__pill mod-raised" },
     TOOLS.map(toolButton),
-    styleAvailable ? actionButton("style", "palette", "Color y grosor", toggleStyle, styleOpen) : null,
+    // Always rendered: a button that appears and disappears would shift every
+    // other button under the user's finger.
+    actionButton("style", "palette", "Color y grosor", toggleStyle, styleOpen, !styleAvailable),
     actionButton(
       "lock",
       locked ? "lock" : "lock-open",

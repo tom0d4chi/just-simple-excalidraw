@@ -23,6 +23,7 @@ interface SceneElement {
   width: number;
   height: number;
   isDeleted?: boolean;
+  groupIds?: readonly string[];
   points?: readonly (readonly [number, number])[];
 }
 
@@ -70,7 +71,8 @@ export function mountDoubleTapSelection(
   let lastTapY = 0;
   let gesture: Gesture | null = null;
   let autoSelection = false;
-  let hadSelection = false;
+  let selectionAtPointerDown = 0;
+  let gestureEndedAt = 0;
   let disposed = false;
 
   const toScene = (clientX: number, clientY: number): { x: number; y: number } | null => {
@@ -120,17 +122,44 @@ export function mountDoubleTapSelection(
     if (!start || !end) {
       return;
     }
-    const ids: Record<string, true> = {};
-    for (const element of api.getSceneElements() as unknown as SceneElement[]) {
+    const elements = api.getSceneElements() as unknown as SceneElement[];
+    const inside = new Set<string>();
+    for (const element of elements) {
       if (element.isDeleted) {
         continue;
       }
       const bounds = elementBounds(element);
       if (bounds.left >= start.x && bounds.right <= end.x && bounds.top >= start.y && bounds.bottom <= end.y) {
-        ids[element.id] = true;
+        inside.add(element.id);
       }
     }
-    api.updateScene({ appState: { selectedElementIds: ids, selectedGroupIds: {}, editingGroupId: null } });
+
+    // Selecting one member of a group selects the whole group, like Excalidraw
+    // does: moving half a group would silently break its layout.
+    const groups = new Set<string>();
+    for (const element of elements) {
+      if (!inside.has(element.id)) {
+        continue;
+      }
+      for (const groupId of element.groupIds ?? []) {
+        groups.add(groupId);
+      }
+    }
+    for (const element of elements) {
+      if ((element.groupIds ?? []).some((groupId) => groups.has(groupId))) {
+        inside.add(element.id);
+      }
+    }
+
+    const ids: Record<string, true> = {};
+    const selectedGroups: Record<string, true> = {};
+    for (const id of inside) {
+      ids[id] = true;
+    }
+    for (const groupId of groups) {
+      selectedGroups[groupId] = true;
+    }
+    api.updateScene({ appState: { selectedElementIds: ids, selectedGroupIds: selectedGroups, editingGroupId: null } });
   };
 
   function onPointerMove(event: PointerEvent): void {
@@ -166,6 +195,7 @@ export function mountDoubleTapSelection(
     }
     api.setActiveTool({ type: "selection" });
     autoSelection = true;
+    gestureEndedAt = performance.now();
   }
 
   function onPointerUp(event: PointerEvent): void {
@@ -180,6 +210,8 @@ export function mountDoubleTapSelection(
     if (disposed || !event.isPrimary || event.button !== 0) {
       return;
     }
+    selectionAtPointerDown = Object.keys(api.getAppState().selectedElementIds).length;
+
     // Never steal a tap meant for a button, a menu or the style sheet.
     if (event.target instanceof HTMLElement && event.target.closest("button, input, textarea, select, [role='menu'], .Island")) {
       return;
@@ -224,35 +256,35 @@ export function mountDoubleTapSelection(
       if (disposed) {
         return;
       }
-      const state = api.getAppState();
-      const selected = Object.keys(state.selectedElementIds).length;
-      if (selected > 0) {
-        hadSelection = true;
-        return;
-      }
       if (!autoSelection) {
         return;
       }
+      // The tap that ended our own gesture must not undo it.
+      if (performance.now() - gestureEndedAt < 400) {
+        return;
+      }
+      const state = api.getAppState();
       if (state.activeTool.type !== "selection") {
         autoSelection = false;
         return;
       }
-      if (hadSelection) {
+      const selected = Object.keys(state.selectedElementIds).length;
+      // A tap that leaves nothing selected hands back to the hand tool.
+      if (selected === 0) {
         autoSelection = false;
-        hadSelection = false;
         api.setActiveTool({ type: "hand" });
       }
     }, SETTLE_MS);
   };
 
-  const canvas = getCanvas();
-  canvas?.addEventListener("pointerdown", onPointerDown, true);
-  canvas?.addEventListener("pointerup", onCanvasPointerUp);
+  const host = getHost();
+  host?.addEventListener("pointerdown", onPointerDown, true);
+  host?.addEventListener("pointerup", onCanvasPointerUp);
 
   return () => {
     disposed = true;
-    canvas?.removeEventListener("pointerdown", onPointerDown, true);
-    canvas?.removeEventListener("pointerup", onCanvasPointerUp);
+    host?.removeEventListener("pointerdown", onPointerDown, true);
+    host?.removeEventListener("pointerup", onCanvasPointerUp);
     window.removeEventListener("pointermove", onPointerMove, true);
     window.removeEventListener("pointerup", onPointerUp, true);
     window.removeEventListener("pointercancel", onPointerCancel, true);

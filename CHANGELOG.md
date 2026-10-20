@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.15 - 2026-10-20
+
+Mobile robustness pass, from an audit of the touch interaction:
+
+- The toolbar no longer moves under the finger: the colour button used to
+  appear and disappear, shifting the whole column by 22px. It is always
+  rendered, disabled when no style can be applied.
+- A double tap no longer goes dead after the first selection: only a tap that
+  actually drops a selection hands back to the hand tool.
+- The double-tap marquee selects whole groups, like Excalidraw, instead of a
+  single member that would then move alone.
+- The column keeps clear of Obsidian's floating navbar on a short viewport
+  (phone held sideways) instead of overlapping it by a few pixels.
+- The gesture handlers attach to the view host rather than to the canvas node
+  looked up at mount, so they cannot end up bound to nothing.
+
 ## 0.1.14 - 2026-10-20
 
 - Design pass: the editor now follows the vault theme instead of Excalidraw's
