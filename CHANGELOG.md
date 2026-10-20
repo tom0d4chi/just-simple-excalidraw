@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.14 - 2026-10-20
+
+- Design pass: the editor now follows the vault theme instead of Excalidraw's
+  own palette. Excalidraw's colour, surface, button, input, shadow, radius and
+  font variables are re-pointed at Obsidian tokens, so light/dark, community
+  themes, the accent colour and the interface font all apply to the toolbar,
+  Excalidraw's menu, its colour sheet, its popovers and the context menu.
+- Canvas background follows the theme background instead of Excalidraw's fixed
+  white/near-black.
+- Raised surfaces use Obsidian's recipe: theme background, hair border, theme
+  shadow. The colour sheet is a theme panel with `--radius-l` corners.
+
 ## 0.1.13 - 2026-10-20
 
 - The toolbar is fixed to the right edge, one vertical column. The horizontal

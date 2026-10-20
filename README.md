@@ -88,6 +88,22 @@ live in a small pill in the top right corner, where Obsidian keeps view actions,
 so the bottom of the screen belongs to the drawing tools. The colour sheet opens
 under that pill, from the **Color y grosor** button.
 
+## Theme
+
+The editor does not carry its own palette. Excalidraw's design variables
+(`--island-bg-color`, `--color-primary`, `--button-*`, `--input-*`,
+`--shadow-island`, `--ui-font`, …) are re-pointed at Obsidian's tokens, so the
+canvas chrome follows whatever the vault uses: light or dark, a community theme,
+the accent colour chosen in Appearance, the interface font and the theme radii.
+
+That includes Excalidraw's own surfaces — its menu, its colour sheet, popovers
+and the canvas context menu — and the canvas background itself, which is the
+theme background rather than Excalidraw's fixed white or near-black.
+
+Because everything is expressed as CSS variables, changing the theme or the
+accent in Obsidian updates the editor live: nothing is captured at load time and
+no colour is hard-coded.
+
 ## Canvas coordinates follow the view
 
 Pointer positions are converted with the canvas offset Excalidraw caches when it

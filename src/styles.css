@@ -22,6 +22,115 @@
   width: 100%;
 }
 
+/* ==========================================================================
+ * Theme bridge
+ *
+ * Excalidraw paints its UI from its own palette (indigo greys, its own islands,
+ * its own font). Every one of those variables is re-pointed at Obsidian's
+ * tokens here, so the editor follows the vault theme: light or dark, any
+ * community theme, the user's accent colour, their font and their radii.
+ * Nothing is hard-coded, so a theme switch or an accent change is picked up
+ * without reloading the plugin.
+ * ========================================================================== */
+.jse-root .excalidraw,
+.jse-root .excalidraw.theme--light,
+.jse-root .excalidraw.theme--dark {
+  --ui-font: var(--font-interface);
+  --text-primary-color: var(--text-normal);
+  --icon-fill-color: var(--icon-color, var(--text-muted));
+  --keybinding-color: var(--text-faint);
+  --link-color: var(--text-accent);
+
+  /* Surfaces */
+  --default-bg-color: var(--background-primary);
+  --island-bg-color: var(--background-primary);
+  --sidebar-bg-color: var(--background-secondary);
+  --sidebar-border-color: var(--background-modifier-border);
+  --sidebar-shadow: var(--shadow-s);
+  --color-surface-lowest: var(--background-primary);
+  --color-surface-low: var(--background-secondary);
+  --color-surface-mid: var(--background-secondary);
+  --color-surface-high: var(--background-primary);
+  --color-surface-primary-container: var(--background-modifier-active-hover);
+  --color-on-surface: var(--text-normal);
+  --color-on-primary-container: var(--text-on-accent, var(--text-normal));
+  --popup-bg-color: var(--background-primary);
+  --popup-secondary-bg-color: var(--background-secondary);
+  --popup-text-color: var(--text-normal);
+  --popup-text-inverted-color: var(--background-primary);
+  --list-border-color: var(--background-modifier-border);
+  --dialog-border-color: var(--background-modifier-border);
+  --default-border-color: var(--background-modifier-border);
+
+  /* Buttons and states */
+  --button-gray-1: var(--background-modifier-hover);
+  --button-gray-2: var(--background-modifier-hover);
+  --button-gray-3: var(--background-modifier-active-hover);
+  --button-hover-bg: var(--background-modifier-hover);
+  --button-active-bg: var(--background-modifier-active-hover);
+  --button-active-border: var(--interactive-accent);
+  --button-selected-bg: var(--background-modifier-active-hover);
+  --button-special-active-bg-color: var(--background-modifier-active-hover);
+  --color-disabled: var(--text-faint);
+
+  /* Accent */
+  --color-primary: var(--interactive-accent);
+  --color-primary-darker: var(--interactive-accent-hover);
+  --color-primary-darkest: var(--interactive-accent-hover);
+  --color-primary-hover: var(--interactive-accent-hover);
+  --color-primary-light: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+  --color-primary-light-darker: color-mix(in srgb, var(--interactive-accent) 28%, transparent);
+  --color-brand-hover: var(--interactive-accent-hover);
+  --color-brand-active: var(--interactive-accent);
+  --color-selection: var(--interactive-accent-hover);
+  --focus-highlight-color: var(--interactive-accent);
+  --select-highlight-color: var(--interactive-accent);
+  --color-slider-thumb: var(--interactive-accent);
+  --color-slider-track: var(--background-modifier-border);
+
+  /* Status colours */
+  --color-danger: var(--text-error);
+  --color-danger-dark: var(--text-error);
+  --color-danger-darker: var(--text-error);
+  --color-danger-darkest: var(--text-error);
+  --color-success: var(--text-success, var(--text-accent));
+  --color-success-darker: var(--text-success, var(--text-accent));
+  --color-success-text: var(--text-success, var(--text-accent));
+  --color-warning: var(--text-warning, var(--text-accent));
+
+  /* Inputs, shadows, scrollbars */
+  --input-bg-color: var(
+    --background-modifier-form-field,
+    var(--background-secondary)
+  );
+  --input-border-color: var(--background-modifier-border);
+  --input-hover-bg-color: var(--background-modifier-hover);
+  --input-label-color: var(--text-muted);
+  --shadow-island: var(--shadow-s);
+  --modal-shadow: var(--shadow-l, var(--shadow-s));
+  --library-dropdown-shadow: var(--shadow-s);
+  --scrollbar-thumb: var(--background-modifier-border);
+  --scrollbar-thumb-hover: var(--background-modifier-border-hover, var(--background-modifier-border));
+}
+
+/* Excalidraw sets its own font stack on the container. */
+.jse-root .excalidraw {
+  font-family: var(--font-interface);
+}
+
+/*
+ * Raised surfaces, the way Obsidian builds them: the theme background, a hair
+ * border and the theme shadow. `--raised` is a blur recipe only some versions
+ * define, so it is used as an extra layer rather than the only one.
+ */
+.jse-root .excalidraw .Island,
+.jse-root .excalidraw .dropdown-menu,
+.jse-root .excalidraw .context-menu,
+.jse-root .excalidraw .popover,
+.jse-root .excalidraw .Modal__content {
+  border: 1px solid var(--background-modifier-border);
+}
+
 /*
  * Excalidraw's top shape switcher and its undo/redo pair are replaced by the
  * Obsidian-style bar below. Its bottom bar is kept, because that is where
@@ -62,7 +171,7 @@
   padding: 0;
   background-color: var(--background-primary);
   border-radius: var(--touch-size-l, 52px);
-  box-shadow: var(--raised, var(--shadow-s));
+  box-shadow: var(--shadow-s);
 }
 
 /* Duplicated by the Obsidian-style bar. */
@@ -113,9 +222,12 @@
 .jse-root .excalidraw .App-mobile-menu {
   max-height: 45vh;
   overflow-y: auto;
-  padding: var(--size-4-2, 8px) var(--size-4-3, 12px) 0;
+  padding: var(--size-4-3, 12px) var(--size-4-4, 16px) var(--size-4-2, 8px);
+  margin: var(--size-4-1, 4px);
   background-color: var(--background-primary);
-  border-radius: var(--touch-size-l, 52px) var(--touch-size-l, 52px) 0 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l, 12px);
+  box-shadow: var(--shadow-s);
 }
 
 .jse-root .excalidraw .App-mobile-menu .panelColumn > h3,
@@ -175,8 +287,11 @@
   overscroll-behavior-y: contain;
   scrollbar-width: none;
   background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
   border-radius: var(--touch-size-l, 52px);
-  box-shadow: var(--raised, var(--shadow-s));
+  box-shadow: var(--shadow-s);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .jse-tools__pill::-webkit-scrollbar {
@@ -195,7 +310,10 @@
   background-color: transparent;
   box-shadow: none;
   color: var(--icon-color, var(--text-muted));
-  transition: transform 0.08s ease-in-out, background-color 0.12s ease-in-out;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.08s ease-in-out, background-color 0.12s ease-in-out,
+    color 0.12s ease-in-out;
 }
 
 .jse-root .jse-tool.clickable-icon:active {
