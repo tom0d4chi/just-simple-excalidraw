@@ -264,7 +264,9 @@
   grid-template-columns: var(--jse-tool-size);
   /* spacing comes from each child, so a collapsed action takes its gap with it */
   gap: 0;
-  padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
+  /* the same inset top and bottom, written once: the column must not look like
+     it sits higher than it is */
+  padding: var(--jse-pad, 6px);
   background-color: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--touch-size-l, 52px);
@@ -599,5 +601,19 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-root .jse-tools__pill > .jse-tool--context.is-collapsed {
+  margin-bottom: 0;
+}
+
+/*
+ * Both ends of the column start and finish flush with the same inset: no margin
+ * survives above the first button or below the last one.
+ */
+.jse-root .jse-tools__pill > .jse-tool.clickable-icon:first-child,
+.jse-root .jse-tools__pill > .jse-shapes:first-child {
+  margin-top: 0;
+}
+
+.jse-root .jse-tools__pill > .jse-tool.clickable-icon:last-child,
+.jse-root .jse-tools__pill > .jse-shapes:last-child {
   margin-bottom: 0;
 }

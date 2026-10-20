@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.23 - 2026-10-20
+
+- The column's inset is written once for both ends (6px, border included), and no
+  margin is left above the first button or below the last one, so the space at
+  the top and at the bottom is identical — at rest and expanded.
+
 ## 0.1.22 - 2026-10-20
 
 - The column is centred on the canvas, not on a band inset by the safe area: the
