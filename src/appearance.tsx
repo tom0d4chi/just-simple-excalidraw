@@ -122,9 +122,10 @@ export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPre
     onPick(patch);
   };
 
-  const categoryButton = (key: Category, label: string, content: ReactNode): ReactNode => createElement("button", {
+  const categoryButton = (key: Category, label: string, content: ReactNode, delay = 0): ReactNode => createElement("button", {
     type: "button",
-    className: `jse-tool clickable-icon jse-appearance__category${category === key ? " is-active" : ""}`,
+    className: `jse-tool clickable-icon jse-appearance__category${open ? " is-entering" : ""}${category === key ? " is-active" : ""}`,
+    style: { animationDelay: `${delay}ms` },
     "aria-label": label,
     "aria-pressed": category === key,
     title: label,
@@ -136,46 +137,49 @@ export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPre
   }, content);
 
   const noFill = style.backgroundColor === "transparent";
-  const categories: { key: Category; node: ReactNode }[] = [
+  // Rightmost appears first, like the shape strip: the delay shrinks along the row.
+  const delayFor = (index: number): number => (families.length - index) * 26;
+  const families: { key: Category; label: string; content: ReactNode }[] = [
     {
       key: "stroke",
-      node: categoryButton("stroke", t("stroke"),
-        createElement("span", {
-          className: "jse-appearance__swatch jse-appearance__swatch--ring",
-          style: { borderColor: style.strokeColor }
-        }))
+      label: t("stroke"),
+      content: createElement("span", {
+        className: "jse-appearance__swatch jse-appearance__swatch--ring",
+        style: { borderColor: style.strokeColor }
+      })
     },
     {
       key: "fill",
-      node: categoryButton("fill", t("fill"),
-        createElement("span", {
-          className: `jse-appearance__swatch${noFill ? " is-empty" : ""}`,
-          style: noFill ? {} : { backgroundColor: style.backgroundColor }
-        }))
+      label: t("fill"),
+      content: createElement("span", {
+        className: `jse-appearance__swatch${noFill ? " is-empty" : ""}`,
+        style: noFill ? {} : { backgroundColor: style.backgroundColor }
+      })
     },
     {
       key: "width",
-      node: categoryButton("width", t("thickness"),
-        createElement("span", {
-          className: "jse-appearance__bar",
-          style: { height: `${Math.min(6, Math.max(1, style.strokeWidth))}px` }
-        }))
+      label: t("thickness"),
+      content: createElement("span", {
+        className: "jse-appearance__bar",
+        style: { height: `${Math.min(6, Math.max(1, style.strokeWidth))}px` }
+      })
     },
     {
       key: "style",
-      node: categoryButton("style", t("lineStyle"),
-        createElement(Icon, { name: "dashes", className: `jse-line-style jse-line-style--${style.strokeStyle}` }))
-    },
-    ...(showEdges ? [{
-      key: "corners" as Category,
-      node: categoryButton("corners", t("corners"),
-        createElement(Icon, { name: style.roundness === null ? "square" : "squircle" }))
-    }] : []),
-    ...(showText ? [{
-      key: "text" as Category,
-      node: categoryButton("text", t("size"), createElement(Icon, { name: "type" }))
-    }] : [])
+      label: t("lineStyle"),
+      content: createElement(Icon, { name: "dashes", className: `jse-line-style jse-line-style--${style.strokeStyle}` })
+    }
   ];
+  if (showEdges) {
+    families.push({
+      key: "corners",
+      label: t("corners"),
+      content: createElement(Icon, { name: style.roundness === null ? "square" : "squircle" })
+    });
+  }
+  if (showText) {
+    families.push({ key: "text", label: t("size"), content: createElement(Icon, { name: "type" }) });
+  }
 
   let panel: ReactNode = null;
   if (category === "stroke") {
@@ -269,6 +273,8 @@ export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPre
     panel
       ? createElement("div", { className: "jse-appearance__panel", key: category }, panel)
       : null,
-    createElement("div", { className: "jse-appearance__categories" }, categories.map((entry) => entry.node))
+    createElement("div", { className: "jse-appearance__categories" }, families.map((family, index) => (
+      categoryButton(family.key, family.label, family.content, delayFor(index))
+    )))
   );
 }

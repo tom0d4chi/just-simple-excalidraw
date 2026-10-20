@@ -983,3 +983,32 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   flex-direction: column;
   gap: var(--size-4-1, 6px);
 }
+
+/* Same entrance as the shape strip: the row lands one icon after another. */
+.jse-appearance__category.is-entering {
+  animation: jse-shape-in 150ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+
+/* And inside the panel, the values follow each other too. */
+.jse-appearance__panel .jse-appearance__chip {
+  animation: jse-appearance-in 140ms ease-out backwards;
+}
+
+.jse-appearance__panel .jse-appearance__chip:nth-child(1) { animation-delay: 0ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(2) { animation-delay: 18ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(3) { animation-delay: 36ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(4) { animation-delay: 54ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(5) { animation-delay: 72ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(6) { animation-delay: 90ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(7) { animation-delay: 108ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(8) { animation-delay: 126ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(9) { animation-delay: 144ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(10) { animation-delay: 162ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(11) { animation-delay: 180ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-appearance__category.is-entering,
+  .jse-appearance__panel .jse-appearance__chip {
+    animation: none;
+  }
+}
