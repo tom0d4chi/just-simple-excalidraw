@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.26 - 2026-10-20
+
+- Interface strings follow Obsidian's own language (read from moment's locale)
+  instead of the Spanish the fork came with: French, English and Spanish are
+  provided, anything else falls back to English. Labels, tool names, the
+  appearance menu and the settings tab all switch together.
+- The appearance menu no longer gets cut: its rows are tighter (36px swatches) and
+  its height cap is above what six rows need, so nothing scrolls at normal
+  phone sizes; on a very short window it scrolls instead of being clipped.
+
 ## 0.1.25 - 2026-10-20
 
 - The appearance controls are back, in the same kind of menu as the shape picker:

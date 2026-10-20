@@ -633,7 +633,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   bottom: 0;
   padding: var(--size-4-2, 8px);
   border-radius: var(--radius-m, 12px);
-  max-height: min(70vh, 520px);
+  max-height: min(78vh, 520px);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -641,7 +641,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-appearance {
   display: flex;
   flex-direction: column;
-  gap: var(--size-4-2, 8px);
+  gap: var(--size-4-1, 6px);
 }
 
 .jse-appearance__row {
@@ -659,15 +659,15 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-appearance__choices {
   display: grid;
-  grid-template-columns: repeat(5, 40px);
+  grid-template-columns: repeat(5, 36px);
   gap: var(--size-4-1, 4px);
 }
 
 .jse-appearance__chip {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border-radius: var(--radius-s, 8px);
   border: 1px solid transparent;
@@ -683,16 +683,16 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-appearance__dot {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 1px solid var(--background-modifier-border);
 }
 
 .jse-appearance__none {
   position: relative;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 1px dashed var(--text-faint);
   overflow: hidden;
@@ -713,7 +713,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-appearance__line {
   display: block;
-  width: 22px;
+  width: 20px;
   height: 2px;
   border-radius: 2px;
   background-color: var(--text-normal);
@@ -728,8 +728,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-appearance__shape {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border: 2px solid var(--text-normal);
   border-radius: 2px;
 }
@@ -739,7 +739,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-appearance__size {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-normal);
 }

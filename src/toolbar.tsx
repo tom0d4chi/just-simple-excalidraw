@@ -8,6 +8,7 @@ import {
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { ICONS, type IconName } from "./icons";
 import { AppearanceMenu, type StylePatch, type StyleState } from "./appearance";
+import { t } from "./i18n";
 
 type ToolName = "hand" | "selection" | "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "freedraw" | "text" | "image" | "eraser";
 
@@ -18,17 +19,17 @@ interface ToolDefinition {
 }
 
 const TOOL_DEFINITIONS: Record<ToolName, ToolDefinition> = {
-  hand: { tool: "hand", icon: "hand", label: "Desplazar" },
-  selection: { tool: "selection", icon: "mouse-pointer-2", label: "Seleccionar" },
-  freedraw: { tool: "freedraw", icon: "pencil", label: "Dibujo a mano" },
-  eraser: { tool: "eraser", icon: "eraser", label: "Borrador" },
-  rectangle: { tool: "rectangle", icon: "square", label: "Rectángulo" },
-  diamond: { tool: "diamond", icon: "diamond", label: "Rombo" },
-  ellipse: { tool: "ellipse", icon: "circle", label: "Elipse" },
-  arrow: { tool: "arrow", icon: "arrow-up-right", label: "Flecha" },
-  line: { tool: "line", icon: "minus", label: "Línea" },
-  text: { tool: "text", icon: "type", label: "Texto" },
-  image: { tool: "image", icon: "image", label: "Imagen" }
+  hand: { tool: "hand", icon: "hand", label: t("hand") },
+  selection: { tool: "selection", icon: "mouse-pointer-2", label: t("selection") },
+  freedraw: { tool: "freedraw", icon: "pencil", label: t("freedraw") },
+  eraser: { tool: "eraser", icon: "eraser", label: t("eraser") },
+  rectangle: { tool: "rectangle", icon: "square", label: t("rectangle") },
+  diamond: { tool: "diamond", icon: "diamond", label: t("diamond") },
+  ellipse: { tool: "ellipse", icon: "circle", label: t("ellipse") },
+  arrow: { tool: "arrow", icon: "arrow-up-right", label: t("arrow") },
+  line: { tool: "line", icon: "minus", label: t("line") },
+  text: { tool: "text", icon: "type", label: t("text") },
+  image: { tool: "image", icon: "image", label: t("image") }
 };
 
 /*
@@ -369,19 +370,19 @@ export function CanvasToolbar({
   const contextClass = (available: boolean): string =>
     `jse-tool--context jse-tool--collapsible${entered ? " jse-anim" : ""}${available ? "" : " is-collapsed"}`;
   const contextButtons = [
-    actionButton("edit-text", "type", "Editar texto", (event) =>
+    actionButton("edit-text", "type", t("editText"), (event) =>
       stopAndRun(event, () => {
         if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Edit"]')) {
           replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter");
         }
       }), false, false, contextClass(textSelected)),
-    actionButton("duplicate", "copy", "Duplicar", (event) =>
+    actionButton("duplicate", "copy", t("duplicate"), (event) =>
       stopAndRun(event, () => {
         if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Duplicate"]')) {
           replayShortcut(getCanvasElement, "d", false, true, 68, "KeyD");
         }
       }), false, false, contextClass(selectionCount > 0)),
-    actionButton("delete", "trash-2", "Eliminar", (event) =>
+    actionButton("delete", "trash-2", t("remove"), (event) =>
       stopAndRun(event, () => {
         if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Delete"]')) {
           replayShortcut(getCanvasElement, "Delete", false, false, 46, "Delete");
@@ -392,7 +393,7 @@ export function CanvasToolbar({
   const lockButton = actionButton(
     "lock",
     locked ? "lock" : "lock-open",
-    locked ? "Desbloquear herramienta" : "Bloquear herramienta",
+    locked ? t("unlockTool") : t("lockTool"),
     toggleLock,
     locked
   );
@@ -401,7 +402,7 @@ export function CanvasToolbar({
     createElement("button", {
       type: "button",
       className: `jse-tool jse-tool--action clickable-icon${styleMenuOpen ? " is-open" : ""}`,
-      "aria-label": "Apariencia",
+      "aria-label": t("appearance"),
       "aria-expanded": styleMenuOpen,
       onClick: toggleStyleMenu
     }, createElement(Icon, { name: "palette" })),
@@ -423,7 +424,7 @@ export function CanvasToolbar({
     createElement("button", {
       type: "button",
       className: `jse-tool clickable-icon${activeShape ? " is-active" : ""}${shapeMenuOpen ? " is-open" : ""}`,
-      "aria-label": "Formas",
+      "aria-label": t("shapes"),
       "aria-expanded": shapeMenuOpen,
       "aria-pressed": Boolean(activeShape),
       onClick: toggleShapeMenu
@@ -448,7 +449,7 @@ export function CanvasToolbar({
         type: "button",
         role: "menuitem",
         className: `jse-tool clickable-icon jse-tool--shape${locked ? " is-active" : ""}`,
-        "aria-label": locked ? "Desbloquear la forma" : "Fijar la forma",
+        "aria-label": locked ? t("stopKeepingShape") : t("keepShape"),
         "aria-pressed": locked,
         onClick: toggleLock
       }, createElement(Icon, { name: locked ? "lock" : "lock-open" }))
@@ -473,14 +474,14 @@ export function CanvasToolbar({
       : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool])),
     appearanceButton,
     isTouchDevice ? null : lockButton,
-    actionButton("undo", "undo-2", "Deshacer", (event) => {
+    actionButton("undo", "undo-2", t("undo"), (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (!pressExcalidrawButton('[data-testid="button-undo"]')) {
         replayShortcut(getCanvasElement, "z");
       }
     }),
-    actionButton("redo", "redo-2", "Rehacer", (event) => {
+    actionButton("redo", "redo-2", t("redo"), (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (!pressExcalidrawButton('[data-testid="button-redo"]')) {

@@ -3,6 +3,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode
 } from "react";
+import { t } from "./i18n";
 
 /** Excalidraw stores rounded corners as `roundness: { type: 3 }` on shapes. */
 const ROUND = 3;
@@ -25,28 +26,28 @@ export const FILL_COLORS: readonly (string | null)[] = [
   "#d0bfff", "#c3fae8", "#ced4da", "#ffd8a8", "#868e96"
 ];
 
-const STROKE_WIDTHS: readonly { value: number; label: string }[] = [
-  { value: 1, label: "Fino" },
-  { value: 2, label: "Medio" },
-  { value: 4, label: "Grueso" }
+const STROKE_WIDTHS: readonly { value: number; label: () => string }[] = [
+  { value: 1, label: () => t("thin") },
+  { value: 2, label: () => t("medium") },
+  { value: 4, label: () => t("thick") }
 ];
 
-const STROKE_STYLES: readonly { value: string; label: string }[] = [
-  { value: "solid", label: "Sólido" },
-  { value: "dashed", label: "Discontinuo" },
-  { value: "dotted", label: "Punteado" }
+const STROKE_STYLES: readonly { value: string; label: () => string }[] = [
+  { value: "solid", label: () => t("solid") },
+  { value: "dashed", label: () => t("dashed") },
+  { value: "dotted", label: () => t("dotted") }
 ];
 
-const EDGES: readonly { value: number | null; label: string }[] = [
-  { value: null, label: "Esquinas rectas" },
-  { value: ROUND, label: "Esquinas redondeadas" }
+const EDGES: readonly { value: number | null; label: () => string }[] = [
+  { value: null, label: () => t("sharpCorners") },
+  { value: ROUND, label: () => t("roundCorners") }
 ];
 
-const FONT_SIZES: readonly { value: number; label: string }[] = [
-  { value: 16, label: "Pequeño" },
-  { value: 20, label: "Normal" },
-  { value: 28, label: "Grande" },
-  { value: 36, label: "Enorme" }
+const FONT_SIZES: readonly { value: number; label: () => string }[] = [
+  { value: 16, label: () => t("small") },
+  { value: 20, label: () => t("normal") },
+  { value: 28, label: () => t("large") },
+  { value: 36, label: () => t("huge") }
 ];
 
 export interface StyleState {
@@ -102,17 +103,17 @@ export function AppearanceMenu({ style, showText, showEdges, onPick }: Appearanc
   };
 
   return createElement("div", { className: "jse-appearance" },
-    row("Trazo", STROKE_COLORS.map((color) => chip(
+    row(t("stroke"), STROKE_COLORS.map((color) => chip(
       style.strokeColor.toLowerCase() === color,
-      `Trazo ${color}`,
+      `${t("colourStroke")} ${color}`,
       pick({ strokeColor: color }),
       createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
     ))),
-    row("Fondo", FILL_COLORS.map((color) => chip(
+    row(t("fill"), FILL_COLORS.map((color) => chip(
       (color === null && style.backgroundColor === "transparent") ||
         (color !== null && style.backgroundColor.toLowerCase() === color),
-      color === null ? "Sin relleno" : `Fondo ${color}`,
+      color === null ? t("noFill") : `${t("colourFill")} ${color}`,
       pick(color === null
         ? { backgroundColor: "transparent" }
         : { backgroundColor: color, fillStyle: style.fillStyle === "hachure" ? "solid" : style.fillStyle }),
@@ -121,9 +122,9 @@ export function AppearanceMenu({ style, showText, showEdges, onPick }: Appearanc
         : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
     ))),
-    row("Grosor", STROKE_WIDTHS.map((width) => chip(
+    row(t("thickness"), STROKE_WIDTHS.map((width) => chip(
       style.strokeWidth === width.value,
-      width.label,
+      width.label(),
       pick({ strokeWidth: width.value }),
       createElement("span", {
         className: "jse-appearance__line",
@@ -131,9 +132,9 @@ export function AppearanceMenu({ style, showText, showEdges, onPick }: Appearanc
       }),
       "jse-appearance__chip--line"
     ))),
-    row("Estilo", STROKE_STYLES.map((line) => chip(
+    row(t("lineStyle"), STROKE_STYLES.map((line) => chip(
       style.strokeStyle === line.value,
-      line.label,
+      line.label(),
       pick({ strokeStyle: line.value }),
       createElement("span", {
         className: `jse-appearance__line jse-appearance__line--${line.value}`
@@ -141,9 +142,9 @@ export function AppearanceMenu({ style, showText, showEdges, onPick }: Appearanc
       "jse-appearance__chip--line"
     ))),
     showEdges
-      ? row("Bordes", EDGES.map((edge) => chip(
+      ? row(t("corners"), EDGES.map((edge) => chip(
           edge.value === null ? style.roundness === null : style.roundness !== null,
-          edge.label,
+          edge.label(),
           pick({ roundness: edge.value }),
           createElement("span", {
             className: `jse-appearance__shape${edge.value ? " is-round" : ""}`
@@ -152,9 +153,9 @@ export function AppearanceMenu({ style, showText, showEdges, onPick }: Appearanc
         )))
       : null,
     showText
-      ? row("Texto", FONT_SIZES.map((font) => chip(
+      ? row(t("size"), FONT_SIZES.map((font) => chip(
           style.fontSize === font.value,
-          font.label,
+          font.label(),
           pick({ fontSize: font.value }),
           createElement("span", { className: "jse-appearance__size" }, "A"),
           "jse-appearance__chip--font"

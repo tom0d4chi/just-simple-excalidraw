@@ -1,5 +1,6 @@
 import { App, PluginSettingTab } from "obsidian";
 import type JustSimpleExcalidrawPlugin from "../main";
+import { t } from "./i18n";
 
 /**
  * No user options: the toolbar is fixed to the right edge. This tab only
@@ -16,9 +17,9 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     containerEl.createEl("h2", { text: "Just Simple Excalidraw" });
-    containerEl.createEl("p", { text: `Versión instalada: ${this.plugin.manifest.version}` });
+    containerEl.createEl("p", { text: `${t("settingsVersion")}: ${this.plugin.manifest.version}` });
     containerEl.createEl("p", {
-      text: "La barra de herramientas está fija en el borde derecho, en vertical. En el móvil, un dedo usa la herramienta activa y dos dedos desplazan y hacen zoom; en el escritorio se arrastra con la herramienta de mano."
+      text: t("settingsBody")
     });
   }
 }
