@@ -125,6 +125,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   // eagerly), so nothing reaches a ref that has not been initialised yet.
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const contentUnderScheduled = useRef(false);
+  // Level to come back to when a double tap zooms back out.
+  const zoomBaseRef = useRef(1);
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   useEffect(() => {
@@ -219,6 +221,44 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         cancelMarqueeRef.current = cancel;
       },
       snapping: () => ((shouldSnapToGrid?.() ?? snapToGrid) ? api.getAppState().gridSize || 20 : 0),
+      /*
+       * Double tap on empty paper toggles the zoom around the point touched: in to 2x,
+       * back out to the level that was there before — the way a photo behaves.
+       */
+      onDoubleTap: (scene) => {
+        if (!api) {
+          return false;
+        }
+        const state = api.getAppState();
+        if (state.activeTool.type !== "hand" && state.activeTool.type !== "selection") {
+          return false;
+        }
+        const canvas = typeof document?.querySelector === "function"
+          ? document.querySelector<HTMLElement>(".excalidraw__canvas.interactive")
+            ?? document.querySelector<HTMLElement>(".excalidraw__canvas")
+          : null;
+        if (!canvas) {
+          return false;
+        }
+        const zoom = state.zoom.value || 1;
+        const target = zoom > 1.05 ? zoomBaseRef.current : 2;
+        if (zoom <= 1.05) {
+          zoomBaseRef.current = zoom;
+        }
+        // Keep the scene point under the same place on screen.
+        const rect = canvas.getBoundingClientRect();
+        const clientX = rect.left + (scene.x + state.scrollX) * zoom;
+        const clientY = rect.top + (scene.y + state.scrollY) * zoom;
+        api.updateScene({
+          appState: {
+            // Excalidraw brands its normalised zoom; the value is a plain number.
+            zoom: { value: target as never },
+            scrollX: (clientX - rect.left) / target - scene.x,
+            scrollY: (clientY - rect.top) / target - scene.y
+          }
+        });
+        return true;
+      },
       onGestureEnd: (before) => {
         // Read at gesture time: toggling the setting must not need a reload.
         if (!(shouldSnapToGrid?.() ?? snapToGrid)) {

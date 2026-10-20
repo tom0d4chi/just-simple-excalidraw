@@ -78,6 +78,11 @@ export interface InteractionOptions {
   onGestureEnd?: (before: ReadonlyMap<string, number>) => void;
   /** Live snapping of the finger to the dot lattice, when the setting asks for it. */
   snapping?: () => number;
+  /**
+   * A second tap on empty paper, close in time and place to the first. Returning true
+   * swallows the event, so Excalidraw does not turn it into a text element.
+   */
+  onDoubleTap?: (scene: { x: number; y: number }) => boolean;
 }
 
 export interface InteractionHandle {
@@ -107,6 +112,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   let multiTouch = false;
 
   let beforeGesture = new Map<string, number>();
+  let lastTap: { at: number; x: number; y: number } | null = null;
   let pointerSnap: SnapGesture | null = null;
   let resizeGrab = false;
   /* Touch fingers are fat; Excalidraw's handles are 8 px. Reach for the nearest one
@@ -253,6 +259,27 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
         }
       }, 0);
     }
+    /*
+     * Two taps on empty paper, close in time and place, are a zoom toggle: the second
+     * one is swallowed so Excalidraw cannot turn it into a text element.
+     */
+    if (!id && event.pointerType !== "mouse" && options.onDoubleTap) {
+      const now = Date.now();
+      const near = lastTap && now - lastTap.at < 320
+        && Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < 30;
+      if (near) {
+        lastTap = null;
+        const point = scenePoint(event);
+        if (options.onDoubleTap({ x: point.x, y: point.y })) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+      } else {
+        lastTap = { at: now, x: event.clientX, y: event.clientY };
+      }
+    }
+
     if (event.pointerType === "mouse") {
       return;
     }
