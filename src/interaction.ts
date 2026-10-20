@@ -12,6 +12,45 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
  * The mobile harness imports this too, so what is tested in the browser is the code
  * that ships, not a copy of it.
  */
+export interface PreviewBox {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+export interface PreviewRect {
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/*
+ * Screen rectangles for the elements a marquee has caught. Kept pure and exported
+ * so the alignment can be tested without a browser: the rectangles depend on the
+ * canvas origin, the scroll and the zoom, never on where the box is.
+ */
+export function selectionPreviewRects(
+  elements: readonly { id: string; type: string; x: number; y: number; width: number; height: number; isDeleted?: boolean }[],
+  view: { scrollX: number; scrollY: number; zoom: number; originX: number; originY: number },
+  box: PreviewBox
+): PreviewRect[] {
+  const zoom = view.zoom || 1;
+  return elements.flatMap((element) => {
+    if (element.isDeleted || element.type === "selection") {
+      return [];
+    }
+    const left = view.originX + (element.x + view.scrollX) * zoom;
+    const top = view.originY + (element.y + view.scrollY) * zoom;
+    const width = element.width * zoom;
+    const height = element.height * zoom;
+    const caught = left < box.right && left + width > box.left && top < box.bottom && top + height > box.top;
+    return caught ? [{ id: element.id, left, top, width, height }] : [];
+  });
+}
+
 export interface InteractionOptions {
   host: HTMLElement;
   api: ExcalidrawImperativeAPI;
@@ -148,21 +187,28 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       return;
     }
     const state = api.getAppState();
-    const bounds = host.getBoundingClientRect();
+    /*
+     * The overlay lives in the container, but Excalidraw draws from the canvas
+     * origin: measure that canvas, not the container, or the ghosts drift by the
+     * chrome above the sheet.
+     */
+    const hostRect = host.getBoundingClientRect();
+    const canvas = host.querySelector<HTMLElement>(".excalidraw__canvas.interactive")
+      ?? host.querySelector<HTMLElement>(".excalidraw__canvas");
+    const origin = canvas ? canvas.getBoundingClientRect() : hostRect;
+    const originX = origin.left - hostRect.left;
+    const originY = origin.top - hostRect.top;
     const zoom = state.zoom.value || 1;
     const left = Math.min(boxStart.x, event.clientX);
     const top = Math.min(boxStart.y, event.clientY);
     const right = Math.max(boxStart.x, event.clientX);
     const bottom = Math.max(boxStart.y, event.clientY);
 
-    const live = api.getSceneElements().filter((element) => {
-      if (element.isDeleted || element.type === "selection") {
-        return false;
-      }
-      const x = (element.x + state.scrollX) * zoom + bounds.left;
-      const y = (element.y + state.scrollY) * zoom + bounds.top;
-      return x < right && x + element.width * zoom > left && y < bottom && y + element.height * zoom > top;
-    });
+    const live = selectionPreviewRects(
+      api.getSceneElements(),
+      { scrollX: state.scrollX, scrollY: state.scrollY, zoom, originX, originY },
+      { left, top, right, bottom }
+    );
 
     const seen = new Set(live.map((element) => element.id));
     for (const [id, node] of preview) {
@@ -171,18 +217,20 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
         preview.delete(id);
       }
     }
-    for (const element of live) {
-      let node = preview.get(element.id);
+    for (const rect of live) {
+      let node = preview.get(rect.id);
       if (!node) {
         node = document.createElement("div");
         node.className = "jse-preselect";
-        box?.appendChild(node);
-        preview.set(element.id, node);
+        // In the container, not inside the marquee: nested there, the box's own
+        // position would be added to every ghost and they would follow the finger.
+        host.appendChild(node);
+        preview.set(rect.id, node);
       }
-      node.style.left = `${(element.x + state.scrollX) * zoom}px`;
-      node.style.top = `${(element.y + state.scrollY) * zoom}px`;
-      node.style.width = `${element.width * zoom}px`;
-      node.style.height = `${element.height * zoom}px`;
+      node.style.left = `${rect.left}px`;
+      node.style.top = `${rect.top}px`;
+      node.style.width = `${rect.width}px`;
+      node.style.height = `${rect.height}px`;
     }
   };
 

@@ -881,6 +881,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 /* What the marquee has caught so far, shown in the accent colour. */
 .jse-preselect {
   position: absolute;
+  z-index: 4;
   box-sizing: border-box;
   border-radius: 4px;
   background-color: var(--jse-accent, #6965db);
