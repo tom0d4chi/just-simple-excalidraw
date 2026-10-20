@@ -1,6 +1,6 @@
 {
   "name": "just-simple-excalidraw",
-  "version": "0.1.68",
+  "version": "0.1.69",
   "private": true,
   "description": "A fully local Excalidraw editor for Obsidian.",
   "author": "David Hurtado",
@@ -10,14 +10,15 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node scripts/test-file-isolation.mjs && node scripts/test-excalidraw-environment.mjs && npm run test:preview && npm run test:naming && npm run test:snap",
+    "test": "node scripts/test-file-isolation.mjs && node scripts/test-excalidraw-environment.mjs && npm run test:preview && npm run test:naming && npm run test:snap && npm run test:capabilities",
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit && node esbuild.config.mjs production && node scripts/generate-third-party-notices.mjs && node scripts/copy-assets.mjs",
     "audit:release": "node scripts/audit-release.mjs",
     "check": "npm test && npm run build && npm run audit:release",
     "test:preview": "node scripts/preview.test.mjs",
     "test:naming": "node scripts/naming.test.mjs",
-    "test:snap": "node scripts/snap.test.mjs"
+    "test:snap": "node scripts/snap.test.mjs",
+    "test:capabilities": "node scripts/capabilities.test.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",

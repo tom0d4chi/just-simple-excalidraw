@@ -5,6 +5,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode
 } from "react";
+import type { Capabilities } from "./capabilities";
 import { Icon } from "./icons";
 import { t } from "./i18n";
 
@@ -77,8 +78,7 @@ type Category = "stroke" | "fill" | "width" | "style" | "corners" | "text";
 interface AppearanceMenuProps {
   open: boolean;
   style: StyleState;
-  showText: boolean;
-  showEdges: boolean;
+  capabilities: Capabilities;
   onPick: (patch: StylePatch) => void;
   onPreview: (patch: StylePatch) => void;
 }
@@ -101,7 +101,7 @@ function line(label: string, children: ReactNode): ReactNode {
   );
 }
 
-export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPreview }: AppearanceMenuProps) {
+export function AppearanceMenu({ open, style, capabilities, onPick, onPreview }: AppearanceMenuProps) {
   // The slider has its own value while it is being dragged: the element is only
   // rewritten on release, so its style would otherwise lag a whole round trip.
   const [dragging, setDragging] = useState<number | null>(null);
@@ -115,6 +115,21 @@ export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPre
       setCategory(null);
     }
   }, [open]);
+
+  // A family that no longer applies (the selection changed) closes itself.
+  useEffect(() => {
+    const available: Category[] = [
+      ...(capabilities.stroke ? ["stroke" as Category] : []),
+      ...(capabilities.fill ? ["fill" as Category] : []),
+      ...(capabilities.width ? ["width" as Category] : []),
+      ...(capabilities.style ? ["style" as Category] : []),
+      ...(capabilities.corners ? ["corners" as Category] : []),
+      ...(capabilities.text ? ["text" as Category] : [])
+    ];
+    if (category && !available.includes(category)) {
+      setCategory(null);
+    }
+  }, [capabilities, category]);
 
   const pick = (patch: StylePatch) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
@@ -140,44 +155,44 @@ export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPre
   // Rightmost appears first, like the shape strip: the delay shrinks along the row.
   const delayFor = (index: number): number => (families.length - index) * 26;
   const families: { key: Category; label: string; content: ReactNode }[] = [
-    {
-      key: "stroke",
+    ...(capabilities.stroke ? [{
+      key: "stroke" as Category,
       label: t("stroke"),
       content: createElement("span", {
         className: "jse-appearance__swatch jse-appearance__swatch--ring",
         style: { borderColor: style.strokeColor }
       })
-    },
-    {
-      key: "fill",
+    }] : []),
+    ...(capabilities.fill ? [{
+      key: "fill" as Category,
       label: t("fill"),
       content: createElement("span", {
         className: `jse-appearance__swatch${noFill ? " is-empty" : ""}`,
         style: noFill ? {} : { backgroundColor: style.backgroundColor }
       })
-    },
-    {
-      key: "width",
+    }] : []),
+    ...(capabilities.width ? [{
+      key: "width" as Category,
       label: t("thickness"),
       content: createElement("span", {
         className: "jse-appearance__bar",
         style: { height: `${Math.min(6, Math.max(1, style.strokeWidth))}px` }
       })
-    },
-    {
-      key: "style",
+    }] : []),
+    ...(capabilities.style ? [{
+      key: "style" as Category,
       label: t("lineStyle"),
       content: createElement(Icon, { name: "dashes", className: `jse-line-style jse-line-style--${style.strokeStyle}` })
-    }
+    }] : [])
   ];
-  if (showEdges) {
+  if (capabilities.corners) {
     families.push({
       key: "corners",
       label: t("corners"),
       content: createElement(Icon, { name: style.roundness === null ? "square" : "squircle" })
     });
   }
-  if (showText) {
+  if (capabilities.text) {
     families.push({ key: "text", label: t("size"), content: createElement(Icon, { name: "type" }) });
   }
 

@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import { anyCapability, type Capabilities } from "./capabilities";
 import { Icon, type IconName } from "./icons";
 import { AppearanceMenu, type StylePatch, type StyleState } from "./appearance";
 import { t } from "./i18n";
@@ -55,6 +56,8 @@ interface CanvasToolbarProps {
   style: StyleState;
   selectionCount: number;
   textSelected: boolean;
+  /** What the current selection (or tool) can actually be styled with. */
+  capabilities: Capabilities;
   selectionArmed: boolean;
   onToggleSelection: () => void;
   canRedo: boolean;
@@ -145,6 +148,7 @@ export function CanvasToolbar({
   style,
   selectionCount,
   textSelected,
+  capabilities,
   selectionArmed,
   onToggleSelection,
   canRedo,
@@ -168,7 +172,7 @@ export function CanvasToolbar({
    * a selection it restyles it, with a drawing tool it sets what the next stroke
    * will look like — that is how the pen gets its thickness.
    */
-  const stylingTarget = selectionCount > 0 || Boolean(activeShape) || activeTool === "freedraw" || activeTool === "text";
+  const stylingTarget = anyCapability(capabilities);
 
   /*
    * Every button that changes what a finger does is a switch, not a one-way trap:
@@ -294,6 +298,28 @@ export function CanvasToolbar({
    * the change is a real edit and lands in the history.
    */
   const applyStyle = (patch: StylePatch): void => {
+    // Never write a property the kind of element cannot show: a line has no fill.
+    const allowed: StylePatch = { ...patch };
+    if (!capabilities.fill) {
+      delete allowed.backgroundColor;
+      delete allowed.fillStyle;
+    }
+    if (!capabilities.stroke) {
+      delete allowed.strokeColor;
+    }
+    if (!capabilities.width) {
+      delete allowed.strokeWidth;
+    }
+    if (!capabilities.style) {
+      delete allowed.strokeStyle;
+    }
+    if (!capabilities.corners) {
+      delete allowed.roundness;
+    }
+    if (!capabilities.text) {
+      delete allowed.fontSize;
+    }
+    patch = allowed;
     if (!api) {
       return;
     }
@@ -463,8 +489,7 @@ export function CanvasToolbar({
     createElement(AppearanceMenu, {
       open: styleMenuOpen,
       style,
-      showText: textSelected || activeTool === "text",
-      showEdges: Boolean(activeShape) || selectionCount > 0,
+      capabilities,
       onPick: applyStyle,
       onPreview: previewStyle
     }))

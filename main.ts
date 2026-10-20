@@ -19,6 +19,7 @@ import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { attachInteraction } from "./src/interaction";
 import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
+import { capabilitiesForTool, capabilitiesForTypes, anyCapability } from "./src/capabilities";
 import { snapElements } from "./src/snap";
 import { keepViewportInSync } from "./src/viewport";
 
@@ -136,6 +137,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   const [selectionCount, setSelectionCount] = useState(0);
   const selectionCountRef = useRef(0);
   const [textSelected, setTextSelected] = useState(false);
+  const [capabilities, setCapabilities] = useState(capabilitiesForTool("hand"));
+  const capabilitySignatureRef = useRef(JSON.stringify(capabilitiesForTool("hand")));
   const textSelectedRef = useRef(false);
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -320,6 +323,18 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       textSelectedRef.current = onlyText;
       setTextSelected(onlyText);
     }
+    // What the menu may offer: the selection's own limits, or the tool's defaults.
+    const selectedTypes = elements
+      .filter((element) => !element.isDeleted && Object.hasOwn(appState?.selectedElementIds ?? {}, element.id))
+      .map((element) => element.type);
+    const nextCapabilities = selectedTypes.length > 0
+      ? capabilitiesForTypes(selectedTypes)
+      : capabilitiesForTool(appState?.activeTool?.type ?? "hand");
+    const capabilitySignature = JSON.stringify(nextCapabilities);
+    if (capabilitySignature !== capabilitySignatureRef.current) {
+      capabilitySignatureRef.current = capabilitySignature;
+      setCapabilities(nextCapabilities);
+    }
 
     syncHistoryState();
     props.onChange?.(elements, appState, files);
@@ -372,6 +387,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       style,
       selectionCount,
       textSelected,
+      capabilities,
       selectionArmed,
       onToggleSelection: toggleSelection,
       canRedo,
