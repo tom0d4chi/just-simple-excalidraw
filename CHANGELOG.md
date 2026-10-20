@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.17 - 2026-10-20
+
+- Fixed the canvas menu (the burger) being clipped: it now opens above its
+  button with a capped height and scrolls, instead of stretching the bar off
+  screen. The bar sits bottom left again, the orientation Excalidraw positions
+  its menus and its colour sheet for.
+- That menu was Excalidraw's own and mostly irrelevant in a vault: "Open",
+  "Save to…", "Export image…", its dark mode toggle and three promotional links
+  are hidden. It now holds three useful entries — find on canvas, help, and
+  reset the canvas, which still asks for confirmation.
+
 ## 0.1.16 - 2026-10-20
 
 Touch interaction rebuilt around how phones actually work, and the column

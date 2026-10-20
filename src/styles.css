@@ -145,16 +145,17 @@
 }
 
 /*
- * Excalidraw's bar is parked in the top right corner, where Obsidian itself
- * keeps view actions, so the bottom of the screen belongs to the drawing tools.
- * Its style sheet opens under it: hence the reversed column.
+ * Excalidraw's bar keeps its native orientation, bottom left: its menus and its
+ * style sheet are positioned to open upwards from a bottom bar, so moving it to
+ * the top corner (as an earlier version did) pushed the menu off screen. Bottom
+ * left leaves the whole right edge and the thumb area to the drawing tools.
  */
 .jse-root .excalidraw .App-bottom-bar {
   position: absolute;
-  inset: var(--size-4-2, 8px) var(--size-4-2, 8px) auto auto;
+  inset: auto auto calc(var(--safe-area-inset-bottom, 0px) + var(--navbar-height, 0px) + var(--size-4-2, 8px)) var(--size-4-2, 8px);
   display: flex;
-  justify-content: flex-end;
-  align-items: flex-start;
+  justify-content: flex-start;
+  align-items: flex-end;
   width: auto;
   padding: 0;
   pointer-events: none;
@@ -164,7 +165,7 @@
 .jse-root .excalidraw .App-bottom-bar > .Island {
   pointer-events: auto;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   width: auto;
   min-width: 0;
   max-width: calc(100vw - var(--size-4-4, 16px));
@@ -172,6 +173,41 @@
   background-color: var(--background-primary);
   border-radius: var(--touch-size-l, 52px);
   box-shadow: var(--shadow-s);
+}
+
+/*
+ * Excalidraw's canvas menu: keep it anchored to the button that opens it, above
+ * the pill, with a capped height so a long menu scrolls instead of stretching
+ * the bar off screen.
+ */
+.jse-root .excalidraw .App-bottom-bar .App-toolbar-content {
+  position: relative;
+}
+
+.jse-root .excalidraw .App-bottom-bar .dropdown-menu--mobile {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + var(--size-4-2, 8px));
+  top: auto;
+  width: min(320px, calc(100vw - var(--size-4-6, 24px)));
+  max-height: min(70vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/*
+ * That menu is Excalidraw's own: load a file, save a copy, export an image,
+ * toggle its dark mode, and three promotional links. None of it belongs in a
+ * vault, where the drawing *is* the file, the theme comes from Obsidian and
+ * export is disabled by the plugin. What is kept is useful: find on canvas,
+ * help, and reset the canvas (which asks for confirmation).
+ */
+.jse-root .excalidraw .App-bottom-bar .dropdown-menu--mobile [data-testid="load-button"],
+.jse-root .excalidraw .App-bottom-bar .dropdown-menu--mobile [data-testid="json-export-button"],
+.jse-root .excalidraw .App-bottom-bar .dropdown-menu--mobile [data-testid="image-export-button"],
+.jse-root .excalidraw .App-bottom-bar .dropdown-menu--mobile [data-testid="toggle-dark-mode"],
+.jse-root .excalidraw .App-bottom-bar .dropdown-menu--mobile a.dropdown-menu-item {
+  display: none;
 }
 
 /* Duplicated by the Obsidian-style bar. */

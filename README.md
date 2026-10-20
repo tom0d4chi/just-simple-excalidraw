@@ -81,11 +81,13 @@ as a tool is picked — so the column stays short under the thumb. All of it is
 drawn with Obsidian's tokens and Lucide glyphs, with a short spring when the bar
 appears, a bounce on the newly selected tool, and pop-in for revealed tools.
 
-Excalidraw's canvas menu, its duplicate/delete actions and its colour sheet are
-kept — not hidden — and restyled: they live in a small pill in the top right
-corner, where Obsidian keeps view actions, so the bottom of the screen belongs to
-the drawing tools. The colour sheet opens under that pill, from the **Color y
-grosor** button.
+Excalidraw's bar — the canvas menu (hamburger) and duplicate/delete for the
+current selection — is kept in the bottom left, where Excalidraw positions those
+popups, so its menu opens upward into the canvas instead of being clipped. The
+menu itself is pruned to what makes sense in a vault: find on canvas, help, and
+reset the canvas (with confirmation). Its file/export entries, its own dark mode
+toggle and its promotional links are hidden. The colour sheet opens from **Color
+y grosor** in the right hand column.
 
 ## Theme
 
