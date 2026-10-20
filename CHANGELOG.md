@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.34 - 2026-10-20
+
+- A selection no longer changes the tool: tapping an element selects it and leaves
+  the hand in place, so a drag pans instead of drawing a marquee. The marquee only
+  exists while the cursor button is armed — as asked, and nothing else arms it.
+
 ## 0.1.33 - 2026-10-20
 
 - An empty tap really returns to the hand now. The canvas clears the selection

@@ -223,7 +223,6 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       ));
       if (hit) {
         api.updateScene({ appState: { selectedElementIds: { [hit.id]: true } } });
-        api.setActiveTool({ type: "selection" });
         return;
       }
       if (tool !== "selection") {
