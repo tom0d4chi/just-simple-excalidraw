@@ -26,6 +26,8 @@ import { keepViewportInSync } from "./src/viewport";
 
 const VIEW_TYPE_EXCALIDRAW = "just-simple-excalidraw-view";
 const AUTOSAVE_DELAY_MS = 750;
+/** How far a double tap zooms in; 2x felt like a jump, 1.5 keeps the context visible. */
+const DOUBLE_TAP_ZOOM = 1.5;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 type SceneSnapshot = {
@@ -242,7 +244,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
           return false;
         }
         const zoom = state.zoom.value || 1;
-        const target = zoom > 1.05 ? zoomBaseRef.current : 2;
+        const target = zoom > 1.05 ? zoomBaseRef.current : DOUBLE_TAP_ZOOM;
         if (zoom <= 1.05) {
           zoomBaseRef.current = zoom;
         }
