@@ -19,6 +19,7 @@ import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { attachInteraction } from "./src/interaction";
 import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
+import { snapElements } from "./src/snap";
 import { keepViewportInSync } from "./src/viewport";
 
 const VIEW_TYPE_EXCALIDRAW = "just-simple-excalidraw-view";
@@ -43,6 +44,7 @@ type StoredScene = ExcalidrawInitialDataState & {
 type ExcalidrawCanvasProps = Omit<ComponentProps<typeof Excalidraw>, "initialData"> & {
   initialData: StoredScene;
   dotGrid?: boolean;
+  snapToGrid?: boolean;
 };
 
 /*
@@ -114,7 +116,7 @@ function withDefaultTool(scene: StoredScene, isTouchDevice: boolean): StoredScen
   };
 }
 
-function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawCanvasProps) {
+function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, ...props }: ExcalidrawCanvasProps) {
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const isTouchDevice = Platform.isMobile;
@@ -201,6 +203,17 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       },
       onMarqueeCancel: (cancel) => {
         cancelMarqueeRef.current = cancel;
+      },
+      onGestureEnd: (before) => {
+        if (!snapToGrid) {
+          return;
+        }
+        const elements = api.getSceneElements();
+        const touched = new Set(elements.filter((element) => before.get(element.id) !== element.versionNonce).map((element) => element.id));
+        const snap = snapElements(elements, api.getAppState().gridSize || 20, touched);
+        if (snap.changed) {
+          api.updateScene({ elements: snap.elements });
+        }
       }
     });
     return () => {
@@ -372,6 +385,8 @@ export interface JustSimpleExcalidrawSettings {
   drawingFolder: string;
   /** Prefix for new file names; empty means the timestamp alone. */
   drawingPrefix: string;
+  /** Round shapes onto the dot lattice when a gesture ends. */
+  snapToGrid: boolean;
 }
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
@@ -380,7 +395,8 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     dotGrid: true,
     drawingFolderMode: "note",
     drawingFolder: "",
-    drawingPrefix: "Drawing"
+    drawingPrefix: "Drawing",
+    snapToGrid: true
   };
 
   async onload(): Promise<void> {
@@ -392,6 +408,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       drawingFolderMode: saved?.drawingFolderMode ?? (saved?.drawingFolder ? "fixed" : "note"),
       drawingFolder: "",
       drawingPrefix: "Drawing",
+      snapToGrid: true,
       ...(saved ?? {})
     };
     this.applyDotGrid();
@@ -624,6 +641,7 @@ class ExcalidrawView extends FileView {
       key: file.path,
       initialData: scene,
       dotGrid: this.plugin.settings.dotGrid,
+      snapToGrid: this.plugin.settings.snapToGrid,
       onPaste: (_data: unknown, event: ClipboardEvent | null): boolean => {
         const image = Array.from(event?.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
         if (image && image.size > MAX_IMAGE_BYTES) {

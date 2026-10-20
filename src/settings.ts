@@ -115,6 +115,17 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
           });
       });
 
+    new Setting(containerEl)
+      .setName(t("snapToGrid"))
+      .setDesc(t("snapToGridDesc"))
+      .addToggle((toggle: ToggleComponent) => {
+        toggle.setValue(this.plugin.settings.snapToGrid);
+        toggle.onChange((value: boolean) => {
+          this.plugin.settings.snapToGrid = value;
+          void this.plugin.saveSettings();
+        });
+      });
+
     containerEl.createEl("p", { text: `${t("settingsVersion")}: ${this.plugin.manifest.version}` });
     containerEl.createEl("p", {
       text: t("settingsBody")

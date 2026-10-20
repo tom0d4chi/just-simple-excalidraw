@@ -70,6 +70,11 @@ export interface InteractionOptions {
   setArmed: (armed: boolean) => void;
   /** Lets the owner cancel a marquee in progress (used on a tool change). */
   onMarqueeCancel?: (cancel: (() => void) | null) => void;
+  /**
+   * Called after a gesture, with the versionNonce each element had when it started:
+   * whatever changed during the gesture is the set a snap has to move.
+   */
+  onGestureEnd?: (before: ReadonlyMap<string, number>) => void;
 }
 
 export interface InteractionHandle {
@@ -98,8 +103,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   const fingers = new Set<number>();
   let multiTouch = false;
 
+  let beforeGesture = new Map<string, number>();
+
   const onDown = (event: PointerEvent): void => {
     const state = api.getAppState();
+    beforeGesture = new Map(api.getSceneElements().map((element) => [element.id, element.versionNonce]));
     const id = elementUnder(event);
     /*
      * Touching empty paper drops the selection, whatever the tool is: the hand
@@ -147,6 +155,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   /* A tap on empty paper leaves the cursor mode, however it was armed. */
   const onUp = (event: PointerEvent): void => {
+    if (options.onGestureEnd) {
+      const before = beforeGesture;
+      // Deferred: Excalidraw commits the gesture in its own pointerup handling.
+      window.setTimeout(() => options.onGestureEnd?.(before), 0);
+    }
     const origin = tap;
     tap = null;
     if (!origin || origin.pointerId !== event.pointerId || multiTouch || fingers.size > 1) {
