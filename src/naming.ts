@@ -3,14 +3,26 @@
  * tested without Obsidian: the folder falls back to the note's own folder, and the
  * name keeps the timestamp that makes collisions unlikely.
  */
+/** Where new drawings go: the vault root, the note's folder, or a fixed folder. */
+export type DrawingFolderMode = "vault" | "note" | "fixed";
+
 export interface DrawingNaming {
-  /** Vault-relative folder for new drawings, empty to use the note's folder. */
+  /** Chosen location, see DrawingFolderMode. */
+  mode?: DrawingFolderMode;
+  /** Vault-relative folder used by "fixed"; ignored otherwise. */
   folder: string;
   /** Prefix for the file name, empty for no prefix. */
   prefix: string;
 }
 
 export function drawingFolder(naming: DrawingNaming, noteFolder: string): string {
+  const mode = naming.mode ?? "note";
+  if (mode === "vault") {
+    return "";
+  }
+  if (mode === "note") {
+    return noteFolder;
+  }
   const folder = naming.folder.trim().replace(/^\/+|\/+$/g, "");
   return folder || noteFolder;
 }

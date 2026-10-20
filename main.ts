@@ -18,7 +18,7 @@ import { trackBottomUiInset } from "./src/layout";
 import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { attachInteraction } from "./src/interaction";
-import { drawingFolder, drawingName } from "./src/naming";
+import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
 import { keepViewportInSync } from "./src/viewport";
 
 const VIEW_TYPE_EXCALIDRAW = "just-simple-excalidraw-view";
@@ -366,7 +366,9 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
 
 export interface JustSimpleExcalidrawSettings {
   dotGrid: boolean;
-  /** Vault folder for new drawings; empty means beside the note. */
+  /** Where new drawings go: vault root, the note's folder, or a fixed folder. */
+  drawingFolderMode: DrawingFolderMode;
+  /** Vault folder used by "fixed"; ignored by the other modes. */
   drawingFolder: string;
   /** Prefix for new file names; empty means the timestamp alone. */
   drawingPrefix: string;
@@ -374,11 +376,24 @@ export interface JustSimpleExcalidrawSettings {
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
   private readonly fileOwners = new Map<TFile, ExcalidrawView>();
-  settings: JustSimpleExcalidrawSettings = { dotGrid: true, drawingFolder: "", drawingPrefix: "Drawing" };
+  settings: JustSimpleExcalidrawSettings = {
+    dotGrid: true,
+    drawingFolderMode: "note",
+    drawingFolder: "",
+    drawingPrefix: "Drawing"
+  };
 
   async onload(): Promise<void> {
     const stored = await this.loadData() as Partial<JustSimpleExcalidrawSettings> | null;
-    this.settings = { dotGrid: true, drawingFolder: "", drawingPrefix: "Drawing", ...(stored ?? {}) };
+    const saved = stored as Partial<JustSimpleExcalidrawSettings> | null;
+    this.settings = {
+      dotGrid: true,
+      // A folder typed in the previous version means the fixed mode: keep it.
+      drawingFolderMode: saved?.drawingFolderMode ?? (saved?.drawingFolder ? "fixed" : "note"),
+      drawingFolder: "",
+      drawingPrefix: "Drawing",
+      ...(saved ?? {})
+    };
     this.applyDotGrid();
     this.addSettingTab(new JustSimpleExcalidrawSettingTab(this.app, this));
     this.registerView(VIEW_TYPE_EXCALIDRAW, (leaf) => new ExcalidrawView(leaf, this));
@@ -408,7 +423,11 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
   }
 
   async createDrawing(parentPath = ""): Promise<TFile> {
-    const naming = { folder: this.settings.drawingFolder, prefix: this.settings.drawingPrefix };
+    const naming = {
+      mode: this.settings.drawingFolderMode,
+      folder: this.settings.drawingFolder,
+      prefix: this.settings.drawingPrefix
+    };
     const folder = drawingFolder(naming, parentPath);
     if (folder) {
       await this.ensureFolder(folder);

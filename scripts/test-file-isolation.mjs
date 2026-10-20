@@ -40,6 +40,14 @@ const mocks = {
     export class Notice {
       constructor() {}
     }
+    export class TFolder {
+      constructor(path) { this.path = path; }
+    }
+    export class AbstractInputSuggest {
+      constructor(app, inputEl) { this.app = app; this.inputEl = inputEl; }
+      setValue(value) { if (this.inputEl) this.inputEl.value = value; }
+      close() {}
+    }
     export class PluginSettingTab {
       constructor(app, plugin) {
         this.app = app;

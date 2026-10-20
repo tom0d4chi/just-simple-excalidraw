@@ -15,10 +15,12 @@ const eq = (name, got, want) => {
   else console.log("ok  ", name, JSON.stringify(got));
 };
 
-eq("empty folder keeps the note folder", drawingFolder({ folder: "", prefix: "" }, "Notes/2026"), "Notes/2026");
-eq("folder wins over the note", drawingFolder({ folder: "Excalidraw", prefix: "" }, "Notes/2026"), "Excalidraw");
-eq("slashes are trimmed", drawingFolder({ folder: "/Drawings/Sketches/", prefix: "" }, ""), "Drawings/Sketches");
-eq("blank folder keeps the note folder", drawingFolder({ folder: "   ", prefix: "" }, ""), "");
+eq("note mode follows the note", drawingFolder({ mode: "note", folder: "Ignored", prefix: "" }, "Notes/2026"), "Notes/2026");
+eq("vault mode means the root", drawingFolder({ mode: "vault", folder: "Ignored", prefix: "" }, "Notes/2026"), "");
+eq("fixed mode wins over the note", drawingFolder({ mode: "fixed", folder: "Excalidraw", prefix: "" }, "Notes/2026"), "Excalidraw");
+eq("slashes are trimmed", drawingFolder({ mode: "fixed", folder: "/Drawings/Sketches/", prefix: "" }, ""), "Drawings/Sketches");
+eq("fixed but blank falls back to the note", drawingFolder({ mode: "fixed", folder: "   ", prefix: "" }, "Notes/2026"), "Notes/2026");
+eq("no mode at all behaves like note mode", drawingFolder({ folder: "Ignored", prefix: "" }, "Notes/2026"), "Notes/2026");
 const date = new Date(2026, 9, 20, 22, 15, 3);
 eq("prefix and stamp", drawingName(date, { folder: "", prefix: "Drawing" }), "Drawing 2026-10-20 22.15.03");
 eq("stamp alone", drawingName(date, { folder: "", prefix: "" }), "2026-10-20 22.15.03");

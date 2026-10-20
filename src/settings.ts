@@ -1,6 +1,44 @@
-import { App, PluginSettingTab, Setting, type TextComponent, type ToggleComponent } from "obsidian";
+import {
+  AbstractInputSuggest,
+  App,
+  PluginSettingTab,
+  Setting,
+  TFolder,
+  type TextComponent,
+  type ToggleComponent
+} from "obsidian";
+import type { DrawingFolderMode } from "./naming";
 import type JustSimpleExcalidrawPlugin from "../main";
 import { t } from "./i18n";
+
+/** Suggests the vault's existing folders while the path is typed, like Obsidian does. */
+class FolderSuggest extends AbstractInputSuggest<TFolder> {
+  constructor(
+    app: App,
+    private readonly input: HTMLInputElement,
+    private readonly onPick: (path: string) => void
+  ) {
+    super(app, input);
+  }
+
+  getSuggestions(query: string): TFolder[] {
+    const needle = query.trim().toLowerCase();
+    return this.app.vault
+      .getAllLoadedFiles()
+      .filter((file): file is TFolder => file instanceof TFolder)
+      .filter((folder) => folder.path.toLowerCase().includes(needle))
+      .slice(0, 50);
+  }
+
+  renderSuggestion(folder: TFolder, el: HTMLElement): void {
+    el.setText(folder.path);
+  }
+
+  selectSuggestion(folder: TFolder): void {
+    this.onPick(folder.path);
+    this.close();
+  }
+}
 
 /**
  * One option (the dot grid) plus the build that is actually loaded, so an update
@@ -31,15 +69,38 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName(t("drawingFolder"))
       .setDesc(t("drawingFolderDesc"))
-      .addText((text: TextComponent) => {
-        text
-          .setPlaceholder(t("drawingFolderPlaceholder"))
-          .setValue(this.plugin.settings.drawingFolder)
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("note", t("drawingFolderNote"))
+          .addOption("vault", t("drawingFolderVault"))
+          .addOption("fixed", t("drawingFolderFixed"))
+          .setValue(this.plugin.settings.drawingFolderMode)
           .onChange((value: string) => {
-            this.plugin.settings.drawingFolder = value;
+            this.plugin.settings.drawingFolderMode = value as DrawingFolderMode;
             void this.plugin.saveSettings();
+            this.display();
           });
       });
+
+    if (this.plugin.settings.drawingFolderMode === "fixed") {
+      new Setting(containerEl)
+        .setName(t("drawingFolderPath"))
+        .setDesc(t("drawingFolderPathDesc"))
+        .addText((text: TextComponent) => {
+          const commit = (value: string): void => {
+            this.plugin.settings.drawingFolder = value;
+            void this.plugin.saveSettings();
+          };
+          text
+            .setPlaceholder(t("drawingFolderPlaceholder"))
+            .setValue(this.plugin.settings.drawingFolder)
+            .onChange(commit);
+          new FolderSuggest(this.app, text.inputEl, (path: string) => {
+            text.setValue(path);
+            commit(path);
+          });
+        });
+    }
 
     new Setting(containerEl)
       .setName(t("drawingPrefix"))
