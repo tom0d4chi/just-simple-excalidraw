@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.18 - 2026-10-20
+
+- The hamburger is gone. What it held is either useless in a vault or available
+  elsewhere, so the bar it lived in now only shows when a selection exists, for
+  duplicate and delete.
+- The column holds a single shape button instead of a "more tools" button: it
+  opens a short list aligned with its icon — rectangle, diamond, ellipse, arrow,
+  line, image — plus a lock to keep the shape after each draw. The button wears
+  the icon of the shape you last picked and lights up when a shape is active.
+- The column is centred in the view again instead of being pushed down by the
+  space the hamburger used to need.
+
 ## 0.1.17 - 2026-10-20
 
 - Fixed the canvas menu (the burger) being clipped: it now opens above its

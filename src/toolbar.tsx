@@ -1,5 +1,6 @@
 import {
   createElement,
+  useEffect,
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent
@@ -36,8 +37,9 @@ const TOOL_DEFINITIONS: Record<ToolName, ToolDefinition> = {
  * actually reaches for; the rest waits behind one button instead of holding a
  * permanent slot under the thumb.
  */
-const TOUCH_PRIMARY: readonly ToolName[] = ["selection", "freedraw", "rectangle", "arrow", "text", "eraser"];
-const TOUCH_EXTRA: readonly ToolName[] = ["line", "ellipse", "diamond", "image"];
+/* The shape family shares one slot: a button that opens the list on the spot. */
+const SHAPES: readonly ToolName[] = ["rectangle", "diamond", "ellipse", "arrow", "line", "image"];
+const TOUCH_CORE: readonly ToolName[] = ["selection", "freedraw", "text", "eraser"];
 
 const DESKTOP_TOOLS: readonly ToolName[] = [
   "hand", "selection", "freedraw", "eraser", "rectangle", "diamond", "ellipse", "arrow", "line", "text", "image"
@@ -108,10 +110,10 @@ export function CanvasToolbar({
   isTouchDevice,
   getCanvasElement
 }: CanvasToolbarProps) {
-  const [expanded, setExpanded] = useState(false);
-  const primaryTools = isTouchDevice ? TOUCH_PRIMARY : DESKTOP_TOOLS;
-  const extraTools = isTouchDevice ? TOUCH_EXTRA : [];
-  const activeIsExtra = extraTools.includes(activeTool as ToolName);
+  const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+
+  const [lastShape, setLastShape] = useState<ToolName>("rectangle");
+  const activeShape = SHAPES.includes(activeTool as ToolName) ? (activeTool as ToolName) : null;
 
   const selectTool = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
@@ -121,9 +123,10 @@ export function CanvasToolbar({
     }
   };
 
-  const selectFromExtra = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
+  const pickShape = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     selectTool(tool)(event);
-    setExpanded(false);
+    setLastShape(tool);
+    setShapeMenuOpen(false);
   };
 
   const toggleLock = (event: ReactMouseEvent<HTMLButtonElement>): void => {
@@ -135,10 +138,10 @@ export function CanvasToolbar({
     }
   };
 
-  const toggleMore = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+  const toggleShapeMenu = (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
-    setExpanded((value) => !value);
+    setShapeMenuOpen((value) => !value);
   };
 
   const toggleStyle = (event: ReactMouseEvent<HTMLButtonElement>): void => {
@@ -148,6 +151,19 @@ export function CanvasToolbar({
       api.updateScene({ appState: { openMenu: styleOpen ? null : "shape" } });
     }
   };
+
+  useEffect(() => {
+    if (!shapeMenuOpen) {
+      return;
+    }
+    const onOutside = (event: PointerEvent): void => {
+      if (!(event.target instanceof HTMLElement) || !event.target.closest(".jse-shapes")) {
+        setShapeMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onOutside, true);
+    return () => document.removeEventListener("pointerdown", onOutside, true);
+  }, [shapeMenuOpen]);
 
   const toolButton = ({ tool, icon, label }: ToolDefinition, onClick = selectTool) => createElement("button", {
     key: tool,
@@ -183,17 +199,57 @@ export function CanvasToolbar({
     locked
   );
 
+  const shapeButton = createElement("div", { className: "jse-shapes", key: "shapes" },
+    createElement("button", {
+      type: "button",
+      className: `jse-tool clickable-icon${activeShape ? " is-active" : ""}${shapeMenuOpen ? " is-open" : ""}`,
+      "aria-label": "Formas",
+      "aria-expanded": shapeMenuOpen,
+      "aria-pressed": Boolean(activeShape),
+      onClick: toggleShapeMenu
+    }, createElement(Icon, { name: TOOL_DEFINITIONS[activeShape ?? lastShape].icon })),
+    shapeMenuOpen
+      ? createElement("div", {
+        className: "jse-shapes__menu",
+        role: "menu",
+        onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
+      },
+      SHAPES.map((tool) => createElement("button", {
+        key: tool,
+        type: "button",
+        role: "menuitem",
+        className: `jse-tool clickable-icon jse-tool--shape${activeTool === tool ? " is-active" : ""}`,
+        "aria-label": TOOL_DEFINITIONS[tool].label,
+        "aria-pressed": activeTool === tool,
+        onClick: pickShape(tool)
+      }, createElement(Icon, { name: TOOL_DEFINITIONS[tool].icon }))),
+      createElement("div", { className: "jse-shapes__separator", role: "presentation" }),
+      createElement("button", {
+        type: "button",
+        role: "menuitem",
+        className: `jse-tool clickable-icon jse-tool--shape${locked ? " is-active" : ""}`,
+        "aria-label": locked ? "Desbloquear la forma" : "Fijar la forma",
+        "aria-pressed": locked,
+        onClick: toggleLock
+      }, createElement(Icon, { name: locked ? "lock" : "lock-open" }))
+    )
+      : null
+  );
+
   return createElement("div", {
     className: "jse-tools",
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
-  createElement("div", { className: `jse-tools__pill${expanded ? " is-expanded" : ""}` },
-    // The overflow opens above the core set and collapses as soon as a tool is
-    // picked, so the column never stays long under the thumb.
-    expanded ? [...extraTools.map((tool) => toolButton(TOOL_DEFINITIONS[tool], selectFromExtra)), lockButton] : null,
-    primaryTools.map((tool) => toolButton(TOOL_DEFINITIONS[tool])),
-    // Always rendered: a button that appears and disappears would shift every
-    // other button under the user's finger.
+  createElement("div", { className: "jse-tools__pill" },
+    isTouchDevice
+      ? [
+          toolButton(TOOL_DEFINITIONS.selection),
+          toolButton(TOOL_DEFINITIONS.freedraw),
+          shapeButton,
+          toolButton(TOOL_DEFINITIONS.text),
+          toolButton(TOOL_DEFINITIONS.eraser)
+        ]
+      : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool])),
     actionButton("style", "palette", "Color y grosor", toggleStyle, styleOpen, !styleAvailable),
     isTouchDevice ? null : lockButton,
     actionButton("undo", "undo-2", "Deshacer", (event) => {
@@ -205,15 +261,6 @@ export function CanvasToolbar({
       event.preventDefault();
       event.stopPropagation();
       replayShortcut(getCanvasElement, "z", true);
-    }),
-    extraTools.length
-      ? actionButton(
-          "more",
-          expanded ? "chevron-up" : "chevron-down",
-          expanded ? "Menos herramientas" : "Más herramientas",
-          toggleMore,
-          expanded || activeIsExtra
-        )
-      : null
+    })
   ));
 }
