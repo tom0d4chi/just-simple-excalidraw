@@ -398,12 +398,16 @@ export function CanvasToolbar({
     locked
   );
 
-  const appearanceButton = createElement("div", { className: "jse-shapes", key: "appearance" },
+  const appearanceButton = createElement("div", {
+    className: `jse-shapes jse-shapes--collapsible${entered ? " jse-anim" : ""}${selectionCount > 0 ? "" : " is-collapsed"}`,
+    key: "appearance"
+  },
     createElement("button", {
       type: "button",
       className: `jse-tool jse-tool--action clickable-icon${styleMenuOpen ? " is-open" : ""}`,
       "aria-label": t("appearance"),
       "aria-expanded": styleMenuOpen,
+      "aria-hidden": selectionCount === 0,
       onClick: toggleStyleMenu
     }, createElement(Icon, { name: "palette" })),
     createElement("div", {
@@ -464,12 +468,12 @@ export function CanvasToolbar({
     isTouchDevice
       ? [
           toolButton(TOOL_DEFINITIONS.selection),
-          ...contextButtons,
           toolButton(TOOL_DEFINITIONS.freedraw),
           shapeButton,
           toolButton(TOOL_DEFINITIONS.text),
           toolButton(TOOL_DEFINITIONS.image, () => insertImage),
-          toolButton(TOOL_DEFINITIONS.eraser)
+          toolButton(TOOL_DEFINITIONS.eraser),
+          ...contextButtons
         ]
       : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool])),
     appearanceButton,

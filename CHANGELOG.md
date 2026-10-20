@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.27 - 2026-10-20
+
+- The palette only appears when something is selected: with nothing to style it
+  had no business in the column, and it now folds away with the actions it
+  belongs to (same in/out motion).
+- Duplicate, delete, edit text and the palette now sit together in one group at
+  the foot of the tools, instead of the actions hanging under the selection tool.
+
 ## 0.1.26 - 2026-10-20
 
 - Interface strings follow Obsidian's own language (read from moment's locale)

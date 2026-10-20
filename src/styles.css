@@ -743,3 +743,28 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   font-weight: 600;
   color: var(--text-normal);
 }
+
+/*
+ * The palette has nothing to speak for without a selection, so it folds away
+ * with the actions it belongs to. The wrapper is the thing that collapses, since
+ * the menu is anchored to it.
+ */
+.jse-root .jse-tools__pill > .jse-shapes--collapsible {
+  height: var(--jse-tool-size, 42px);
+}
+
+.jse-root .jse-tools__pill > .jse-shapes--collapsible.is-collapsed {
+  height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.jse-root .jse-tools__pill > .jse-shapes--collapsible.jse-anim {
+  animation: jse-tool-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+
+.jse-root .jse-tools__pill > .jse-shapes--collapsible.jse-anim.is-collapsed {
+  animation: jse-tool-out 180ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
