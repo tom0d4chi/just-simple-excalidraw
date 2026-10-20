@@ -256,9 +256,87 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
 
     host.addEventListener("pointerdown", onDown, true);
     host.addEventListener("pointerup", onUp, true);
+
+    /*
+     * Excalidraw draws its marquee into the interactive canvas, square and in its
+     * own violet, and that colour is not exposed to CSS. So for the duration of the
+     * gesture that canvas is hidden and a div is drawn instead: Obsidian's accent,
+     * a hint of fill, rounded corners and marching dashes.
+     */
+    let interactiveCanvas: HTMLElement | null = null;
+    let boxStart: { x: number; y: number; pointerId: number } | null = null;
+    let box: HTMLDivElement | null = null;
+
+    const drawBox = (event: PointerEvent): void => {
+      if (!boxStart || event.pointerId !== boxStart.pointerId || !box) {
+        return;
+      }
+      const bounds = host.getBoundingClientRect();
+      const left = Math.min(boxStart.x, event.clientX) - bounds.left;
+      const top = Math.min(boxStart.y, event.clientY) - bounds.top;
+      box.style.left = `${left}px`;
+      box.style.top = `${top}px`;
+      box.style.width = `${Math.abs(event.clientX - boxStart.x)}px`;
+      box.style.height = `${Math.abs(event.clientY - boxStart.y)}px`;
+    };
+
+    const startBox = (event: PointerEvent): void => {
+      const state = api.getAppState();
+      if (state.activeTool.type !== "selection" || !selectionArmedRef.current || elementUnder(event)) {
+        return;
+      }
+      boxStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+      interactiveCanvas = host.querySelector<HTMLElement>(".excalidraw__canvas.interactive");
+      if (interactiveCanvas) {
+        interactiveCanvas.style.opacity = "0";
+      }
+      box = document.createElement("div");
+      box.className = "jse-marquee";
+      host.appendChild(box);
+      drawBox(event);
+    };
+
+    const endBox = (event: PointerEvent): void => {
+      if (!boxStart || event.pointerId !== boxStart.pointerId) {
+        return;
+      }
+      boxStart = null;
+      box?.remove();
+      box = null;
+      if (interactiveCanvas) {
+        interactiveCanvas.style.removeProperty("opacity");
+        interactiveCanvas = null;
+      }
+    };
+
+    const onMove = (event: PointerEvent): void => drawBox(event);
+    const onDownBox = (event: PointerEvent): void => {
+      if (event.pointerType !== "mouse") {
+        startBox(event);
+      }
+    };
+    const onUpBox = (event: PointerEvent): void => {
+      if (event.pointerType !== "mouse") {
+        endBox(event);
+      }
+    };
+
+    host.addEventListener("pointerdown", onDownBox, true);
+    host.addEventListener("pointermove", onMove, true);
+    host.addEventListener("pointerup", onUpBox, true);
+    host.addEventListener("pointercancel", onUpBox, true);
+
     return () => {
       host.removeEventListener("pointerdown", onDown, true);
       host.removeEventListener("pointerup", onUp, true);
+      host.removeEventListener("pointerdown", onDownBox, true);
+      host.removeEventListener("pointermove", onMove, true);
+      host.removeEventListener("pointerup", onUpBox, true);
+      host.removeEventListener("pointercancel", onUpBox, true);
+      box?.remove();
+      if (interactiveCanvas) {
+        interactiveCanvas.style.removeProperty("opacity");
+      }
     };
   }, [api]);
 

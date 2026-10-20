@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.44 - 2026-10-20
+
+- The marquee is drawn by the plugin now, in Obsidian's accent with a hint of fill,
+  rounded corners and dashes that march while the drag lasts. Excalidraw's own is
+  square and violet, and its colour is not exposed to CSS, so its interactive
+  canvas is hidden for the duration of the gesture and restored on release.
+
 ## 0.1.43 - 2026-10-20
 
 - The appearance menu shows whenever a pick has somewhere to go: with a selection

@@ -819,3 +819,37 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
     animation: none;
   }
 }
+
+/*
+ * The selection rectangle the plugin draws during a marquee: Obsidian's accent, a
+ * hint of fill, rounded corners, and dashes that march while you drag. The border
+ * is painted with gradients because a dashed border cannot be animated.
+ */
+.jse-marquee {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 6px;
+  background-color: color-mix(in srgb, var(--interactive-accent, #6965db) 10%, transparent);
+  background-image:
+    repeating-linear-gradient(90deg, var(--interactive-accent, #6965db) 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(90deg, var(--interactive-accent, #6965db) 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(0deg, var(--interactive-accent, #6965db) 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(0deg, var(--interactive-accent, #6965db) 0 6px, transparent 6px 12px);
+  background-size: 100% 1.5px, 100% 1.5px, 1.5px 100%, 1.5px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  background-repeat: no-repeat;
+  animation: jse-ants 600ms linear infinite;
+}
+
+@keyframes jse-ants {
+  to {
+    background-position: 12px 0, -12px 100%, 0 -12px, 100% 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-marquee {
+    animation: none;
+  }
+}
