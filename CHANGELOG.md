@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.30 - 2026-10-20
+
+- "Edit text" works: it pressed Excalidraw's own Edit button, which is enabled but
+  does nothing when its bar is hidden, and that silent success blocked the
+  fallback. It now sends Enter to the canvas, which opens the editor on the
+  selected text.
+
 ## 0.1.29 - 2026-10-20
 
 - The ruled grid is replaced by a dot grid. Excalidraw paints its grid into the

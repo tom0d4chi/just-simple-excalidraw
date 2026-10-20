@@ -372,9 +372,10 @@ export function CanvasToolbar({
   const contextButtons = [
     actionButton("edit-text", "square-pen", t("editText"), (event) =>
       stopAndRun(event, () => {
-        if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Edit"]')) {
-          replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter");
-        }
+        // Enter on a selected text element opens its editor. Excalidraw's own
+        // "Edit" button in the hidden bar is enabled but does nothing when
+        // clicked from here, so it is not used.
+        replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter");
       }), false, false, contextClass(textSelected)),
     actionButton("duplicate", "copy", t("duplicate"), (event) =>
       stopAndRun(event, () => {
