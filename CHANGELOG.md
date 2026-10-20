@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## Unreleased
+
+- The hand tool is now the default, so a drag pans the canvas; selection is one
+  tap away in the toolbar.
+- Added an Obsidian mobile style floating toolbar with all drawing tools, tool
+  lock, undo and redo, drawn with Obsidian's own tokens and Lucide icons.
+- Added a setting to place that toolbar at the bottom (horizontal) or along the
+  right edge (vertical).
+- Fixed shifted taps and drags on mobile: Excalidraw's cached canvas offset is
+  now refreshed whenever the view moves, instead of only when the canvas or the
+  window resizes.
+- Skips autosave writes when the serialized scene is unchanged.
+
 ## 0.1.10 - 2026-09-19
 
 - Removed the unused Firebase configuration and Google API key inherited from

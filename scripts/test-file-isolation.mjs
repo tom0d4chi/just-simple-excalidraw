@@ -33,9 +33,26 @@ const mocks = {
       registerExtensions() {}
       addCommand() {}
       addRibbonIcon() {}
+      addSettingTab() {}
+      async loadData() { return globalThis.__testPluginData ?? null; }
+      async saveData(data) { globalThis.__testPluginData = data; }
     }
     export class Notice {
       constructor() {}
+    }
+    export class PluginSettingTab {
+      constructor(app, plugin) {
+        this.app = app;
+        this.plugin = plugin;
+        this.containerEl = { empty() {} };
+      }
+    }
+    export class Setting {
+      constructor() {
+        this.setName = () => this;
+        this.setDesc = () => this;
+        this.addDropdown = () => this;
+      }
     }
     export class WorkspaceLeaf {
       constructor() { this.detached = false; }
@@ -45,21 +62,43 @@ const mocks = {
     export function normalizePath(path) { return path; }
   `,
   react: `
-    export function createElement(type, props) { return { type, props: props ?? {} }; }
+    export function createElement(type, props, ...children) {
+      const resolved = { ...(props ?? {}) };
+      if (children.length) {
+        const flat = children.length === 1 ? children[0] : children;
+        resolved.children = resolved.children === undefined ? flat : [].concat(resolved.children, flat);
+      }
+      return { type, props: resolved };
+    }
     export function useEffect(effect) { effect(); }
+    export function useCallback(fn) { return fn; }
+    export function useRef(value) { return { current: value }; }
     export function useState(value) { return [value, () => {}]; }
+    export function useSyncExternalStore(_subscribe, getSnapshot) { return getSnapshot(); }
   `,
   "react-dom/client": `
     export function createRoot() {
       return {
         render(element) {
-          let rendered = element;
-          while (typeof rendered.type === "function" && !rendered.type.__testExcalidraw) {
-            rendered = rendered.type(rendered.props);
-          }
-          if (rendered.type?.__testExcalidraw) {
-            globalThis.__renderedCanvases.push(rendered.props);
-          }
+          const walk = (node) => {
+            if (!node || typeof node !== "object") {
+              return;
+            }
+            if (Array.isArray(node)) {
+              node.forEach(walk);
+              return;
+            }
+            if (typeof node.type === "function" && !node.type.__testExcalidraw) {
+              walk(node.type(node.props));
+              return;
+            }
+            if (node.type?.__testExcalidraw) {
+              globalThis.__renderedCanvases.push(node.props);
+              return;
+            }
+            walk(node.props?.children);
+          };
+          walk(element);
         },
         unmount() {}
       };

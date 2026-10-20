@@ -1,5 +1,5 @@
 import { FileView, Notice, Plugin, TFile, WorkspaceLeaf, normalizePath } from "obsidian";
-import { createElement, useEffect, useState, type ComponentProps } from "react";
+import { createElement, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
   Excalidraw,
@@ -9,9 +9,13 @@ import {
 import type {
   AppState,
   BinaryFiles,
-  ExcalidrawInitialDataState
+  ExcalidrawInitialDataState,
+  ExcalidrawImperativeAPI
 } from "@excalidraw/excalidraw/types";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
+import { CanvasToolbar } from "./src/toolbar";
+import { DEFAULT_SETTINGS, JustSimpleExcalidrawSettingTab, normalizeSettings, type JustSimpleExcalidrawSettings } from "./src/settings";
+import { keepViewportInSync } from "./src/viewport";
 
 const VIEW_TYPE_EXCALIDRAW = "just-simple-excalidraw-view";
 const AUTOSAVE_DELAY_MS = 750;
@@ -32,7 +36,22 @@ type StoredScene = ExcalidrawInitialDataState & {
   files?: BinaryFiles;
 };
 
-type ExcalidrawCanvasProps = ComponentProps<typeof Excalidraw>;
+type ExcalidrawCanvasProps = Omit<ComponentProps<typeof Excalidraw>, "initialData"> & {
+  initialData: StoredScene;
+};
+
+/** Pointer-down on the canvas pans the view; the other tools are one tap away. */
+const DEFAULT_ACTIVE_TOOL: AppState["activeTool"] = {
+  type: "hand",
+  customType: null,
+  locked: false,
+  lastActiveTool: null
+};
+
+interface SettingsStore {
+  subscribeSettings: (listener: () => void) => () => void;
+  getSettingsSnapshot: () => JustSimpleExcalidrawSettings;
+}
 
 function emptyScene(): StoredScene {
   return { elements: [], appState: {}, files: {} };
@@ -68,8 +87,33 @@ function formatDrawingName(now: Date): string {
   return `Drawing ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(now.getSeconds())}`;
 }
 
-function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
+/**
+ * Scenes saved by older versions (or by Excalidraw itself) may not carry an
+ * `activeTool`, and Excalidraw would then fall back to the selection tool. The
+ * hand tool is the default here, so it is re-applied on every load.
+ */
+function withDefaultTool(scene: StoredScene): StoredScene {
+  return {
+    ...scene,
+    appState: {
+      ...scene.appState,
+      activeTool: { ...DEFAULT_ACTIVE_TOOL }
+    }
+  };
+}
+
+function ExcalidrawCanvas({
+  initialData,
+  settingsStore,
+  ...props
+}: ExcalidrawCanvasProps & { settingsStore: SettingsStore }) {
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
+  const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
+  const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(DEFAULT_ACTIVE_TOOL);
+  const toolbarPosition = useSyncExternalStore(settingsStore.subscribeSettings, settingsStore.getSettingsSnapshot).toolbarPosition;
+  const canvasHostRef = useRef<HTMLDivElement | null>(null);
+  const excalidrawElementRef = useRef<HTMLElement | null>(null);
+  const activeToolRef = useRef(activeTool);
 
   useEffect(() => {
     const updateTheme = (): void => setTheme(document.body.classList.contains("theme-dark") ? THEME.DARK : THEME.LIGHT);
@@ -79,40 +123,86 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
     return () => observer.disconnect();
   }, []);
 
-  return createElement(Excalidraw, {
-    initialData,
-    theme,
-    detectScroll: false,
-    handleKeyboardGlobally: false,
-    aiEnabled: false,
-    validateEmbeddable: false,
-    showDeprecatedFonts: false,
-    UIOptions: {
-      canvasActions: {
-        clearCanvas: true,
-        changeViewBackgroundColor: true,
-        export: false,
-        loadScene: false,
-        saveToActiveFile: false,
-        saveAsImage: false,
-        toggleTheme: false
-      },
-      tools: { image: true }
-    },
-    generateIdForFile: (file: File): string => {
-      if (file.size > MAX_IMAGE_BYTES) {
-        throw new Error(`La imagen supera el límite de ${MAX_IMAGE_BYTES / 1024 / 1024} MB.`);
-      }
-      return crypto.randomUUID();
-    },
-    ...props
-  });
+  // Excalidraw's root element inside this view: the element whose position is
+  // used to translate pointer events into scene coordinates.
+  const getCanvasElement = useCallback((): HTMLElement | null => {
+    const cached = excalidrawElementRef.current;
+    if (cached && cached.isConnected) {
+      return cached;
+    }
+    const found = canvasHostRef.current?.querySelector<HTMLElement>(".excalidraw") ?? null;
+    excalidrawElementRef.current = found;
+    return found;
+  }, []);
+
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+    return keepViewportInSync(api, getCanvasElement);
+  }, [api, getCanvasElement]);
+
+  const handleChange = useCallback((elements: readonly OrderedExcalidrawElement[], appState: AppState, files: BinaryFiles): void => {
+    const nextTool = appState?.activeTool;
+    const previousTool = activeToolRef.current;
+    if (nextTool && (nextTool.type !== previousTool.type || nextTool.locked !== previousTool.locked)) {
+      activeToolRef.current = nextTool;
+      setActiveTool(nextTool);
+    }
+    props.onChange?.(elements, appState, files);
+  }, [props.onChange]);
+
+  return createElement("div", { className: "jse-root" },
+    createElement("div", { className: "jse-canvas", ref: canvasHostRef },
+      createElement(Excalidraw, {
+        initialData: withDefaultTool(initialData ?? emptyScene()),
+        theme,
+        detectScroll: false,
+        handleKeyboardGlobally: false,
+        aiEnabled: false,
+        validateEmbeddable: false,
+        showDeprecatedFonts: false,
+        UIOptions: {
+          canvasActions: {
+            clearCanvas: true,
+            changeViewBackgroundColor: true,
+            export: false,
+            loadScene: false,
+            saveToActiveFile: false,
+            saveAsImage: false,
+            toggleTheme: false
+          },
+          tools: { image: true }
+        },
+        generateIdForFile: (file: File): string => {
+          if (file.size > MAX_IMAGE_BYTES) {
+            throw new Error(`La imagen supera el límite de ${MAX_IMAGE_BYTES / 1024 / 1024} MB.`);
+          }
+          return crypto.randomUUID();
+        },
+        ...props,
+        excalidrawAPI: setApi,
+        onChange: handleChange
+      })
+    ),
+    createElement(CanvasToolbar, {
+      api,
+      activeTool: activeTool.type,
+      locked: activeTool.locked,
+      position: toolbarPosition,
+      getCanvasElement
+    })
+  );
 }
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
   private readonly fileOwners = new Map<TFile, ExcalidrawView>();
+  private readonly settingsListeners = new Set<() => void>();
+  settings: JustSimpleExcalidrawSettings = { ...DEFAULT_SETTINGS };
 
   async onload(): Promise<void> {
+    this.settings = normalizeSettings(await this.loadData());
+    this.addSettingTab(new JustSimpleExcalidrawSettingTab(this.app, this));
     this.registerView(VIEW_TYPE_EXCALIDRAW, (leaf) => new ExcalidrawView(leaf, this));
     this.registerExtensions(["excalidraw"], VIEW_TYPE_EXCALIDRAW);
 
@@ -122,6 +212,24 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       callback: () => void this.createDrawing()
     });
     this.addRibbonIcon("pencil-ruler", "Create new Excalidraw drawing", () => void this.createDrawing());
+  }
+
+  subscribeSettings = (listener: () => void): (() => void) => {
+    this.settingsListeners.add(listener);
+    return () => this.settingsListeners.delete(listener);
+  };
+
+  getSettingsSnapshot = (): JustSimpleExcalidrawSettings => this.settings;
+
+  updateSettings(patch: Partial<JustSimpleExcalidrawSettings>): void {
+    this.settings = { ...this.settings, ...patch };
+    for (const listener of this.settingsListeners) {
+      listener();
+    }
+  }
+
+  async saveSettings(): Promise<void> {
+    await this.saveData(this.settings);
   }
 
   async createDrawing(parentPath = ""): Promise<TFile> {
@@ -178,6 +286,7 @@ class ExcalidrawView extends FileView {
   private readonly writingFiles = new Set<TFile>();
   private externalChangeDetected = false;
   private readonly pendingSaves = new Set<Promise<void>>();
+  private lastSavedDocument = new Map<TFile, string>();
 
   constructor(readonly leaf: WorkspaceLeaf, private readonly plugin: JustSimpleExcalidrawPlugin) {
     super(leaf);
@@ -298,28 +407,7 @@ class ExcalidrawView extends FileView {
     this.root.render(createElement(ExcalidrawCanvas, {
       key: file.path,
       initialData: scene,
-      theme: document.body.classList.contains("theme-dark") ? THEME.DARK : THEME.LIGHT,
-      detectScroll: false,
-      handleKeyboardGlobally: false,
-      aiEnabled: false,
-      UIOptions: {
-        canvasActions: {
-          clearCanvas: true,
-          changeViewBackgroundColor: true,
-          export: false,
-          loadScene: false,
-          saveToActiveFile: false,
-          saveAsImage: false,
-          toggleTheme: false
-        },
-        tools: { image: true }
-      },
-      generateIdForFile: (file: File): string => {
-        if (file.size > MAX_IMAGE_BYTES) {
-          throw new Error(`La imagen supera el límite de ${MAX_IMAGE_BYTES / 1024 / 1024} MB.`);
-        }
-        return crypto.randomUUID();
-      },
+      settingsStore: this.plugin,
       onPaste: (_data: unknown, event: ClipboardEvent | null): boolean => {
         const image = Array.from(event?.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
         if (image && image.size > MAX_IMAGE_BYTES) {
@@ -390,7 +478,11 @@ class ExcalidrawView extends FileView {
     this.writingFiles.add(pending.file);
     try {
       const document = serializeAsJSON(pending.snapshot.elements, pending.snapshot.appState, pending.snapshot.files, "local");
+      if (this.lastSavedDocument.get(pending.file) === document) {
+        return;
+      }
       await this.app.vault.modify(pending.file, document);
+      this.lastSavedDocument.set(pending.file, document);
     } catch (error) {
       if (pending.file === this.activeFile && pending.file === this.file && !this.externalChangeDetected) {
         this.latestSnapshot = pending;

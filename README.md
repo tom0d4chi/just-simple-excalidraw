@@ -53,12 +53,52 @@ supports the people building Excalidraw.
   overwrites.
 - Reports malformed drawings without changing the original file.
 - Follows Obsidian's light and dark theme.
+- Starts on the hand tool, so dragging pans the canvas and a tap on the
+  selection tool switches to selecting.
+- Replaces Excalidraw's toolbar with one styled like Obsidian's mobile chrome,
+  placed either at the bottom (horizontal) or along the right edge (vertical).
 
 It deliberately does **not** add Markdown embedding, OCR, AI, collaboration,
 cloud sync, a drawing library, an account, or an export workflow. Those are
 valuable features in other tools; they are outside this plugin's purpose. The
 lean build also excludes Mermaid-to-Excalidraw conversion, web embeds, and the
 related heavy dependency tree.
+
+## Drawing controls
+
+The first tool is **Desplazar** (hand): dragging the canvas moves the view, and
+tapping **Seleccionar** switches back to selection. The floating bar holds the
+eleven drawing tools, the tool lock, undo and redo; it is drawn with Obsidian's
+own colours, radii, icon set and stroke width, so it follows the active theme and
+the font scale instead of looking like a web app dropped into the vault.
+
+Choose its place in **Settings → Just Simple Excalidraw → Posición de la barra
+de herramientas**:
+
+- **Abajo (horizontal)** — a pill centred above Obsidian's mobile navbar.
+- **Derecha (vertical)** — a column pinned to the right edge, centred vertically.
+
+On a phone the bar scrolls horizontally when the screen is too narrow for all
+fourteen buttons; on a tablet or an unfolded phone the whole bar fits.
+
+Excalidraw's own toolbar, its duplicate undo/redo pair and its contextual shape
+actions are hidden so the same control never appears twice. The main menu
+(hamburger, top left) is kept for canvas actions such as clearing the canvas or
+changing the background colour; on Obsidian mobile that menu lives inside the
+hidden bottom bar, so those two actions are desktop-only.
+
+## Canvas coordinates follow the view
+
+Pointer positions are converted with the canvas offset Excalidraw caches when it
+mounts. On mobile a *translation* of the view (the sidebar drawer, the slide-in
+animation of a newly opened leaf) changes neither the canvas size nor the window
+size, so that cached offset was never refreshed: every tap and drag stayed
+shifted by the distance the view had moved, and the selection rectangle was
+drawn away from the finger.
+
+The plugin now watches the canvas position and calls `refresh()` whenever it
+drifts, so coordinates stay aligned after drawer animations, orientation
+changes, keyboard show/hide and Obsidian window resizes.
 
 ## Lean build and Obsidian Sync
 

@@ -4,8 +4,169 @@
   padding: 0;
 }
 
-.just-simple-excalidraw-view > .excalidraw {
+/* Host for the canvas plus the floating toolbar. */
+.jse-root {
+  position: relative;
   height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.jse-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.jse-canvas > .excalidraw {
+  height: 100%;
+  width: 100%;
+}
+
+/*
+ * Excalidraw renders its toolbar, its undo/redo pair and its contextual shape
+ * actions in a bottom bar. That whole bar is replaced by the Obsidian-style bar
+ * below; only the main menu (top left) is kept, so canvas actions such as
+ * "clear canvas" or the background colour stay reachable.
+ */
+.jse-root .excalidraw .App-bottom-bar,
+.jse-root .excalidraw .App-toolbar-container,
+.jse-root .excalidraw .shapes-section,
+.jse-root .excalidraw .undo-redo-buttons {
+  display: none;
+}
+
+/* Main menu trigger, drawn like the rest of the Obsidian chrome. */
+.jse-root .excalidraw .main-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-size-m, 44px);
+  height: var(--touch-size-m, 44px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--touch-size-m, 44px);
+  background-color: var(--background-primary);
+  box-shadow: var(--raised, var(--shadow-s));
+  color: var(--icon-color, var(--text-muted));
+}
+
+.jse-root .excalidraw .main-menu-trigger svg {
+  width: var(--icon-l, 24px);
+  height: var(--icon-l, 24px);
+  stroke-width: var(--icon-l-stroke-width, 1.75px);
+}
+
+/*
+ * Floating toolbar, built like Obsidian's mobile navbar: a raised pill that
+ * uses Obsidian's own tokens, so colours, radii, icon size and stroke follow
+ * whatever theme and font scale the user has chosen.
+ */
+.jse-tools {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  pointer-events: none;
+}
+
+.jse-tools--bottom {
+  left: 0;
+  right: 0;
+  justify-content: center;
+  bottom: calc(
+    var(--safe-area-inset-bottom, 0px) + var(--navbar-height, 0px) +
+      var(--size-4-2, 8px)
+  );
+}
+
+.jse-tools--right {
+  top: 50%;
+  transform: translateY(-50%);
+  right: calc(
+    var(--safe-area-inset-right, 0px) + var(--size-4-2, 8px)
+  );
+}
+
+.jse-tools__pill {
+  pointer-events: auto;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1, 4px);
+  padding: 0 var(--size-4-2, 8px);
+  height: var(--touch-size-l, 52px);
+  max-width: calc(100vw - var(--size-4-8, 32px));
+  background-color: var(--background-primary);
+  border-radius: var(--touch-size-l, 52px);
+  box-shadow: var(--raised, var(--shadow-s));
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.jse-tools__pill::-webkit-scrollbar {
+  display: none;
+}
+
+.jse-tools--right .jse-tools__pill {
+  flex-direction: column;
+  height: auto;
+  max-height: calc(100% - var(--size-4-12, 48px) * 2);
+  padding: var(--size-4-2, 8px) var(--size-4-1, 4px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.jse-root .jse-tool.clickable-icon {
+  --icon-size: var(--icon-l, 24px);
+  --icon-stroke: var(--icon-l-stroke-width, 1.75px);
+  flex: 0 0 auto;
+  width: var(--touch-size-m, 44px);
+  min-width: var(--touch-size-m, 44px);
+  height: var(--touch-size-m, 44px);
+  min-height: var(--touch-size-m, 44px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--touch-size-m, 44px);
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--icon-color, var(--text-muted));
+  transition: none;
+}
+
+.jse-root .jse-tool.clickable-icon:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.jse-root .jse-tool.clickable-icon.is-active {
+  color: var(--icon-color-active, var(--text-accent));
+  background-color: var(
+    --background-modifier-active-hover,
+    var(--background-modifier-hover)
+  );
+}
+
+.jse-root .jse-tool .jse-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+}
+
+.jse-tools__divider {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 1px;
+  height: 22px;
+  margin: 0 var(--size-4-1, 4px);
+  background-color: var(--background-modifier-border);
+}
+
+.jse-tools--right .jse-tools__divider {
+  width: 22px;
+  height: 1px;
+  margin: var(--size-4-1, 4px) 0;
 }
 
 /*
