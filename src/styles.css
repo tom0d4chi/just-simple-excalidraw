@@ -262,7 +262,8 @@
   box-sizing: border-box;
   display: grid;
   grid-template-columns: var(--jse-tool-size);
-  gap: 2px;
+  /* spacing comes from each child, so a collapsed action takes its gap with it */
+  gap: 0;
   padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
   background-color: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
@@ -279,37 +280,18 @@
 }
 
 /*
- * Motion: the column lands with a short spring, the newly active tool bounces
- * once, and tools revealed by the overflow pop in. Tuned to feel like a native
- * toolbar, not like a page transition.
+ * Motion is reversible everywhere: every state change is a transition between
+ * two classes, so the way in and the way out use the same curve. Nothing pops in
+ * and then vanishes instantly.
  */
+.jse-tools__pill.jse-anim {
+  animation: jse-bar-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
 @keyframes jse-bar-in {
   from {
-    transform: scale(0.94);
     opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes jse-pop {
-  0% {
-    transform: scale(1);
-  }
-  45% {
-    transform: scale(1.18);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes jse-fade-in {
-  from {
-    opacity: 0;
-    transform: translateX(6px);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
@@ -317,38 +299,22 @@
   }
 }
 
-@keyframes jse-bounce-in {
-  0% {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.jse-tools__pill {
-  animation: jse-bar-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+/* The active tool's icon swells while it is active and settles back after. */
+.jse-root .jse-tool .jse-icon {
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .jse-root .jse-tool.is-active .jse-icon {
-  animation: jse-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* The shape list opens on the spot, aligned with its button. */
-.jse-shapes__menu {
-  animation: jse-fade-in 140ms ease-out both;
+  transform: scale(1.12);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jse-tools__pill,
-  .jse-root .jse-tool.is-active .jse-icon,
-  .jse-shapes__menu {
+  .jse-tools__pill.jse-anim,
+  .jse-root .jse-tool .jse-icon,
+  .jse-shapes__menu.jse-anim,
+  .jse-root .jse-tools__pill > .jse-tool--context.jse-anim {
     animation: none;
+    transition: none;
   }
 }
 
@@ -417,6 +383,8 @@
 .jse-shapes__menu {
   pointer-events: auto;
   position: absolute;
+  opacity: 1;
+  transform: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -433,6 +401,20 @@
   border-radius: var(--touch-size-l, 52px);
   box-shadow: var(--shadow-s);
   z-index: 7;
+}
+
+.jse-shapes__menu.is-closed {
+  opacity: 0;
+  transform: translateX(6px);
+  pointer-events: none;
+}
+
+.jse-shapes__menu.jse-anim {
+  animation: jse-menu-in 140ms ease-out backwards;
+}
+
+.jse-shapes__menu.jse-anim.is-closed {
+  animation: jse-menu-out 120ms ease-in forwards;
 }
 
 .jse-shapes__separator {
@@ -527,28 +509,95 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 /*
- * Selection actions slide into the column: the button grows from nothing, so
- * every other button moves by a fraction of a pixel per frame instead of
- * jumping.
+ * Selection actions open and close the same way: the slot grows or shrinks, so
+ * the rest of the column slides instead of jumping, in both directions.
  */
 .jse-root .jse-tools__pill > .jse-tool--context {
   overflow: hidden;
-  animation: jse-tool-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  height: var(--jse-tool-size, 42px);
+  opacity: 1;
+}
+
+.jse-root .jse-tools__pill > .jse-tool--context.is-collapsed {
+  height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.jse-root .jse-tools__pill > .jse-tool--context.jse-anim {
+  animation: jse-tool-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+
+.jse-root .jse-tools__pill > .jse-tool--context.jse-anim.is-collapsed {
+  animation: jse-tool-out 180ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+@keyframes jse-menu-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes jse-menu-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(6px);
+  }
 }
 
 @keyframes jse-tool-in {
   from {
     height: 0;
+    margin-bottom: 0;
     opacity: 0;
   }
   to {
     height: var(--jse-tool-size, 42px);
+    margin-bottom: 2px;
     opacity: 1;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .jse-root .jse-tools__pill > .jse-tool--context {
-    animation: none;
+@keyframes jse-tool-out {
+  from {
+    height: var(--jse-tool-size, 42px);
+    margin-bottom: 2px;
+    opacity: 1;
   }
+  to {
+    height: 0;
+    margin-bottom: 0;
+    opacity: 0;
+  }
+}
+
+/*
+ * The column's spacing lives on the children: a button that collapses takes its
+ * 2px with it, so the idle column has no leftover seams.
+ */
+.jse-root .jse-tools__pill > .jse-tool.clickable-icon {
+  margin-bottom: 2px;
+}
+
+.jse-root .jse-tools__pill > .jse-shapes {
+  margin-bottom: 2px;
+}
+
+.jse-root .jse-tools__pill > .jse-tool.clickable-icon:last-child,
+.jse-root .jse-tools__pill > .jse-shapes:last-child {
+  margin-bottom: 0;
+}
+
+.jse-root .jse-tools__pill > .jse-tool--context.is-collapsed {
+  margin-bottom: 0;
 }

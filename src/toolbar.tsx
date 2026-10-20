@@ -141,6 +141,7 @@ export function CanvasToolbar({
   getCanvasElement
 }: CanvasToolbarProps) {
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   const [lastShape, setLastShape] = useState<ToolName>("rectangle");
   const activeShape = SHAPES.includes(activeTool as ToolName) ? (activeTool as ToolName) : null;
@@ -255,6 +256,11 @@ export function CanvasToolbar({
   };
 
   useEffect(() => {
+    const frame = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
     if (!shapeMenuOpen) {
       return;
     }
@@ -304,18 +310,19 @@ export function CanvasToolbar({
     run();
   };
 
-  const contextButtons = selectionCount > 0
-    ? [
-        textSelected
-          ? actionButton("edit-text", "type", "Editar texto", (event) =>
-              stopAndRun(event, () => replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter")), false, false, "jse-tool--context")
-          : null,
-        actionButton("duplicate", "copy", "Duplicar", (event) =>
-          stopAndRun(event, () => replayShortcut(getCanvasElement, "d", false, true, 68, "KeyD")), false, false, "jse-tool--context"),
-        actionButton("delete", "trash-2", "Eliminar", (event) =>
-          stopAndRun(event, () => replayShortcut(getCanvasElement, "Delete", false, false, 46, "Delete")), false, false, "jse-tool--context")
-      ].filter(Boolean)
-    : [];
+  const contextClass = (available: boolean): string =>
+    `jse-tool--context${entered ? " jse-anim" : ""}${available ? "" : " is-collapsed"}`;
+  const contextButtons = [
+    actionButton("edit-text", "type", "Editar texto", (event) =>
+      stopAndRun(event, () => replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter")),
+      false, false, contextClass(textSelected)),
+    actionButton("duplicate", "copy", "Duplicar", (event) =>
+      stopAndRun(event, () => replayShortcut(getCanvasElement, "d", false, true, 68, "KeyD")),
+      false, false, contextClass(selectionCount > 0)),
+    actionButton("delete", "trash-2", "Eliminar", (event) =>
+      stopAndRun(event, () => replayShortcut(getCanvasElement, "Delete", false, false, 46, "Delete")),
+      false, false, contextClass(selectionCount > 0))
+  ];
 
   const lockButton = actionButton(
     "lock",
@@ -334,10 +341,10 @@ export function CanvasToolbar({
       "aria-pressed": Boolean(activeShape),
       onClick: toggleShapeMenu
     }, createElement(Icon, { name: TOOL_DEFINITIONS[activeShape ?? lastShape].icon })),
-    shapeMenuOpen
-      ? createElement("div", {
-        className: "jse-shapes__menu",
+    createElement("div", {
+        className: `jse-shapes__menu${entered ? " jse-anim" : ""}${shapeMenuOpen ? "" : " is-closed"}`,
         role: "menu",
+        "aria-hidden": !shapeMenuOpen,
         onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
       },
       SHAPES.map((tool) => createElement("button", {
@@ -359,14 +366,13 @@ export function CanvasToolbar({
         onClick: toggleLock
       }, createElement(Icon, { name: locked ? "lock" : "lock-open" }))
     )
-      : null
   );
 
   return createElement("div", {
     className: "jse-tools",
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
-  createElement("div", { className: "jse-tools__pill" },
+  createElement("div", { className: `jse-tools__pill${entered ? " jse-anim" : ""}` },
     isTouchDevice
       ? [
           toolButton(TOOL_DEFINITIONS.selection),

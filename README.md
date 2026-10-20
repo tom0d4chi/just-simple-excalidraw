@@ -90,9 +90,10 @@ picker and drops the picture in the middle of the view, selected.
 
 Excalidraw's own bar is gone. What it held now lives in the column, and appears
 only when the app has something to act on: duplicate and delete for any
-selection, plus edit text for a single text element. They grow into place so the
-column shifts gently rather than jumping, and they go through Excalidraw's own
-shortcuts, so each one is an undoable step.
+selection, plus edit text for a single text element. They grow into place and collapse
+away again, so the column slides rather than jumping, in both directions — as does
+the shape list on the way out. Every state is also correct with motion turned off,
+since the resting look is a class and the animation only fills in the frames.
 
 ## Theme
 

@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.21 - 2026-10-20
+
+- Every animation now runs both ways. The shape list fades and slides out the
+  same way it comes in, and the selection actions collapse instead of vanishing,
+  so the column slides back on its own.
+- Resting states never depend on an animation finishing: each state is written
+  as a class, and the animation only supplies the frames in between. If motion is
+  off or a WebView skips it, the result is still the correct picture.
+
 ## 0.1.20 - 2026-10-20
 
 - Excalidraw's bottom left bar is now hidden entirely: its three selection
