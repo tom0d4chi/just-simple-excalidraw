@@ -416,8 +416,15 @@ export function CanvasToolbar({
     locked
   );
 
+  /*
+   * The appearance menu is worth showing whenever a pick has somewhere to go: with
+   * a selection it restyles it, with a drawing tool it sets what the next stroke
+   * will look like — that is how the pen gets its thickness.
+   */
+  const stylingTarget = selectionCount > 0 || Boolean(activeShape) || activeTool === "freedraw" || activeTool === "text";
+
   const appearanceButton = createElement("div", {
-    className: `jse-shapes jse-shapes--collapsible${entered ? " jse-anim" : ""}${selectionCount > 0 ? "" : " is-collapsed"}`,
+    className: `jse-shapes jse-shapes--collapsible${entered ? " jse-anim" : ""}${stylingTarget ? "" : " is-collapsed"}`,
     key: "appearance"
   },
     createElement("button", {
@@ -425,7 +432,7 @@ export function CanvasToolbar({
       className: `jse-tool jse-tool--action clickable-icon${styleMenuOpen ? " is-open" : ""}`,
       "aria-label": t("appearance"),
       "aria-expanded": styleMenuOpen,
-      "aria-hidden": selectionCount === 0,
+      "aria-hidden": !stylingTarget,
       onClick: toggleStyleMenu
     }, createElement(Icon, { name: "palette" })),
     createElement("div", {

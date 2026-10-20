@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.43 - 2026-10-20
+
+- The appearance menu shows whenever a pick has somewhere to go: with a selection
+  it restyles it, and with a drawing tool active (pen, a shape, text) it sets what
+  the next stroke will look like. The pen finally has a thickness while you draw.
+
 ## 0.1.42 - 2026-10-20
 
 - That button is called "Sélection multi" now, and wears a dashed frame with a
