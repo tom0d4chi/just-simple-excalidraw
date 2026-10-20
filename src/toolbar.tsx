@@ -370,7 +370,7 @@ export function CanvasToolbar({
   const contextClass = (available: boolean): string =>
     `jse-tool--context jse-tool--collapsible${entered ? " jse-anim" : ""}${available ? "" : " is-collapsed"}`;
   const contextButtons = [
-    actionButton("edit-text", "type", t("editText"), (event) =>
+    actionButton("edit-text", "square-pen", t("editText"), (event) =>
       stopAndRun(event, () => {
         if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Edit"]')) {
           replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter");

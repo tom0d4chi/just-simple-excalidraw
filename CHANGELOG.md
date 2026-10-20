@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.28 - 2026-10-20
+
+- "Edit text" no longer borrows the text tool's T: it has its own glyph (a square
+  with a pen), so selecting a text no longer shows the same icon twice.
+
 ## 0.1.27 - 2026-10-20
 
 - The palette only appears when something is selected: with nothing to style it
