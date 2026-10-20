@@ -278,6 +278,11 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       box.style.top = `${top}px`;
       box.style.width = `${Math.abs(event.clientX - boxStart.x)}px`;
       box.style.height = `${Math.abs(event.clientY - boxStart.y)}px`;
+      const rect = box.querySelector("rect");
+      if (rect) {
+        rect.setAttribute("width", `${Math.max(0, Math.abs(event.clientX - boxStart.x) - 2)}`);
+        rect.setAttribute("height", `${Math.max(0, Math.abs(event.clientY - boxStart.y) - 2)}`);
+      }
     };
 
     const startBox = (event: PointerEvent): void => {
@@ -292,6 +297,9 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       }
       box = document.createElement("div");
       box.className = "jse-marquee";
+      // An SVG rectangle, so the dashes follow the rounded corners (a border
+      // cannot be animated, and gradient sides cannot turn a corner).
+      box.innerHTML = '<svg class="jse-marquee__svg"><rect class="jse-marquee__rect" x="1" y="1" rx="6" ry="6"/></svg>';
       host.appendChild(box);
       drawBox(event);
     };

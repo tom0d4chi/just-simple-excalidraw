@@ -824,25 +824,32 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   pointer-events: none;
   border-radius: 6px;
   background-color: color-mix(in srgb, var(--jse-accent) 10%, transparent);
-  background-image:
-    repeating-linear-gradient(90deg, var(--jse-accent) 0 6px, transparent 6px 12px),
-    repeating-linear-gradient(90deg, var(--jse-accent) 0 6px, transparent 6px 12px),
-    repeating-linear-gradient(0deg, var(--jse-accent) 0 6px, transparent 6px 12px),
-    repeating-linear-gradient(0deg, var(--jse-accent) 0 6px, transparent 6px 12px);
-  background-size: 100% 1.5px, 100% 1.5px, 1.5px 100%, 1.5px 100%;
-  background-position: 0 0, 0 100%, 0 0, 100% 0;
-  background-repeat: no-repeat;
-  animation: jse-ants 600ms linear infinite;
+}
+
+.jse-marquee__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.jse-marquee__rect {
+  fill: none;
+  stroke: var(--jse-accent);
+  stroke-width: 2;
+  stroke-dasharray: 10 7;
+  animation: jse-ants 500ms linear infinite;
 }
 
 @keyframes jse-ants {
   to {
-    background-position: 12px 0, -12px 100%, 0 -12px, 100% 12px;
+    stroke-dashoffset: -17;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jse-marquee {
+  .jse-marquee__rect {
     animation: none;
   }
 }
