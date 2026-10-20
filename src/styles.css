@@ -395,8 +395,12 @@
   align-items: center;
   /* The strip extends left of its button, so it states its own width instead of
      being clamped to the button's box. No plate behind it: icons on the sheet. */
+  /* Centred on its button, whatever the button size: the strip is taller than the
+     button by its own padding. `translate` is used because `transform` belongs to
+     the entrance animations. */
   right: calc(100% + var(--size-4-2, 8px));
-  top: 0;
+  top: 50%;
+  translate: 0 -50%;
   box-sizing: border-box;
   width: max-content;
   gap: 2px;
