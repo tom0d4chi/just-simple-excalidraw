@@ -878,10 +878,19 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   color: var(--text-muted);
 }
 
-/* What the marquee has caught so far, shown in the accent colour. */
+/* What the marquee has caught so far, shown in the accent colour. The layer is
+   clipped to the sheet so a ghost can never stretch the view or the page. */
+.jse-preselect-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+}
+
 .jse-preselect {
   position: absolute;
-  z-index: 4;
   box-sizing: border-box;
   border-radius: 4px;
   background-color: var(--jse-accent, #6965db);

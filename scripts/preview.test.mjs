@@ -34,7 +34,14 @@ const zoomed = { scrollX: 100, scrollY: -50, zoom: 1.5, originX: 10, originY: 20
 eq("zoomed/scrolled rect", selectionPreviewRects(els, zoomed, { left: 0, top: 0, right: 9999, bottom: 9999 }).filter(r => r.id === "a"),
    [{ id: "a", left: 10 + (80 + 100) * 1.5, top: 20 + (220 - 50) * 1.5, width: 180, height: 120 }]);
 
-// 3. the selection-type element is never reported
+// 3. the container can start anywhere in the window (Obsidian's chrome above it):
+//    the same finger position must give the same rectangle.
+const shifted = { ...view, hostY: 120, hostX: 15 };
+eq("host offset does not shift the ghost",
+   selectionPreviewRects(els, shifted, { left: 40 + 15, top: 180 + 120, right: 200 + 15, bottom: 330 + 120 }),
+   [{ id: "a", left: 80, top: 220, width: 120, height: 80 }]);
+
+// 4. the selection-type element is never reported
 eq("no selection pseudo-element", selectionPreviewRects(els, view, { left: -9999, top: -9999, right: 9999, bottom: 9999 }).map(r => r.id), ["a", "b"]);
 console.log(fails === 0 ? "ALL PASS" : `${fails} FAILURE(S)`);
 process.exit(fails === 0 ? 0 : 1);

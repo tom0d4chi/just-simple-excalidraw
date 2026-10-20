@@ -34,10 +34,15 @@ export interface PreviewRect {
  */
 export function selectionPreviewRects(
   elements: readonly { id: string; type: string; x: number; y: number; width: number; height: number; isDeleted?: boolean }[],
-  view: { scrollX: number; scrollY: number; zoom: number; originX: number; originY: number },
+  view: { scrollX: number; scrollY: number; zoom: number; originX: number; originY: number; hostX?: number; hostY?: number },
   box: PreviewBox
 ): PreviewRect[] {
   const zoom = view.zoom || 1;
+  // The box arrives in client coordinates; the rectangles are in container ones.
+  const boxLeft = box.left - (view.hostX ?? 0);
+  const boxTop = box.top - (view.hostY ?? 0);
+  const boxRight = box.right - (view.hostX ?? 0);
+  const boxBottom = box.bottom - (view.hostY ?? 0);
   return elements.flatMap((element) => {
     if (element.isDeleted || element.type === "selection") {
       return [];
@@ -46,7 +51,7 @@ export function selectionPreviewRects(
     const top = view.originY + (element.y + view.scrollY) * zoom;
     const width = element.width * zoom;
     const height = element.height * zoom;
-    const caught = left < box.right && left + width > box.left && top < box.bottom && top + height > box.top;
+    const caught = left < boxRight && left + width > boxLeft && top < boxBottom && top + height > boxTop;
     return caught ? [{ id: element.id, left, top, width, height }] : [];
   });
 }
@@ -161,6 +166,15 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   // as a preview of what the release will select. It is an overlay: the shapes
   // themselves are never touched, so no accent colour can end up in the file.
   const preview = new Map<string, HTMLElement>();
+  let previewLayer: HTMLDivElement | null = null;
+  const layer = (): HTMLDivElement => {
+    if (!previewLayer || !previewLayer.isConnected) {
+      previewLayer = document.createElement("div");
+      previewLayer.className = "jse-preselect-layer";
+      host.appendChild(previewLayer);
+    }
+    return previewLayer;
+  };
 
   const drawBox = (event: PointerEvent): void => {
     if (!boxStart || event.pointerId !== boxStart.pointerId || !box) {
@@ -206,7 +220,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
     const live = selectionPreviewRects(
       api.getSceneElements(),
-      { scrollX: state.scrollX, scrollY: state.scrollY, zoom, originX, originY },
+      { scrollX: state.scrollX, scrollY: state.scrollY, zoom, originX, originY, hostX: hostRect.left, hostY: hostRect.top },
       { left, top, right, bottom }
     );
 
@@ -222,9 +236,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       if (!node) {
         node = document.createElement("div");
         node.className = "jse-preselect";
-        // In the container, not inside the marquee: nested there, the box's own
-        // position would be added to every ghost and they would follow the finger.
-        host.appendChild(node);
+        // In a clipping layer of the container, never inside the marquee: nested
+        // there, the box's own position would be added to every ghost and they
+        // would follow the finger. The layer cannot grow the page either.
+        layer().appendChild(node);
         preview.set(rect.id, node);
       }
       node.style.left = `${rect.left}px`;
@@ -239,6 +254,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       node.remove();
     }
     preview.clear();
+    previewLayer?.remove();
+    previewLayer = null;
   };
 
   const startBox = (event: PointerEvent): void => {
