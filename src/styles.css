@@ -816,16 +816,19 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * is painted with gradients because a dashed border cannot be animated.
  */
 .jse-marquee {
+  /* Obsidian keeps the accent under --color-accent; the interactive and text
+     variants are fallbacks for themes that rename it. */
+  --jse-accent: var(--color-accent, var(--interactive-accent, var(--text-accent, #6965db)));
   position: absolute;
   z-index: 5;
   pointer-events: none;
   border-radius: 6px;
-  background-color: color-mix(in srgb, var(--interactive-accent, #6965db) 10%, transparent);
+  background-color: color-mix(in srgb, var(--jse-accent) 10%, transparent);
   background-image:
-    repeating-linear-gradient(90deg, var(--interactive-accent, #6965db) 0 6px, transparent 6px 12px),
-    repeating-linear-gradient(90deg, var(--interactive-accent, #6965db) 0 6px, transparent 6px 12px),
-    repeating-linear-gradient(0deg, var(--interactive-accent, #6965db) 0 6px, transparent 6px 12px),
-    repeating-linear-gradient(0deg, var(--interactive-accent, #6965db) 0 6px, transparent 6px 12px);
+    repeating-linear-gradient(90deg, var(--jse-accent) 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(90deg, var(--jse-accent) 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(0deg, var(--jse-accent) 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(0deg, var(--jse-accent) 0 6px, transparent 6px 12px);
   background-size: 100% 1.5px, 100% 1.5px, 1.5px 100%, 1.5px 100%;
   background-position: 0 0, 0 100%, 0 0, 100% 0;
   background-repeat: no-repeat;
