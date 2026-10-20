@@ -266,6 +266,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
     let interactiveCanvas: HTMLElement | null = null;
     let boxStart: { x: number; y: number; pointerId: number } | null = null;
     let box: HTMLDivElement | null = null;
+    const fingers = new Set<number>();
+    let multiTouch = false;
 
     const drawBox = (event: PointerEvent): void => {
       if (!boxStart || event.pointerId !== boxStart.pointerId || !box) {
@@ -318,15 +320,43 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
     };
 
     const onMove = (event: PointerEvent): void => drawBox(event);
+    const cancelBox = (): void => {
+      boxStart = null;
+      box?.remove();
+      box = null;
+      if (interactiveCanvas) {
+        interactiveCanvas.style.removeProperty("opacity");
+        interactiveCanvas = null;
+      }
+    };
+
     const onDownBox = (event: PointerEvent): void => {
-      if (event.pointerType !== "mouse") {
+      if (event.pointerType === "mouse") {
+        return;
+      }
+      fingers.add(event.pointerId);
+      /*
+       * A second finger is a pan or a pinch, never a selection: the marquee is
+       * dropped and stays dropped until every finger is up.
+       */
+      if (boxStart && boxStart.pointerId !== event.pointerId) {
+        multiTouch = true;
+        cancelBox();
+        return;
+      }
+      if (!multiTouch) {
         startBox(event);
       }
     };
     const onUpBox = (event: PointerEvent): void => {
-      if (event.pointerType !== "mouse") {
-        endBox(event);
+      if (event.pointerType === "mouse") {
+        return;
       }
+      fingers.delete(event.pointerId);
+      if (fingers.size === 0) {
+        multiTouch = false;
+      }
+      endBox(event);
     };
 
     host.addEventListener("pointerdown", onDownBox, true);
