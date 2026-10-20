@@ -18,7 +18,7 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "Just Simple Excalidraw" });
     containerEl.createEl("p", { text: `Versión instalada: ${this.plugin.manifest.version}` });
     containerEl.createEl("p", {
-      text: "La barra de herramientas está fija en el borde derecho, en vertical. Un arrastre desplaza el lienzo; un doble toque y arrastre selecciona."
+      text: "La barra de herramientas está fija en el borde derecho, en vertical. En el móvil, un dedo usa la herramienta activa y dos dedos desplazan y hacen zoom; en el escritorio se arrastra con la herramienta de mano."
     });
   }
 }

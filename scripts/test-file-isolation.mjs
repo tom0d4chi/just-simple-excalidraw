@@ -60,6 +60,7 @@ const mocks = {
     }
     globalThis.__testWorkspaceLeaf = WorkspaceLeaf;
     export function normalizePath(path) { return path; }
+    export const Platform = { isMobile: false, isDesktop: true };
   `,
   react: `
     export function createElement(type, props, ...children) {

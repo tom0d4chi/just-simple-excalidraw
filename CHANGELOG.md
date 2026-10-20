@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.16 - 2026-10-20
+
+Touch interaction rebuilt around how phones actually work, and the column
+trimmed to its core.
+
+- **One finger acts, two fingers pan and pinch-zoom.** That is Excalidraw's own
+  multi-touch gesture, and what every mobile drawing app does. On touch the
+  selection tool is now the base tool, so a drag on empty canvas draws a marquee,
+  a drag on a shape moves it, and panning never needs a mode change. The hand
+  tool and its double-tap workaround are gone from mobile; the hand tool is kept
+  on desktop, where there is no second finger.
+- **The column keeps only the core:** selection, pen, rectangle, arrow, text,
+  eraser, colour, undo, redo. Line, ellipse, diamond, image and the tool lock
+  moved behind a "more" button that opens above the core set and collapses as
+  soon as a tool is picked. When the active tool lives in the overflow, the
+  "more" button shows it.
+- **Motion:** the column lands with a short spring, the newly selected tool
+  bounces once, tools revealed by the overflow pop in. Press feedback on every
+  button, all of it disabled under `prefers-reduced-motion`.
+- **No desktop leftovers on touch:** hover styling only where a pointer can
+  hover, no keyboard shortcut badges, no hint line, no long-press callout or
+  text selection on the column.
+
 ## 0.1.15 - 2026-10-20
 
 Mobile robustness pass, from an audit of the touch interaction:

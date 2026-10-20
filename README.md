@@ -66,27 +66,26 @@ related heavy dependency tree.
 
 ## Drawing controls
 
-The first tool is **Desplazar** (hand): a single drag moves the view. Selection
-is one tap away, and a **double tap followed by a drag** draws a selection
-marquee without leaving the canvas; a double tap on its own switches to the
-selection tool, and once that selection is dropped the hand tool comes back.
+**On touch, one finger acts and two fingers pan and pinch-zoom** — the gesture
+every drawing app on a phone uses, and the one Excalidraw implements for
+multi-touch. The selection tool is therefore the base tool: a drag on empty
+canvas draws a selection marquee, a drag on a shape moves it, and moving the
+canvas never requires switching tool. On desktop the hand tool stays the default,
+since a mouse has no second finger.
 
-The floating bar sits on the right edge as a single vertical column: the eleven
-drawing tools, the colour / stroke sheet, the tool lock, undo and redo. All of
-them are visible at once — nothing scrolls on a phone in portrait, and the
-column only scrolls on a short viewport such as a phone held sideways.
+The floating bar is the core of the app: a single vertical column on the right
+edge holding selection, pen, rectangle, arrow, text, eraser, the colour sheet,
+undo and redo. Line, ellipse, diamond, image and the tool lock sit behind a
+**Más herramientas** button that opens above the core set and collapses as soon
+as a tool is picked — so the column stays short under the thumb. All of it is
+drawn with Obsidian's tokens and Lucide glyphs, with a short spring when the bar
+appears, a bounce on the newly selected tool, and pop-in for revealed tools.
 
-Everything is drawn with Obsidian's own tokens and Lucide glyphs, so colours,
-radii, icon size and stroke width follow the theme and the font scale.
-
-The plugin settings tab has no options to set: it reports the installed version,
-so an update that did not land is visible at a glance.
-
-Excalidraw's canvas menu (clear canvas, background colour), its duplicate and
-delete actions and its colour sheet are kept — not hidden — and restyled: they
-live in a small pill in the top right corner, where Obsidian keeps view actions,
-so the bottom of the screen belongs to the drawing tools. The colour sheet opens
-under that pill, from the **Color y grosor** button.
+Excalidraw's canvas menu, its duplicate/delete actions and its colour sheet are
+kept — not hidden — and restyled: they live in a small pill in the top right
+corner, where Obsidian keeps view actions, so the bottom of the screen belongs to
+the drawing tools. The colour sheet opens under that pill, from the **Color y
+grosor** button.
 
 ## Theme
 

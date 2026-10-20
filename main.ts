@@ -1,4 +1,4 @@
-import { FileView, Notice, Plugin, TFile, WorkspaceLeaf, normalizePath } from "obsidian";
+import { FileView, Notice, Platform, Plugin, TFile, WorkspaceLeaf, normalizePath } from "obsidian";
 import { createElement, useCallback, useEffect, useRef, useState, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -16,7 +16,6 @@ import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/ty
 import { CanvasToolbar } from "./src/toolbar";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { keepViewportInSync } from "./src/viewport";
-import { mountDoubleTapSelection } from "./src/gestures";
 
 const VIEW_TYPE_EXCALIDRAW = "just-simple-excalidraw-view";
 const AUTOSAVE_DELAY_MS = 750;
@@ -41,13 +40,21 @@ type ExcalidrawCanvasProps = Omit<ComponentProps<typeof Excalidraw>, "initialDat
   initialData: StoredScene;
 };
 
-/** Pointer-down on the canvas pans the view; the other tools are one tap away. */
-const DEFAULT_ACTIVE_TOOL: AppState["activeTool"] = {
-  type: "hand",
-  customType: null,
-  locked: false,
-  lastActiveTool: null
-};
+/*
+ * Touch and mouse need different defaults. With a finger, one finger acts and
+ * two pan (Excalidraw's multi-touch gesture), so the selection tool is the base
+ * tool: a drag on empty canvas draws a marquee, a drag on a shape moves it, and
+ * nothing has to be switched to pan. With a mouse there is no second finger, so
+ * the hand tool stays the default and dragging pans.
+ */
+function defaultActiveTool(isTouchDevice: boolean): AppState["activeTool"] {
+  return {
+    type: isTouchDevice ? "selection" : "hand",
+    customType: null,
+    locked: false,
+    lastActiveTool: null
+  };
+}
 
 function emptyScene(): StoredScene {
   return { elements: [], appState: {}, files: {} };
@@ -88,12 +95,12 @@ function formatDrawingName(now: Date): string {
  * `activeTool`, and Excalidraw would then fall back to the selection tool. The
  * hand tool is the default here, so it is re-applied on every load.
  */
-function withDefaultTool(scene: StoredScene): StoredScene {
+function withDefaultTool(scene: StoredScene, isTouchDevice: boolean): StoredScene {
   return {
     ...scene,
     appState: {
       ...scene.appState,
-      activeTool: { ...DEFAULT_ACTIVE_TOOL }
+      activeTool: defaultActiveTool(isTouchDevice)
     }
   };
 }
@@ -101,7 +108,8 @@ function withDefaultTool(scene: StoredScene): StoredScene {
 function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
-  const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(DEFAULT_ACTIVE_TOOL);
+  const isTouchDevice = Platform.isMobile;
+  const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(() => defaultActiveTool(isTouchDevice));
   const [styleOpen, setStyleOpen] = useState(false);
   const [selectionCount, setSelectionCount] = useState(0);
   const selectionCountRef = useRef(0);
@@ -136,14 +144,6 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
     return keepViewportInSync(api, getCanvasElement);
   }, [api, getCanvasElement]);
 
-  // Double tap then drag selects, while the hand tool stays the base tool.
-  useEffect(() => {
-    if (!api) {
-      return;
-    }
-    return mountDoubleTapSelection(api, getCanvasElement, () => canvasHostRef.current);
-  }, [api, getCanvasElement]);
-
   const handleChange = useCallback((elements: readonly OrderedExcalidrawElement[], appState: AppState, files: BinaryFiles): void => {
     const nextTool = appState?.activeTool;
     const previousTool = activeToolRef.current;
@@ -163,7 +163,7 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
   return createElement("div", { className: "jse-root" },
     createElement("div", { className: "jse-canvas", ref: canvasHostRef },
       createElement(Excalidraw, {
-        initialData: withDefaultTool(initialData ?? emptyScene()),
+        initialData: withDefaultTool(initialData ?? emptyScene(), isTouchDevice),
         theme,
         detectScroll: false,
         handleKeyboardGlobally: false,
@@ -200,6 +200,7 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
       styleOpen,
       styleAvailable: selectionCount > 0 ||
         (activeTool.type !== "hand" && activeTool.type !== "selection" && activeTool.type !== "eraser"),
+      isTouchDevice,
       getCanvasElement
     })
   );

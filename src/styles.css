@@ -297,11 +297,76 @@
   border-radius: var(--touch-size-l, 52px);
   box-shadow: var(--shadow-s);
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
   touch-action: manipulation;
 }
 
 .jse-tools__pill::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * Motion: the column lands with a short spring, the newly active tool bounces
+ * once, and tools revealed by the overflow pop in. Tuned to feel like a native
+ * toolbar, not like a page transition.
+ */
+@keyframes jse-bar-in {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes jse-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes jse-bounce-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.jse-tools__pill {
+  animation: jse-bar-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.jse-root .jse-tool.is-active .jse-icon {
+  animation: jse-pop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* The overflow opens above the core set: four extra tools plus the lock. */
+.jse-tools__pill.is-expanded > .jse-tool:nth-child(-n + 5) {
+  animation: jse-bounce-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-tools__pill,
+  .jse-root .jse-tool.is-active .jse-icon,
+  .jse-tools__pill.is-expanded > .jse-tool:nth-child(-n + 5) {
+    animation: none;
+  }
 }
 
 .jse-root .jse-tool.clickable-icon {
@@ -326,8 +391,10 @@
   transform: scale(0.92);
 }
 
-.jse-root .jse-tool.clickable-icon:hover {
-  background-color: var(--background-modifier-hover);
+@media (hover: hover) {
+  .jse-root .jse-tool.clickable-icon:hover {
+    background-color: var(--background-modifier-hover);
+  }
 }
 
 .jse-root .jse-tool.clickable-icon.is-disabled {
@@ -342,6 +409,12 @@
     --background-modifier-active-hover,
     var(--background-modifier-hover)
   );
+}
+
+.jse-root .jse-tool.is-disabled {
+  color: var(--text-faint);
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .jse-root .jse-tool .jse-icon {
@@ -417,4 +490,14 @@
 .just-simple-excalidraw-error pre {
   overflow: auto;
   white-space: pre-wrap;
+}
+
+/*
+ * Touch devices get no desktop leftovers: no keyboard shortcut badges, no
+ * "hint" line under the toolbar, no hover-only affordances.
+ */
+body.is-mobile .jse-root .excalidraw .ToolIcon__keybinding,
+body.is-mobile .jse-root .excalidraw .HintViewer,
+body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
+  display: none;
 }
