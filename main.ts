@@ -207,6 +207,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       return hit ? hit.id : null;
     };
 
+    let tap: { pointerId: number; x: number; y: number; at: number } | null = null;
+
     const onDown = (event: PointerEvent): void => {
       if (event.pointerType === "mouse") {
         return;
@@ -217,6 +219,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
         return;
       }
       const id = elementUnder(event);
+      tap = id ? null : { pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: Date.now() };
       if (id) {
         if (!Object.hasOwn(state.selectedElementIds ?? {}, id)) {
           api.updateScene({ appState: { selectedElementIds: { [id]: true } } });
@@ -231,8 +234,32 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       }
     };
 
+    /* A tap on empty paper leaves the cursor mode, however it was armed. */
+    const onUp = (event: PointerEvent): void => {
+      const origin = tap;
+      tap = null;
+      if (!origin || origin.pointerId !== event.pointerId) {
+        return;
+      }
+      if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10 || Date.now() - origin.at > 350) {
+        return;
+      }
+      window.setTimeout(() => {
+        const state = api.getAppState();
+        if (state.activeTool.type === "selection" && Object.keys(state.selectedElementIds ?? {}).length === 0) {
+          selectionArmedRef.current = false;
+          setSelectionArmed(false);
+          api.setActiveTool({ type: "hand" });
+        }
+      }, 0);
+    };
+
     host.addEventListener("pointerdown", onDown, true);
-    return () => host.removeEventListener("pointerdown", onDown, true);
+    host.addEventListener("pointerup", onUp, true);
+    return () => {
+      host.removeEventListener("pointerdown", onDown, true);
+      host.removeEventListener("pointerup", onUp, true);
+    };
   }, [api]);
 
 

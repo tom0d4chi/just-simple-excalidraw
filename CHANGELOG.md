@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.41 - 2026-10-20
+
+- A tap on empty paper leaves the cursor mode even when the cursor was pressed
+  from its button: the button goes dark and the hand takes over. A drag keeps the
+  mode, so the marquee still works.
+
 ## 0.1.40 - 2026-10-20
 
 - The cursor is two things now. Pressed from its button it is a real mode: it
