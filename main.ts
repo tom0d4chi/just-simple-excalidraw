@@ -45,6 +45,8 @@ type ExcalidrawCanvasProps = Omit<ComponentProps<typeof Excalidraw>, "initialDat
   initialData: StoredScene;
   dotGrid?: boolean;
   snapToGrid?: boolean;
+  /** Read live: the setting can change while the drawing is open. */
+  shouldSnapToGrid?: () => boolean;
 };
 
 /*
@@ -116,7 +118,7 @@ function withDefaultTool(scene: StoredScene, isTouchDevice: boolean): StoredScen
   };
 }
 
-function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, ...props }: ExcalidrawCanvasProps) {
+function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, shouldSnapToGrid, ...props }: ExcalidrawCanvasProps) {
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const isTouchDevice = Platform.isMobile;
@@ -205,7 +207,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, ...
         cancelMarqueeRef.current = cancel;
       },
       onGestureEnd: (before) => {
-        if (!snapToGrid) {
+        // Read at gesture time: toggling the setting must not need a reload.
+        if (!(shouldSnapToGrid?.() ?? snapToGrid)) {
           return;
         }
         const elements = api.getSceneElements();
@@ -641,7 +644,7 @@ class ExcalidrawView extends FileView {
       key: file.path,
       initialData: scene,
       dotGrid: this.plugin.settings.dotGrid,
-      snapToGrid: this.plugin.settings.snapToGrid,
+      shouldSnapToGrid: () => this.plugin.settings.snapToGrid,
       onPaste: (_data: unknown, event: ClipboardEvent | null): boolean => {
         const image = Array.from(event?.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
         if (image && image.size > MAX_IMAGE_BYTES) {
