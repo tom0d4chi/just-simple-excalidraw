@@ -57,6 +57,8 @@ interface CanvasToolbarProps {
   textSelected: boolean;
   selectionArmed: boolean;
   onToggleSelection: () => void;
+  snapToGrid?: boolean;
+  onToggleSnap?: () => void;
   canRedo: boolean;
   isTouchDevice: boolean;
   getCanvasElement: () => HTMLElement | null;
@@ -160,6 +162,8 @@ export function CanvasToolbar({
   textSelected,
   selectionArmed,
   onToggleSelection,
+  snapToGrid = false,
+  onToggleSnap = () => {},
   canRedo,
   isTouchDevice,
   getCanvasElement
@@ -538,6 +542,11 @@ export function CanvasToolbar({
           toolButton(TOOL_DEFINITIONS.text),
           toolButton(TOOL_DEFINITIONS.image, () => insertImage),
           toolButton(TOOL_DEFINITIONS.eraser),
+          actionButton("snap", "magnet", t("snapToGrid"), (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onToggleSnap();
+          }, snapToGrid),
           ...contextButtons
         ]
       : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool])),

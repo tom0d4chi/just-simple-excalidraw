@@ -43,6 +43,8 @@ type StoredScene = ExcalidrawInitialDataState & {
 type ExcalidrawCanvasProps = Omit<ComponentProps<typeof Excalidraw>, "initialData"> & {
   initialData: StoredScene;
   dotGrid?: boolean;
+  snapToGrid?: boolean;
+  onToggleSnap?: () => void;
 };
 
 /*
@@ -99,25 +101,29 @@ function imageByteLength(dataURL: string): number {
  * `activeTool`, and Excalidraw would then fall back to the selection tool. The
  * hand tool is the default here, so it is re-applied on every load.
  */
-function withDefaultTool(scene: StoredScene, isTouchDevice: boolean): StoredScene {
+function withDefaultTool(scene: StoredScene, isTouchDevice: boolean, snapToGrid = false): StoredScene {
   return {
     ...scene,
     appState: {
       ...scene.appState,
       activeTool: defaultActiveTool(isTouchDevice),
-      // Excalidraw paints its grid into the canvas bitmap, where no stylesheet can
-      // touch it. The plugin draws a dot grid on the sheet instead, so its own
-      // grid is kept off and the canvas is left transparent for it to show.
-      gridModeEnabled: false,
+      /*
+       * Excalidraw paints its grid into the canvas bitmap, where no stylesheet can
+       * touch it. The plugin draws a dot grid on the sheet instead, so its own grid
+       * stays off — except when snapping is asked for: snapping is Excalidraw's, and
+       * our dots sit on its lattice (same gridSize), so objects land on the dots.
+       */
+      gridModeEnabled: snapToGrid,
       viewBackgroundColor: "transparent"
     }
   };
 }
 
-function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawCanvasProps) {
+function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, onToggleSnap, ...props }: ExcalidrawCanvasProps) {
   const [theme, setTheme] = useState<typeof THEME.LIGHT | typeof THEME.DARK>(THEME.LIGHT);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const isTouchDevice = Platform.isMobile;
+  const [snap, setSnap] = useState(snapToGrid);
   const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(() => defaultActiveTool(isTouchDevice));
   const [style, setStyle] = useState<StyleState>({
     strokeColor: "#1e1e1e",
@@ -318,7 +324,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
   },
     createElement("div", { className: "jse-canvas", ref: canvasHostRef },
       createElement(Excalidraw, {
-        initialData: withDefaultTool(initialData ?? emptyScene(), isTouchDevice),
+        initialData: withDefaultTool(initialData ?? emptyScene(), isTouchDevice, snapToGrid),
         theme,
         detectScroll: false,
         handleKeyboardGlobally: false,
@@ -357,6 +363,14 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       textSelected,
       selectionArmed,
       onToggleSelection: toggleSelection,
+      snapToGrid: snap,
+      onToggleSnap: () => {
+        const next = !snap;
+        setSnap(next);
+        // Snapping is Excalidraw's grid, whose step is the one our dots use.
+        api?.updateScene({ appState: { gridModeEnabled: next } });
+        onToggleSnap?.();
+      },
       canRedo,
       isTouchDevice,
       getCanvasElement
@@ -372,6 +386,8 @@ export interface JustSimpleExcalidrawSettings {
   drawingFolder: string;
   /** Prefix for new file names; empty means the timestamp alone. */
   drawingPrefix: string;
+  /** Snap new and moved shapes to the dot grid. */
+  snapToGrid: boolean;
 }
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
@@ -380,7 +396,8 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     dotGrid: true,
     drawingFolderMode: "note",
     drawingFolder: "",
-    drawingPrefix: "Drawing"
+    drawingPrefix: "Drawing",
+    snapToGrid: false
   };
 
   async onload(): Promise<void> {
@@ -392,6 +409,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       drawingFolderMode: saved?.drawingFolderMode ?? (saved?.drawingFolder ? "fixed" : "note"),
       drawingFolder: "",
       drawingPrefix: "Drawing",
+      snapToGrid: false,
       ...(saved ?? {})
     };
     this.applyDotGrid();
@@ -624,6 +642,11 @@ class ExcalidrawView extends FileView {
       key: file.path,
       initialData: scene,
       dotGrid: this.plugin.settings.dotGrid,
+      snapToGrid: this.plugin.settings.snapToGrid,
+      onToggleSnap: () => {
+        this.plugin.settings.snapToGrid = !this.plugin.settings.snapToGrid;
+        void this.plugin.saveSettings();
+      },
       onPaste: (_data: unknown, event: ClipboardEvent | null): boolean => {
         const image = Array.from(event?.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
         if (image && image.size > MAX_IMAGE_BYTES) {
