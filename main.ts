@@ -206,6 +206,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       onMarqueeCancel: (cancel) => {
         cancelMarqueeRef.current = cancel;
       },
+      snapping: () => ((shouldSnapToGrid?.() ?? snapToGrid) ? api.getAppState().gridSize || 20 : 0),
       onGestureEnd: (before) => {
         // Read at gesture time: toggling the setting must not need a reload.
         if (!(shouldSnapToGrid?.() ?? snapToGrid)) {

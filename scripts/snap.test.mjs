@@ -7,7 +7,7 @@ import { join } from "node:path";
 const out = join(mkdtempSync(join(tmpdir(), "jse-snap-")), "snap.mjs");
 execFileSync("npx", ["esbuild", "src/snap.ts", "--bundle", "--format=esm", "--platform=node",
   `--outfile=${out}`, "--log-level=error"], { stdio: "inherit" });
-const { snapValue, snapElements } = await import(out);
+const { snapValue, snapElements, snapClient } = await import(out);
 
 let fails = 0;
 const eq = (name, got, want) => {
@@ -44,6 +44,17 @@ eq("freedraw is not snapped", [sketch.changed, sketch.elements[0].x], [false, 27
 // deleted elements are ignored
 const gone = snapElements([{ ...el("a", 27, 33), isDeleted: true }], 20, new Set(["a"]));
 eq("deleted is ignored", gone.changed, false);
+
+// where the finger must be for the anchor to land on a dot
+const creating = { anchorX: 0, anchorY: 0, originX: 100, originY: 100, zoom: 1, step: 20 };
+eq("new shape: finger pulled to the dot", snapClient({ clientX: 107, clientY: 113 }, creating), { x: 100, y: 120 });
+eq("new shape: already near a dot", snapClient({ clientX: 101, clientY: 102 }, creating), { x: 100, y: 100 });
+const zoomed = { anchorX: 0, anchorY: 0, originX: 100, originY: 100, zoom: 2, step: 20 };
+eq("zoom applies to the correction", snapClient({ clientX: 114, clientY: 126 }, zoomed), { x: 100, y: 140 });
+const moving = { anchorX: 100, anchorY: 120, originX: 300, originY: 300, zoom: 1, step: 20 };
+eq("moving: nearest dot wins past the half-step", snapClient({ clientX: 307, clientY: 313 }, moving), { x: 300, y: 320 });
+eq("moving: below the half-step it does not move", snapClient({ clientX: 305, clientY: 305 }, moving), { x: 300, y: 300 });
+eq("moving: follows once past it", snapClient({ clientX: 321, clientY: 333 }, moving), { x: 320, y: 340 });
 
 console.log(fails === 0 ? "ALL PASS" : `${fails} FAILURE(S)`);
 process.exit(fails === 0 ? 0 : 1);

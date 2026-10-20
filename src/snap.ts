@@ -62,3 +62,33 @@ export function snapElements<T extends SnapElement>(
     ))
   };
 }
+
+export interface SnapGesture {
+  /** Scene coordinate of the anchor when the gesture started. */
+  anchorX: number;
+  anchorY: number;
+  /** Raw client coordinate of the finger when the gesture started. */
+  originX: number;
+  originY: number;
+  zoom: number;
+  step: number;
+}
+
+/**
+ * Where the finger has to be for the anchor to sit on the lattice. Excalidraw moves
+ * elements by a delta from the pointer position it captured at pointerdown, so
+ * rewriting the pointer coordinate is how a live snap is expressed without touching
+ * the scene mid-gesture.
+ */
+export function snapClient(
+  client: { clientX: number; clientY: number },
+  gesture: SnapGesture
+): { x: number; y: number } {
+  const zoom = gesture.zoom || 1;
+  const rawX = gesture.anchorX + (client.clientX - gesture.originX) / zoom;
+  const rawY = gesture.anchorY + (client.clientY - gesture.originY) / zoom;
+  return {
+    x: gesture.originX + (snapValue(rawX, gesture.step) - gesture.anchorX) * zoom,
+    y: gesture.originY + (snapValue(rawY, gesture.step) - gesture.anchorY) * zoom
+  };
+}

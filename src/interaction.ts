@@ -1,4 +1,5 @@
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import { snapClient, snapValue, type SnapGesture } from "./snap";
 
 /*
  * All the pointer behaviour of the sheet lives here, in one place:
@@ -75,6 +76,8 @@ export interface InteractionOptions {
    * whatever changed during the gesture is the set a snap has to move.
    */
   onGestureEnd?: (before: ReadonlyMap<string, number>) => void;
+  /** Live snapping of the finger to the dot lattice, when the setting asks for it. */
+  snapping?: () => number;
 }
 
 export interface InteractionHandle {
@@ -104,6 +107,78 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   let multiTouch = false;
 
   let beforeGesture = new Map<string, number>();
+  let pointerSnap: SnapGesture | null = null;
+  const DRAFTING = new Set(["rectangle", "diamond", "ellipse", "line", "arrow", "text", "frame"]);
+
+  /* Rewrites the coordinates Excalidraw is about to read, so the snap is live. */
+  const applySnap = (event: PointerEvent, gesture: SnapGesture): void => {
+    const snapped = snapClient(event, gesture);
+    Object.defineProperty(event, "clientX", { value: snapped.x, configurable: true });
+    Object.defineProperty(event, "clientY", { value: snapped.y, configurable: true });
+  };
+
+  const scenePoint = (event: PointerEvent): { x: number; y: number; zoom: number } => {
+    const state = api.getAppState();
+    const bounds = host.getBoundingClientRect();
+    const zoom = state.zoom.value || 1;
+    return {
+      x: (event.clientX - bounds.left) / zoom - state.scrollX,
+      y: (event.clientY - bounds.top) / zoom - state.scrollY,
+      zoom
+    };
+  };
+
+  /* Called first in the capture phase, before the gesture handlers below. */
+  const onDownSnap = (event: PointerEvent): void => {
+    pointerSnap = null;
+    const step = options.snapping?.() ?? 0;
+    if (!step) {
+      return;
+    }
+    const state = api.getAppState();
+    const tool = state.activeTool.type;
+    const point = scenePoint(event);
+
+    if (DRAFTING.has(tool)) {
+      // A new shape starts on a dot: the first corner is snapped as well.
+      const anchorX = snapValue(point.x, step);
+      const anchorY = snapValue(point.y, step);
+      const bounds = host.getBoundingClientRect();
+      const originX = bounds.left + (anchorX + state.scrollX) * point.zoom;
+      const originY = bounds.top + (anchorY + state.scrollY) * point.zoom;
+      pointerSnap = { anchorX, anchorY, originX, originY, zoom: point.zoom, step };
+      applySnap(event, pointerSnap);
+      return;
+    }
+
+    const selected = Object.keys(state.selectedElementIds ?? {});
+    if (selected.length === 0) {
+      return;
+    }
+    // Only a drag that starts on a shape moves it; a pan on empty paper stays free.
+    if (!elementUnder(event)) {
+      return;
+    }
+    const moving = api.getSceneElements().filter((element) => Object.hasOwn(state.selectedElementIds ?? {}, element.id) && !element.isDeleted);
+    if (moving.length === 0) {
+      return;
+    }
+    // Dragging a selection: the block's own corner is what lands on the lattice.
+    pointerSnap = {
+      anchorX: Math.min(...moving.map((element) => element.x)),
+      anchorY: Math.min(...moving.map((element) => element.y)),
+      originX: event.clientX,
+      originY: event.clientY,
+      zoom: point.zoom,
+      step
+    };
+  };
+
+  const onMoveSnap = (event: PointerEvent): void => {
+    if (pointerSnap && fingers.size < 2) {
+      applySnap(event, pointerSnap);
+    }
+  };
 
   const onDown = (event: PointerEvent): void => {
     const state = api.getAppState();
@@ -155,6 +230,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   /* A tap on empty paper leaves the cursor mode, however it was armed. */
   const onUp = (event: PointerEvent): void => {
+    window.setTimeout(() => { pointerSnap = null; }, 0);
     if (options.onGestureEnd) {
       const before = beforeGesture;
       // Deferred: Excalidraw commits the gesture in its own pointerup handling.
@@ -347,6 +423,9 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   options.onMarqueeCancel?.(clearBox);
 
+  host.addEventListener("pointerdown", onDownSnap, true);
+  host.addEventListener("pointermove", onMoveSnap, true);
+  host.addEventListener("pointerup", onMoveSnap, true);
   host.addEventListener("pointerdown", onDown, true);
   host.addEventListener("pointerup", onUp, true);
   host.addEventListener("pointerdown", onDownBox, true);
@@ -356,6 +435,12 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   return {
     detach: () => {
+      host.removeEventListener("pointerdown", onDownSnap, true);
+      host.removeEventListener("pointermove", onMoveSnap, true);
+      host.removeEventListener("pointerup", onMoveSnap, true);
+      host.removeEventListener("pointerdown", onDownSnap, true);
+      host.removeEventListener("pointermove", onMoveSnap, true);
+      host.removeEventListener("pointerup", onMoveSnap, true);
       host.removeEventListener("pointerdown", onDown, true);
       host.removeEventListener("pointerup", onUp, true);
       host.removeEventListener("pointerdown", onDownBox, true);
@@ -363,6 +448,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       host.removeEventListener("pointerup", onUpBox, true);
       host.removeEventListener("pointercancel", onUpBox, true);
       clearBox();
+      pointerSnap = null;
       options.onMarqueeCancel?.(null);
     }
   };
