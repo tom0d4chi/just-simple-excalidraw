@@ -108,6 +108,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   let beforeGesture = new Map<string, number>();
   let pointerSnap: SnapGesture | null = null;
+  let resizeGrab = false;
+  /* Touch fingers are fat; Excalidraw's handles are 8 px. Reach for the nearest one
+     from further away by moving the pointer onto its centre. */
+  const HANDLE_REACH = 22;
   const DRAFTING = new Set(["rectangle", "diamond", "ellipse", "line", "arrow", "text", "frame"]);
 
   /* Rewrites the coordinates Excalidraw is about to read, so the snap is live. */
@@ -128,11 +132,57 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     };
   };
 
+  const onDownHandles = (event: PointerEvent): void => {
+    resizeGrab = false;
+    if (event.pointerType === "mouse") {
+      return;
+    }
+    const state = api.getAppState();
+    const ids = Object.keys(state.selectedElementIds ?? {});
+    if (ids.length === 0 || DRAFTING.has(state.activeTool.type)) {
+      return;
+    }
+    const selection = api.getSceneElements().filter((element) => (
+      !element.isDeleted && Object.hasOwn(state.selectedElementIds ?? {}, element.id)
+    ));
+    if (selection.length === 0) {
+      return;
+    }
+    const bounds = host.getBoundingClientRect();
+    const zoom = state.zoom.value || 1;
+    const left = bounds.left + (Math.min(...selection.map((e) => e.x)) + state.scrollX) * zoom;
+    const top = bounds.top + (Math.min(...selection.map((e) => e.y)) + state.scrollY) * zoom;
+    const right = bounds.left + (Math.max(...selection.map((e) => e.x + e.width)) + state.scrollX) * zoom;
+    const bottom = bounds.top + (Math.max(...selection.map((e) => e.y + e.height)) + state.scrollY) * zoom;
+    const midX = (left + right) / 2;
+    const midY = (top + bottom) / 2;
+    const handles = [
+      [left, top], [midX, top], [right, top], [right, midY],
+      [right, bottom], [midX, bottom], [left, bottom], [left, midY]
+    ];
+    let best: number[] | null = null;
+    let bestDistance = Infinity;
+    for (const handle of handles) {
+      const distance = Math.hypot(event.clientX - handle[0], event.clientY - handle[1]);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = handle;
+      }
+    }
+    if (!best || bestDistance > HANDLE_REACH) {
+      return;
+    }
+    Object.defineProperty(event, "clientX", { value: best[0], configurable: true });
+    Object.defineProperty(event, "clientY", { value: best[1], configurable: true });
+    resizeGrab = true;
+  };
+
   /* Called first in the capture phase, before the gesture handlers below. */
   const onDownSnap = (event: PointerEvent): void => {
     pointerSnap = null;
     const step = options.snapping?.() ?? 0;
-    if (!step) {
+    // A resize is its own gesture: snapping the finger would fight the handle.
+    if (!step || resizeGrab) {
       return;
     }
     const state = api.getAppState();
@@ -429,6 +479,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   options.onMarqueeCancel?.(clearBox);
 
+  host.addEventListener("pointerdown", onDownHandles, true);
   host.addEventListener("pointerdown", onDownSnap, true);
   host.addEventListener("pointermove", onMoveSnap, true);
   host.addEventListener("pointerup", onMoveSnap, true);
@@ -441,9 +492,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   return {
     detach: () => {
+      host.removeEventListener("pointerdown", onDownHandles, true);
       host.removeEventListener("pointerdown", onDownSnap, true);
       host.removeEventListener("pointermove", onMoveSnap, true);
       host.removeEventListener("pointerup", onMoveSnap, true);
+      host.removeEventListener("pointerdown", onDownHandles, true);
       host.removeEventListener("pointerdown", onDownSnap, true);
       host.removeEventListener("pointermove", onMoveSnap, true);
       host.removeEventListener("pointerup", onMoveSnap, true);
