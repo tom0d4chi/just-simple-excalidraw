@@ -877,3 +877,14 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
+
+/* What the marquee has caught so far, shown in the accent colour. */
+.jse-preselect {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 4px;
+  background-color: var(--jse-accent, #6965db);
+  opacity: 0.16;
+  box-shadow: inset 0 0 0 2px var(--jse-accent, #6965db);
+  pointer-events: none;
+}

@@ -118,6 +118,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   let interactiveCanvas: HTMLElement | null = null;
   let boxStart: { x: number; y: number; pointerId: number } | null = null;
   let box: HTMLDivElement | null = null;
+  // Elements already caught by the growing marquee are tinted in the accent colour,
+  // as a preview of what the release will select. It is an overlay: the shapes
+  // themselves are never touched, so no accent colour can end up in the file.
+  const preview = new Map<string, HTMLElement>();
 
   const drawBox = (event: PointerEvent): void => {
     if (!boxStart || event.pointerId !== boxStart.pointerId || !box) {
@@ -135,6 +139,58 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       rect.setAttribute("width", `${Math.max(0, Math.abs(event.clientX - boxStart.x) - 2)}`);
       rect.setAttribute("height", `${Math.max(0, Math.abs(event.clientY - boxStart.y) - 2)}`);
     }
+    updatePreview(event);
+  };
+
+  /* Marquee in client coordinates, elements in scene coordinates. */
+  const updatePreview = (event: PointerEvent): void => {
+    if (!boxStart) {
+      return;
+    }
+    const state = api.getAppState();
+    const bounds = host.getBoundingClientRect();
+    const zoom = state.zoom.value || 1;
+    const left = Math.min(boxStart.x, event.clientX);
+    const top = Math.min(boxStart.y, event.clientY);
+    const right = Math.max(boxStart.x, event.clientX);
+    const bottom = Math.max(boxStart.y, event.clientY);
+
+    const live = api.getSceneElements().filter((element) => {
+      if (element.isDeleted || element.type === "selection") {
+        return false;
+      }
+      const x = (element.x + state.scrollX) * zoom + bounds.left;
+      const y = (element.y + state.scrollY) * zoom + bounds.top;
+      return x < right && x + element.width * zoom > left && y < bottom && y + element.height * zoom > top;
+    });
+
+    const seen = new Set(live.map((element) => element.id));
+    for (const [id, node] of preview) {
+      if (!seen.has(id)) {
+        node.remove();
+        preview.delete(id);
+      }
+    }
+    for (const element of live) {
+      let node = preview.get(element.id);
+      if (!node) {
+        node = document.createElement("div");
+        node.className = "jse-preselect";
+        box?.appendChild(node);
+        preview.set(element.id, node);
+      }
+      node.style.left = `${(element.x + state.scrollX) * zoom}px`;
+      node.style.top = `${(element.y + state.scrollY) * zoom}px`;
+      node.style.width = `${element.width * zoom}px`;
+      node.style.height = `${element.height * zoom}px`;
+    }
+  };
+
+  const clearPreview = (): void => {
+    for (const node of preview.values()) {
+      node.remove();
+    }
+    preview.clear();
   };
 
   const startBox = (event: PointerEvent): void => {
@@ -157,6 +213,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   };
 
   const clearBox = (): void => {
+    clearPreview();
     boxStart = null;
     box?.remove();
     box = null;
