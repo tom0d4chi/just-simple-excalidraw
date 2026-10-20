@@ -226,10 +226,21 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
         api.setActiveTool({ type: "selection" });
         return;
       }
-      if (tool === "selection" && Object.keys(state.selectedElementIds ?? {}).length > 0) {
-        api.updateScene({ appState: { selectedElementIds: {} } });
-        api.setActiveTool({ type: "hand" });
+      if (tool !== "selection") {
+        return;
       }
+      /*
+       * Empty paper. Excalidraw clears the selection on its own during this same
+       * tap, so the decision is taken one tick later, once the canvas has had its
+       * say: nothing selected means the tap landed on paper and the hand takes
+       * over again.
+       */
+      window.setTimeout(() => {
+        const current = api.getAppState();
+        if (current.activeTool.type === "selection" && Object.keys(current.selectedElementIds ?? {}).length === 0) {
+          api.setActiveTool({ type: "hand" });
+        }
+      }, 0);
     };
 
     host.addEventListener("pointerdown", onDown, true);

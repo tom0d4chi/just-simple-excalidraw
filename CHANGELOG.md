@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.33 - 2026-10-20
+
+- An empty tap really returns to the hand now. The canvas clears the selection
+  during the same tap, so the check ran too early and found nothing to react to;
+  the decision is taken one tick later, once the canvas is done: nothing selected
+  means the tap landed on paper.
+
 ## 0.1.32 - 2026-10-20
 
 - A tap on an element now selects it and arms the selection tool, which the hand
