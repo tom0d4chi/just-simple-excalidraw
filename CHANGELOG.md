@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.42 - 2026-10-20
+
+- That button is called "Sélection multi" now, and wears a dashed frame with a
+  pointer instead of a plain arrow: it says what it is — the marquee — since
+  everything else about the cursor happens without it.
+
 ## 0.1.41 - 2026-10-20
 
 - A tap on empty paper leaves the cursor mode even when the cursor was pressed

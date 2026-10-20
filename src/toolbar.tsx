@@ -20,7 +20,7 @@ interface ToolDefinition {
 
 const TOOL_DEFINITIONS: Record<ToolName, ToolDefinition> = {
   hand: { tool: "hand", icon: "hand", label: t("hand") },
-  selection: { tool: "selection", icon: "mouse-pointer-2", label: t("selection") },
+  selection: { tool: "selection", icon: "square-dashed-mouse-pointer", label: t("selection") },
   freedraw: { tool: "freedraw", icon: "pencil", label: t("freedraw") },
   eraser: { tool: "eraser", icon: "eraser", label: t("eraser") },
   rectangle: { tool: "rectangle", icon: "square", label: t("rectangle") },

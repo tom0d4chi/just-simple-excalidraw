@@ -9,7 +9,7 @@ export type Language = "fr" | "en" | "es";
 
 const DICTIONARIES = {
   fr: {
-    selection: "Sélection",
+    selection: "Sélection multi",
     freedraw: "Crayon",
     eraser: "Gomme",
     hand: "Déplacer",
@@ -58,7 +58,7 @@ const DICTIONARIES = {
     settingsBody: "La barre d'outils est fixée au bord droit, à la verticale. Sur mobile, un doigt utilise l'outil actif et deux doigts déplacent et zooment ; sur ordinateur, on déplace avec l'outil main."
   },
   en: {
-    selection: "Select",
+    selection: "Multi-select",
     freedraw: "Pen",
     eraser: "Eraser",
     hand: "Pan",
@@ -107,7 +107,7 @@ const DICTIONARIES = {
     settingsBody: "The toolbar is fixed to the right edge, vertically. On mobile one finger uses the active tool and two fingers pan and zoom; on desktop you pan with the hand tool."
   },
   es: {
-    selection: "Seleccionar",
+    selection: "Selección múltiple",
     freedraw: "Dibujo a mano",
     eraser: "Borrador",
     hand: "Desplazar",
