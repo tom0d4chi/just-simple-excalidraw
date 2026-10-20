@@ -431,6 +431,10 @@ export function CanvasToolbar({
     }))
   );
 
+  // Reversed, so the strip reads from the button outwards: the shape next to the
+  // button is the first one, and the first to land.
+  const shapeOrder = [...SHAPES].reverse();
+
   const shapeButton = createElement("div", { className: "jse-shapes", key: "shapes" },
     createElement("button", {
       type: "button",
@@ -446,12 +450,12 @@ export function CanvasToolbar({
         "aria-hidden": !shapeMenuOpen,
         onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
       },
-      SHAPES.map((tool, index) => createElement("button", {
+      shapeOrder.map((tool, index) => createElement("button", {
         key: tool,
         type: "button",
         role: "menuitem",
         className: `jse-tool clickable-icon jse-tool--shape jse-shapes__item${shapeMenuOpen ? " is-entering" : ""}${activeTool === tool ? " is-active" : ""}`,
-        style: { animationDelay: `${index * 26}ms` },
+        style: { animationDelay: `${(shapeOrder.length - index) * 26}ms` },
         "aria-label": TOOL_DEFINITIONS[tool].label,
         "aria-pressed": activeTool === tool,
         onClick: pickShape(tool)
@@ -461,7 +465,7 @@ export function CanvasToolbar({
         type: "button",
         role: "menuitem",
         className: `jse-tool clickable-icon jse-tool--shape jse-shapes__item${shapeMenuOpen ? " is-entering" : ""}${locked ? " is-active" : ""}`,
-        style: { animationDelay: `${SHAPES.length * 26}ms` },
+        style: { animationDelay: "0ms" },
         "aria-label": locked ? t("stopKeepingShape") : t("keepShape"),
         "aria-pressed": locked,
         onClick: toggleLock

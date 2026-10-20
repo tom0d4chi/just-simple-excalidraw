@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.39 - 2026-10-20
+
+- The shape strip reads from its button outwards: the shapes are reversed, and the
+  item closest to the button lands first, then the next one, out to the far left.
+- Each item slides in from the right (14px) while scaling up, as if it came out of
+  the button.
+
 ## 0.1.38 - 2026-10-20
 
 - The shape list is a horizontal strip now, and it has no plate either: icons
