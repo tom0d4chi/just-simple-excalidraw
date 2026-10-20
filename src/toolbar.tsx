@@ -38,7 +38,7 @@ const TOOL_DEFINITIONS: Record<ToolName, ToolDefinition> = {
  * permanent slot under the thumb.
  */
 /* The shape family shares one slot: a button that opens the list on the spot. */
-const SHAPES: readonly ToolName[] = ["rectangle", "diamond", "ellipse", "arrow", "line", "image"];
+const SHAPES: readonly ToolName[] = ["rectangle", "diamond", "ellipse", "arrow", "line"];
 const TOUCH_CORE: readonly ToolName[] = ["selection", "freedraw", "text", "eraser"];
 
 const DESKTOP_TOOLS: readonly ToolName[] = [
@@ -53,6 +53,25 @@ interface CanvasToolbarProps {
   styleAvailable: boolean;
   isTouchDevice: boolean;
   getCanvasElement: () => HTMLElement | null;
+}
+
+/**
+ * Excalidraw refuses to arm its image tool from code (it inserts through its own
+ * file dialog), so pick the file here and insert the element ourselves.
+ */
+function readImageFile(file: File): Promise<{ dataURL: string; width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("read error"));
+    reader.onload = () => {
+      const dataURL = String(reader.result);
+      const image = new Image();
+      image.onload = () => resolve({ dataURL, width: image.naturalWidth, height: image.naturalHeight });
+      image.onerror = () => reject(new Error("decode error"));
+      image.src = dataURL;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 /** Lucide glyph rendered with Obsidian's own `.svg-icon` sizing rules. */
@@ -121,6 +140,78 @@ export function CanvasToolbar({
     if (api) {
       api.setActiveTool({ type: tool });
     }
+  };
+
+  const insertImage = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    const instance = api;
+    if (!instance) {
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.id = "jse-image-input";
+    input.style.display = "none";
+    document.body.appendChild(input);
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      input.remove();
+      if (!file) {
+        return;
+      }
+      void readImageFile(file).then(({ dataURL, width, height }) => {
+        const stamp = Date.now();
+        const fileId = `jse-${stamp}-${Math.round(Math.random() * 1e6)}`;
+        instance.addFiles([{
+          id: fileId,
+          dataURL,
+          mimeType: file.type || "image/png",
+          created: stamp
+        } as never]);
+        const appState = instance.getAppState();
+        const limit = Math.min(appState.width * 0.7, width);
+        const scale = limit / width;
+        const w = Math.round(width * scale);
+        const h = Math.round(height * scale);
+        const element = {
+          id: `jse-${stamp}-${Math.round(Math.random() * 1e6)}`,
+          type: "image",
+          x: -appState.scrollX + (appState.width - w) / 2,
+          y: -appState.scrollY + (appState.height - h) / 2,
+          width: w,
+          height: h,
+          angle: 0,
+          strokeColor: "transparent",
+          backgroundColor: "transparent",
+          fillStyle: "solid",
+          strokeWidth: 1,
+          strokeStyle: "solid",
+          roughness: 1,
+          opacity: 100,
+          groupIds: [],
+          frameId: null,
+          roundness: null,
+          seed: Math.floor(Math.random() * 1e9),
+          version: 1,
+          versionNonce: Math.floor(Math.random() * 1e9),
+          isDeleted: false,
+          boundElements: null,
+          updated: stamp,
+          link: null,
+          locked: false,
+          status: "saved",
+          fileId,
+          scale: [1, 1]
+        };
+        instance.updateScene({
+          elements: [...instance.getSceneElements(), element as never],
+          appState: { selectedElementIds: { [element.id]: true } }
+        });
+      });
+    }, { once: true });
+    input.click();
   };
 
   const pickShape = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
@@ -247,6 +338,7 @@ export function CanvasToolbar({
           toolButton(TOOL_DEFINITIONS.freedraw),
           shapeButton,
           toolButton(TOOL_DEFINITIONS.text),
+          toolButton(TOOL_DEFINITIONS.image, () => insertImage),
           toolButton(TOOL_DEFINITIONS.eraser)
         ]
       : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool])),

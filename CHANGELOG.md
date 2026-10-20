@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.19 - 2026-10-20
+
+- The image tool is back in the column instead of the shape list. It no longer
+  arms Excalidraw's image tool, which refuses to be set from code: the button
+  opens the system picker, reads the file and inserts the picture in the middle
+  of the view, already selected. Saved with the drawing like any other image.
+- The shape list opens straight down instead of sideways, and it fades in with a
+  short slide instead of bouncing.
+
 ## 0.1.18 - 2026-10-20
 
 - The hamburger is gone. What it held is either useless in a vault or available

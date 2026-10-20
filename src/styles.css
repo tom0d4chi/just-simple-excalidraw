@@ -363,6 +363,17 @@
   }
 }
 
+@keyframes jse-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes jse-bounce-in {
   0% {
     transform: scale(0.6);
@@ -387,7 +398,7 @@
 
 /* The shape list opens on the spot, aligned with its button. */
 .jse-shapes__menu {
-  animation: jse-bounce-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: jse-fade-in 140ms ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -463,13 +474,15 @@
 .jse-shapes__menu {
   pointer-events: auto;
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   /* The list extends left of its button, so an automatic width would be
      clamped to the button: state it, padding outside of it. */
   right: calc(100% + var(--size-4-2, 8px));
   top: 0;
   box-sizing: content-box;
   width: var(--jse-tool-size, 42px);
-  display: grid;
   gap: 2px;
   padding: var(--size-4-1, 4px);
   background-color: var(--background-primary);
