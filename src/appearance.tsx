@@ -1,5 +1,6 @@
 import {
   createElement,
+  useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode
 } from "react";
@@ -75,6 +76,7 @@ interface AppearanceMenuProps {
   showText: boolean;
   showEdges: boolean;
   onPick: (patch: StylePatch) => void;
+  onPreview: (patch: StylePatch) => void;
 }
 
 function row(label: string, children: ReactNode): ReactNode {
@@ -95,7 +97,12 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
   }, content);
 }
 
-export function AppearanceMenu({ style, showText, showEdges, onPick }: AppearanceMenuProps) {
+export function AppearanceMenu({ style, showText, showEdges, onPick, onPreview }: AppearanceMenuProps) {
+  // The slider has its own value while it is being dragged: the element is only
+  // rewritten on release, so its style would otherwise lag a whole round trip.
+  const [dragging, setDragging] = useState<number | null>(null);
+  const width = dragging ?? style.strokeWidth;
+
   const pick = (patch: StylePatch) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -122,16 +129,50 @@ export function AppearanceMenu({ style, showText, showEdges, onPick }: Appearanc
         : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
     ))),
-    row(t("thickness"), STROKE_WIDTHS.map((width) => chip(
-      style.strokeWidth === width.value,
-      width.label(),
-      pick({ strokeWidth: width.value }),
-      createElement("span", {
-        className: "jse-appearance__line",
-        style: { height: `${width.value}px` }
-      }),
-      "jse-appearance__chip--line"
-    ))),
+    createElement("div", { className: "jse-appearance__row" },
+      createElement("span", { className: "jse-appearance__label" }, t("thickness")),
+      createElement("div", { className: "jse-appearance__choices" }, STROKE_WIDTHS.map((width) => chip(
+        style.strokeWidth === width.value,
+        width.label(),
+        pick({ strokeWidth: width.value }),
+        createElement("span", {
+          className: "jse-appearance__line",
+          style: { height: `${Math.min(6, width.value)}px` }
+        }),
+        "jse-appearance__chip--line"
+      ))),
+      createElement("div", { className: "jse-appearance__slider-row" },
+        createElement("input", {
+          type: "range",
+          min: 0.5,
+          max: 10,
+          step: 0.5,
+          value: String(width),
+          className: "jse-appearance__slider",
+          "aria-label": t("thickness"),
+          // moving only shifts the default; releasing writes the elements, so the
+          // history keeps one step instead of one per pixel
+          onInput: (event: { target: EventTarget | null }) => {
+            const next = Number((event.target as HTMLInputElement).value);
+            setDragging(next);
+            onPreview({ strokeWidth: next });
+          },
+          onPointerUp: () => {
+            if (dragging !== null) {
+              onPick({ strokeWidth: dragging });
+              setDragging(null);
+            }
+          },
+          onKeyUp: () => {
+            if (dragging !== null) {
+              onPick({ strokeWidth: dragging });
+              setDragging(null);
+            }
+          }
+        }),
+        createElement("span", { className: "jse-appearance__value" }, width.toFixed(1))
+      )
+    ),
     row(t("lineStyle"), STROKE_STYLES.map((line) => chip(
       style.strokeStyle === line.value,
       line.label(),

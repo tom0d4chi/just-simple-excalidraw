@@ -6,6 +6,9 @@
 
 /* Host for the canvas plus the floating toolbar. */
 .jse-root {
+  /* Obsidian keeps the accent under --color-accent; the interactive and text
+     variants are fallbacks for themes that rename it. */
+  --jse-accent: var(--color-accent, var(--interactive-accent, var(--text-accent, #6965db)));
   position: relative;
   height: 100%;
   width: 100%;
@@ -816,9 +819,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * is painted with gradients because a dashed border cannot be animated.
  */
 .jse-marquee {
-  /* Obsidian keeps the accent under --color-accent; the interactive and text
-     variants are fallbacks for themes that rename it. */
-  --jse-accent: var(--color-accent, var(--interactive-accent, var(--text-accent, #6965db)));
   position: absolute;
   z-index: 5;
   pointer-events: none;
@@ -852,4 +852,28 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   .jse-marquee__rect {
     animation: none;
   }
+}
+
+/* Thickness slider: presets on one line, fine values under them. */
+.jse-appearance__slider-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2, 8px);
+  margin-top: var(--size-4-1, 4px);
+}
+
+.jse-appearance__slider {
+  flex: 1;
+  height: 28px;
+  margin: 0;
+  accent-color: var(--jse-accent, #6965db);
+  background: transparent;
+}
+
+.jse-appearance__value {
+  min-width: 24px;
+  text-align: right;
+  font-size: var(--font-ui-smaller, 11px);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
 }

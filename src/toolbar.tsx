@@ -423,6 +423,15 @@ export function CanvasToolbar({
    */
   const stylingTarget = selectionCount > 0 || Boolean(activeShape) || activeTool === "freedraw" || activeTool === "text";
 
+  // While the slider moves, only the default changes: rewriting the selection on
+  // every pixel would fill the history with intermediate widths.
+  const previewStyle = (patch: StylePatch): void => {
+    if (!api || patch.strokeWidth === undefined) {
+      return;
+    }
+    api.updateScene({ appState: { currentItemStrokeWidth: patch.strokeWidth } as never });
+  };
+
   const appearanceButton = createElement("div", {
     className: `jse-shapes jse-shapes--collapsible${entered ? " jse-anim" : ""}${stylingTarget ? "" : " is-collapsed"}`,
     key: "appearance"
@@ -445,7 +454,8 @@ export function CanvasToolbar({
       style,
       showText: textSelected || activeTool === "text",
       showEdges: Boolean(activeShape) || selectionCount > 0,
-      onPick: applyStyle
+      onPick: applyStyle,
+      onPreview: previewStyle
     }))
   );
 
