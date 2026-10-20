@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import { ICONS, type IconName } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { AppearanceMenu, type StylePatch, type StyleState } from "./appearance";
 import { t } from "./i18n";
 
@@ -82,19 +82,6 @@ function readImageFile(file: File): Promise<{ dataURL: string; width: number; he
 }
 
 /** Lucide glyph rendered with Obsidian's own `.svg-icon` sizing rules. */
-function Icon({ name }: { name: IconName }) {
-  return createElement("svg", {
-    className: "svg-icon jse-icon",
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    "aria-hidden": "true",
-    dangerouslySetInnerHTML: { __html: ICONS[name] }
-  });
-}
-
 /**
  * Excalidraw renders its own buttons for these actions (in the bar this plugin
  * hides). Clicking them is exact — it runs the same handler, with the same

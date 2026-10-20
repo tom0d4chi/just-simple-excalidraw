@@ -5,16 +5,16 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode
 } from "react";
+import { Icon } from "./icons";
 import { t } from "./i18n";
 
 /** Excalidraw stores rounded corners as `roundness: { type: 3 }` on shapes. */
 const ROUND = 3;
 
-/**
- * The appearance controls for whatever is being drawn or selected: stroke,
- * fill, thickness, line style, edges and text size. Same shape of menu as the
- * shape picker — a column that slides out of its button — rather than
- * Excalidraw's own property bar, which this plugin hides.
+/*
+ * Appearance, in two levels: one icon per family along a row that slides out of the
+ * button, then the values of that family in a list that opens above it. The single
+ * long panel it replaces took the whole column height and pushed the drawing away.
  */
 
 export const STROKE_COLORS: readonly string[] = [
@@ -72,6 +72,8 @@ export interface StylePatch {
   roundness?: number | null;
 }
 
+type Category = "stroke" | "fill" | "width" | "style" | "corners" | "text";
+
 interface AppearanceMenuProps {
   open: boolean;
   style: StyleState;
@@ -79,13 +81,6 @@ interface AppearanceMenuProps {
   showEdges: boolean;
   onPick: (patch: StylePatch) => void;
   onPreview: (patch: StylePatch) => void;
-}
-
-function row(label: string, children: ReactNode): ReactNode {
-  return createElement("div", { className: "jse-appearance__row" },
-    createElement("span", { className: "jse-appearance__label" }, label),
-    createElement("div", { className: "jse-appearance__choices" }, children)
-  );
 }
 
 function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = ""): ReactNode {
@@ -99,16 +94,25 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
   }, content);
 }
 
+function line(label: string, children: ReactNode): ReactNode {
+  return createElement("div", { className: "jse-appearance__row" },
+    createElement("span", { className: "jse-appearance__label" }, label),
+    createElement("div", { className: "jse-appearance__choices" }, children)
+  );
+}
+
 export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPreview }: AppearanceMenuProps) {
   // The slider has its own value while it is being dragged: the element is only
   // rewritten on release, so its style would otherwise lag a whole round trip.
   const [dragging, setDragging] = useState<number | null>(null);
+  const [category, setCategory] = useState<Category | null>(null);
   const width = dragging ?? style.strokeWidth;
 
-  // Closing the menu ends any half-finished drag of the slider.
+  // Closing the menu ends any half-finished drag and forgets the open family.
   useEffect(() => {
     if (!open) {
       setDragging(null);
+      setCategory(null);
     }
   }, [open]);
 
@@ -118,17 +122,73 @@ export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPre
     onPick(patch);
   };
 
-  return createElement("div", { className: "jse-appearance" },
-    row(t("stroke"), STROKE_COLORS.map((color) => chip(
+  const categoryButton = (key: Category, label: string, content: ReactNode): ReactNode => createElement("button", {
+    type: "button",
+    className: `jse-tool clickable-icon jse-appearance__category${category === key ? " is-active" : ""}`,
+    "aria-label": label,
+    "aria-pressed": category === key,
+    title: label,
+    onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setCategory((current) => (current === key ? null : key));
+    }
+  }, content);
+
+  const noFill = style.backgroundColor === "transparent";
+  const categories: { key: Category; node: ReactNode }[] = [
+    {
+      key: "stroke",
+      node: categoryButton("stroke", t("stroke"),
+        createElement("span", {
+          className: "jse-appearance__swatch jse-appearance__swatch--ring",
+          style: { borderColor: style.strokeColor }
+        }))
+    },
+    {
+      key: "fill",
+      node: categoryButton("fill", t("fill"),
+        createElement("span", {
+          className: `jse-appearance__swatch${noFill ? " is-empty" : ""}`,
+          style: noFill ? {} : { backgroundColor: style.backgroundColor }
+        }))
+    },
+    {
+      key: "width",
+      node: categoryButton("width", t("thickness"),
+        createElement("span", {
+          className: "jse-appearance__bar",
+          style: { height: `${Math.min(6, Math.max(1, style.strokeWidth))}px` }
+        }))
+    },
+    {
+      key: "style",
+      node: categoryButton("style", t("lineStyle"),
+        createElement(Icon, { name: "dashes", className: `jse-line-style jse-line-style--${style.strokeStyle}` }))
+    },
+    ...(showEdges ? [{
+      key: "corners" as Category,
+      node: categoryButton("corners", t("corners"),
+        createElement(Icon, { name: style.roundness === null ? "square" : "squircle" }))
+    }] : []),
+    ...(showText ? [{
+      key: "text" as Category,
+      node: categoryButton("text", t("size"), createElement(Icon, { name: "type" }))
+    }] : [])
+  ];
+
+  let panel: ReactNode = null;
+  if (category === "stroke") {
+    panel = createElement("div", { className: "jse-appearance__grid" }, STROKE_COLORS.map((color) => chip(
       style.strokeColor.toLowerCase() === color,
       `${t("colourStroke")} ${color}`,
       pick({ strokeColor: color }),
       createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
-    ))),
-    row(t("fill"), FILL_COLORS.map((color) => chip(
-      (color === null && style.backgroundColor === "transparent") ||
-        (color !== null && style.backgroundColor.toLowerCase() === color),
+    )));
+  } else if (category === "fill") {
+    panel = createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.map((color) => chip(
+      (color === null && noFill) || (color !== null && style.backgroundColor.toLowerCase() === color),
       color === null ? t("noFill") : `${t("colourFill")} ${color}`,
       pick(color === null
         ? { backgroundColor: "transparent" }
@@ -137,17 +197,14 @@ export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPre
         ? createElement("span", { className: "jse-appearance__none" })
         : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
-    ))),
-    createElement("div", { className: "jse-appearance__row" },
-      createElement("span", { className: "jse-appearance__label" }, t("thickness")),
-      createElement("div", { className: "jse-appearance__choices" }, STROKE_WIDTHS.map((width) => chip(
-        style.strokeWidth === width.value,
-        width.label(),
-        pick({ strokeWidth: width.value }),
-        createElement("span", {
-          className: "jse-appearance__line",
-          style: { height: `${Math.min(6, width.value)}px` }
-        }),
+    )));
+  } else if (category === "width") {
+    panel = createElement("div", { className: "jse-appearance__stack" },
+      createElement("div", { className: "jse-appearance__choices" }, STROKE_WIDTHS.map((preset) => chip(
+        style.strokeWidth === preset.value,
+        preset.label(),
+        pick({ strokeWidth: preset.value }),
+        createElement("span", { className: "jse-appearance__line", style: { height: `${Math.min(6, preset.value)}px` } }),
         "jse-appearance__chip--line"
       ))),
       createElement("div", { className: "jse-appearance__slider-row" },
@@ -181,35 +238,37 @@ export function AppearanceMenu({ open, style, showText, showEdges, onPick, onPre
         }),
         createElement("span", { className: "jse-appearance__value" }, width.toFixed(1))
       )
-    ),
-    row(t("lineStyle"), STROKE_STYLES.map((line) => chip(
-      style.strokeStyle === line.value,
-      line.label(),
-      pick({ strokeStyle: line.value }),
-      createElement("span", {
-        className: `jse-appearance__line jse-appearance__line--${line.value}`
-      }),
+    );
+  } else if (category === "style") {
+    panel = line(t("lineStyle"), STROKE_STYLES.map((entry) => chip(
+      style.strokeStyle === entry.value,
+      entry.label(),
+      pick({ strokeStyle: entry.value }),
+      createElement("span", { className: `jse-appearance__line jse-appearance__line--${entry.value}` }),
       "jse-appearance__chip--line"
-    ))),
-    showEdges
-      ? row(t("corners"), EDGES.map((edge) => chip(
-          edge.value === null ? style.roundness === null : style.roundness !== null,
-          edge.label(),
-          pick({ roundness: edge.value }),
-          createElement("span", {
-            className: `jse-appearance__shape${edge.value ? " is-round" : ""}`
-          }),
-          "jse-appearance__chip--line"
-        )))
+    )));
+  } else if (category === "corners") {
+    panel = line(t("corners"), EDGES.map((edge) => chip(
+      edge.value === null ? style.roundness === null : style.roundness !== null,
+      edge.label(),
+      pick({ roundness: edge.value }),
+      createElement("span", { className: `jse-appearance__shape${edge.value ? " is-round" : ""}` }),
+      "jse-appearance__chip--line"
+    )));
+  } else if (category === "text") {
+    panel = line(t("size"), FONT_SIZES.map((font) => chip(
+      style.fontSize === font.value,
+      font.label(),
+      pick({ fontSize: font.value }),
+      createElement("span", { className: "jse-appearance__size" }, "A"),
+      "jse-appearance__chip--font"
+    )));
+  }
+
+  return createElement("div", { className: "jse-appearance" },
+    panel
+      ? createElement("div", { className: "jse-appearance__panel", key: category }, panel)
       : null,
-    showText
-      ? row(t("size"), FONT_SIZES.map((font) => chip(
-          style.fontSize === font.value,
-          font.label(),
-          pick({ fontSize: font.value }),
-          createElement("span", { className: "jse-appearance__size" }, "A"),
-          "jse-appearance__chip--font"
-        )))
-      : null
+    createElement("div", { className: "jse-appearance__categories" }, categories.map((entry) => entry.node))
   );
 }

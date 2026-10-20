@@ -622,15 +622,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-appearance-menu {
   width: auto;
   align-items: stretch;
-  /* taller than the shape list, and its button sits low in the column: it grows
-     upwards from the button instead of running off the bottom edge */
+  /* the button sits low in the column: the menu grows upwards from it */
   top: auto;
   bottom: 0;
-  padding: var(--size-4-2, 8px);
+  padding: var(--size-4-1, 6px);
   border-radius: var(--radius-m, 12px);
   max-height: min(78vh, 520px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
 }
 
 .jse-appearance {
@@ -897,4 +895,91 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   opacity: 0.16;
   box-shadow: inset 0 0 0 2px var(--jse-accent, #6965db);
   pointer-events: none;
+}
+
+/* Appearance, two levels: a row of families, then the values of one above it. */
+.jse-appearance__categories {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1, 4px);
+}
+
+.jse-appearance__category {
+  --icon-size: var(--icon-m, 20px);
+  width: var(--touch-size-m, 40px);
+  height: var(--touch-size-m, 40px);
+  border-radius: var(--radius-s, 8px);
+  color: var(--icon-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jse-appearance__category.is-active {
+  color: var(--text-accent);
+  background-color: var(--background-modifier-hover);
+}
+
+.jse-appearance__swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+}
+
+.jse-appearance__swatch--ring {
+  background-color: transparent;
+  border: 3px solid var(--text-normal);
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+.jse-appearance__swatch.is-empty {
+  background-image: linear-gradient(
+    135deg,
+    transparent 44%,
+    var(--text-faint, var(--text-muted)) 44%,
+    var(--text-faint, var(--text-muted)) 56%,
+    transparent 56%
+  );
+}
+
+.jse-appearance__bar {
+  width: 22px;
+  border-radius: 999px;
+  background-color: currentColor;
+}
+
+.jse-line-style--dashed {
+  stroke-dasharray: 3 3;
+}
+
+.jse-line-style--dotted {
+  stroke-dasharray: 1 4;
+}
+
+.jse-appearance__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2, 8px);
+  padding: 2px 2px var(--size-4-2, 8px);
+  animation: jse-appearance-in 140ms ease-out;
+}
+
+@keyframes jse-appearance-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.jse-appearance__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--size-4-1, 4px);
+}
+
+.jse-appearance__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1, 6px);
 }
