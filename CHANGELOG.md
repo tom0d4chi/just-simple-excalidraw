@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.32 - 2026-10-20
+
+- A tap on an element now selects it and arms the selection tool, which the hand
+  tool alone could never do (it ignores taps). A tap on empty paper drops the
+  selection and hands the sheet back to the hand. A drag still pans and never
+  selects — only a tap does.
+
 ## 0.1.31 - 2026-10-20
 
 - On touch, a finger drag pans by default again: the hand is the base tool, and

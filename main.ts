@@ -173,6 +173,73 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
     return root ? trackBottomUiInset(root) : undefined;
   }, []);
 
+  /*
+   * The hand tool ignores taps, so with a finger there would be no way to pick an
+   * element without first switching tools, and no way back to the hand once the
+   * cursor is armed. A tap (never a drag) is hit-tested here: on an element it
+   * selects it and arms the selection tool, on empty paper it drops the selection
+   * and hands the sheet back to the hand.
+   */
+  useEffect(() => {
+    const host = canvasHostRef.current;
+    if (!host || !api) {
+      return undefined;
+    }
+    let start: { x: number; y: number; at: number } | null = null;
+
+    const onDown = (event: PointerEvent): void => {
+      const tool = api.getAppState().activeTool.type;
+      if (event.pointerType === "mouse" || (tool !== "hand" && tool !== "selection")) {
+        start = null;
+        return;
+      }
+      start = { x: event.clientX, y: event.clientY, at: Date.now() };
+    };
+
+    const onUp = (event: PointerEvent): void => {
+      const origin = start;
+      start = null;
+      if (!origin || event.pointerType === "mouse") {
+        return;
+      }
+      if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10 || Date.now() - origin.at > 350) {
+        return;
+      }
+      const state = api.getAppState();
+      const tool = state.activeTool.type;
+      if (tool !== "hand" && tool !== "selection") {
+        return;
+      }
+      const bounds = host.getBoundingClientRect();
+      const zoom = state.zoom.value || 1;
+      const sceneX = (event.clientX - bounds.left) / zoom - state.scrollX;
+      const sceneY = (event.clientY - bounds.top) / zoom - state.scrollY;
+      const hit = [...api.getSceneElements()].reverse().find((element) => (
+        !element.isDeleted &&
+        sceneX >= element.x &&
+        sceneX <= element.x + element.width &&
+        sceneY >= element.y &&
+        sceneY <= element.y + element.height
+      ));
+      if (hit) {
+        api.updateScene({ appState: { selectedElementIds: { [hit.id]: true } } });
+        api.setActiveTool({ type: "selection" });
+        return;
+      }
+      if (tool === "selection" && Object.keys(state.selectedElementIds ?? {}).length > 0) {
+        api.updateScene({ appState: { selectedElementIds: {} } });
+        api.setActiveTool({ type: "hand" });
+      }
+    };
+
+    host.addEventListener("pointerdown", onDown, true);
+    host.addEventListener("pointerup", onUp, true);
+    return () => {
+      host.removeEventListener("pointerdown", onDown, true);
+      host.removeEventListener("pointerup", onUp, true);
+    };
+  }, [api]);
+
 
   /*
    * Excalidraw keeps its history private; the only honest window on it is its
