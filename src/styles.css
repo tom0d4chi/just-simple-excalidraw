@@ -633,9 +633,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-appearance-menu {
   width: auto;
   align-items: stretch;
-  /* the button sits low in the column: the menu grows upwards from it */
+  /* The button sits low in the column, so the menu grows upwards from it — and it is
+     nudged down by its own padding, so the family row inside sits centred on the
+     button rather than a padding above it. */
   top: auto;
-  bottom: 0;
+  /* The strip's vertical centring must not follow this one: it grows upwards. */
+  translate: none;
+  bottom: calc(-1 * var(--size-4-1, 4px));
   padding: var(--size-4-1, 6px);
   border-radius: var(--radius-m, 12px);
   max-height: min(78vh, 520px);
