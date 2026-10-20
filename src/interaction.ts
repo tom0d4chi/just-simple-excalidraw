@@ -151,15 +151,21 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       return;
     }
 
-    const selected = Object.keys(state.selectedElementIds ?? {});
-    if (selected.length === 0) {
+    /*
+     * A drag that starts on a shape moves it — with the hand tool too, since the
+     * gesture handler below selects it and hands over to the selection tool. A pan on
+     * empty paper keeps its raw coordinates.
+     */
+    const hitId = elementUnder(event);
+    if (!hitId) {
       return;
     }
-    // Only a drag that starts on a shape moves it; a pan on empty paper stays free.
-    if (!elementUnder(event)) {
-      return;
-    }
-    const moving = api.getSceneElements().filter((element) => Object.hasOwn(state.selectedElementIds ?? {}, element.id) && !element.isDeleted);
+    const selected = Object.keys(state.selectedElementIds ?? {}).length > 0
+      ? api.getSceneElements().filter((element) => Object.hasOwn(state.selectedElementIds ?? {}, element.id) && !element.isDeleted)
+      : [];
+    const moving = selected.length > 0
+      ? selected
+      : api.getSceneElements().filter((element) => element.id === hitId && !element.isDeleted);
     if (moving.length === 0) {
       return;
     }
