@@ -88,9 +88,11 @@ ellipse, arrow, line — plus a lock to keep the chosen shape between drawings; 
 wears the icon of the last shape you picked. The image button opens the system
 picker and drops the picture in the middle of the view, selected.
 
-Excalidraw's own bar is reduced to duplicate/delete for a selection, and only
-shows when something is selected. Its hamburger — load, save, export, its own
-theme toggle, promotional links — is gone.
+Excalidraw's own bar is gone. What it held now lives in the column, and appears
+only when the app has something to act on: duplicate and delete for any
+selection, plus edit text for a single text element. They grow into place so the
+column shifts gently rather than jumping, and they go through Excalidraw's own
+shortcuts, so each one is an undoable step.
 
 ## Theme
 

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.20 - 2026-10-20
+
+- Excalidraw's bottom left bar is now hidden entirely: its three selection
+  actions moved into the editing column. They appear only when something is
+  selected — duplicate and delete for any selection, plus edit text when a single
+  text element is selected — and grow into place, so the rest of the column
+  slides instead of jumping.
+- Duplicate and delete reuse Excalidraw's own shortcuts, so they go through its
+  history and leave an undoable step.
+
 ## 0.1.19 - 2026-10-20
 
 - The image tool is back in the column instead of the shape list. It no longer

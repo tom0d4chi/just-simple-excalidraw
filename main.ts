@@ -113,6 +113,8 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
   const [styleOpen, setStyleOpen] = useState(false);
   const [selectionCount, setSelectionCount] = useState(0);
   const selectionCountRef = useRef(0);
+  const [textSelected, setTextSelected] = useState(false);
+  const textSelectedRef = useRef(false);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const excalidrawElementRef = useRef<HTMLElement | null>(null);
   const activeToolRef = useRef(activeTool);
@@ -152,10 +154,18 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
       setActiveTool(nextTool);
     }
     setStyleOpen(appState?.openMenu === "shape");
-    const selected = appState?.selectedElementIds ? Object.keys(appState.selectedElementIds).length : 0;
+    const selectedIds = Object.keys(appState?.selectedElementIds ?? {});
+    const selected = selectedIds.length;
     if (selected !== selectionCountRef.current) {
       selectionCountRef.current = selected;
       setSelectionCount(selected);
+    }
+    const onlyText = selected === 1 && elements.some(
+      (element) => element.id === selectedIds[0] && element.type === "text" && !element.isDeleted
+    );
+    if (onlyText !== textSelectedRef.current) {
+      textSelectedRef.current = onlyText;
+      setTextSelected(onlyText);
     }
     props.onChange?.(elements, appState, files);
   }, [props.onChange]);
@@ -198,6 +208,8 @@ function ExcalidrawCanvas({ initialData, ...props }: ExcalidrawCanvasProps) {
       activeTool: activeTool.type,
       locked: activeTool.locked,
       styleOpen,
+      selectionCount,
+      textSelected,
       styleAvailable: selectionCount > 0 ||
         (activeTool.type !== "hand" && activeTool.type !== "selection" && activeTool.type !== "eraser"),
       isTouchDevice,

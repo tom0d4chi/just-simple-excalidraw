@@ -51,6 +51,8 @@ interface CanvasToolbarProps {
   locked: boolean;
   styleOpen: boolean;
   styleAvailable: boolean;
+  selectionCount: number;
+  textSelected: boolean;
   isTouchDevice: boolean;
   getCanvasElement: () => HTMLElement | null;
 }
@@ -101,18 +103,25 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * Excalidraw exposes `history.clear()` but no undo/redo in its public API, so
  * reuse its own keyboard shortcuts by replaying the key press on its container.
  */
-function replayShortcut(getCanvasElement: () => HTMLElement | null, key: string, shiftKey = false): void {
+function replayShortcut(
+  getCanvasElement: () => HTMLElement | null,
+  key: string,
+  shiftKey = false,
+  withCtrl = true,
+  keyCode?: number,
+  codeName?: string
+): void {
   const canvas = getCanvasElement();
   if (!canvas || isEditableTarget(document.activeElement)) {
     return;
   }
-  const code = key.toUpperCase().charCodeAt(0);
+  const code = keyCode ?? key.toUpperCase().charCodeAt(0);
   canvas.dispatchEvent(new KeyboardEvent("keydown", {
     key,
-    code: `Key${key.toUpperCase()}`,
+    code: codeName ?? `Key${key.toUpperCase()}`,
     keyCode: code,
     which: code,
-    ctrlKey: true,
+    ctrlKey: withCtrl,
     metaKey: true,
     shiftKey,
     bubbles: true,
@@ -126,6 +135,8 @@ export function CanvasToolbar({
   locked,
   styleOpen,
   styleAvailable,
+  selectionCount,
+  textSelected,
   isTouchDevice,
   getCanvasElement
 }: CanvasToolbarProps) {
@@ -271,16 +282,40 @@ export function CanvasToolbar({
     label: string,
     onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void,
     active = false,
-    disabled = false
+    disabled = false,
+    variant = ""
   ) => createElement("button", {
     key,
     type: "button",
-    className: `jse-tool jse-tool--action clickable-icon${active ? " is-active" : ""}${disabled ? " is-disabled" : ""}`,
+    className: `jse-tool jse-tool--action clickable-icon${variant ? ` ${variant}` : ""}${active ? " is-active" : ""}${disabled ? " is-disabled" : ""}`,
     "aria-label": label,
     "aria-pressed": active,
     "aria-disabled": disabled,
     onClick: disabled ? undefined : onClick
   }, createElement(Icon, { name: icon }));
+
+  /*
+   * Actions that only exist while something is selected. They take their place
+   * at the head of the column, next to the selection tool that produced them.
+   */
+  const stopAndRun = (event: ReactMouseEvent<HTMLButtonElement>, run: () => void): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    run();
+  };
+
+  const contextButtons = selectionCount > 0
+    ? [
+        textSelected
+          ? actionButton("edit-text", "type", "Editar texto", (event) =>
+              stopAndRun(event, () => replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter")), false, false, "jse-tool--context")
+          : null,
+        actionButton("duplicate", "copy", "Duplicar", (event) =>
+          stopAndRun(event, () => replayShortcut(getCanvasElement, "d", false, true, 68, "KeyD")), false, false, "jse-tool--context"),
+        actionButton("delete", "trash-2", "Eliminar", (event) =>
+          stopAndRun(event, () => replayShortcut(getCanvasElement, "Delete", false, false, 46, "Delete")), false, false, "jse-tool--context")
+      ].filter(Boolean)
+    : [];
 
   const lockButton = actionButton(
     "lock",
@@ -335,6 +370,7 @@ export function CanvasToolbar({
     isTouchDevice
       ? [
           toolButton(TOOL_DEFINITIONS.selection),
+          ...contextButtons,
           toolButton(TOOL_DEFINITIONS.freedraw),
           shapeButton,
           toolButton(TOOL_DEFINITIONS.text),
