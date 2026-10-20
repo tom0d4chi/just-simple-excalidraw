@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.40 - 2026-10-20
+
+- The cursor is two things now. Pressed from its button it is a real mode: it
+  lights up, and a drag on empty paper draws a marquee until it is pressed again
+  (or another tool takes over). Armed silently to carry a selected element it does
+  not light up, and a touch on empty paper hands the sheet back to the hand, so a
+  drag there still pans.
+
 ## 0.1.39 - 2026-10-20
 
 - The shape strip reads from its button outwards: the shapes are reversed, and the

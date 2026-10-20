@@ -134,9 +134,11 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
   const selectionCountRef = useRef(0);
   const [textSelected, setTextSelected] = useState(false);
   const textSelectedRef = useRef(false);
+  const [selectionArmed, setSelectionArmed] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const canRedoRef = useRef(false);
   const manualSelectionRef = useRef(false);
+  const selectionArmedRef = useRef(false);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const excalidrawElementRef = useRef<HTMLElement | null>(null);
@@ -189,8 +191,6 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
     if (!host || !api) {
       return undefined;
     }
-    let gesture: { pointerId: number; x: number; y: number; at: number; hit: boolean } | null = null;
-
     const elementUnder = (event: PointerEvent): string | null => {
       const state = api.getAppState();
       const bounds = host.getBoundingClientRect();
@@ -214,11 +214,9 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       const state = api.getAppState();
       const tool = state.activeTool.type;
       if (tool !== "hand" && tool !== "selection") {
-        gesture = null;
         return;
       }
       const id = elementUnder(event);
-      gesture = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: Date.now(), hit: Boolean(id) };
       if (id) {
         if (!Object.hasOwn(state.selectedElementIds ?? {}, id)) {
           api.updateScene({ appState: { selectedElementIds: { [id]: true } } });
@@ -228,34 +226,13 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
         }
         return;
       }
-      if (tool === "selection" && !manualSelectionRef.current) {
+      if (tool === "selection" && !selectionArmedRef.current) {
         api.setActiveTool({ type: "hand" });
       }
     };
 
-    const onUp = (event: PointerEvent): void => {
-      const current = gesture;
-      gesture = null;
-      if (!current || current.pointerId !== event.pointerId || current.hit) {
-        return;
-      }
-      if (Math.hypot(event.clientX - current.x, event.clientY - current.y) > 10 || Date.now() - current.at > 350) {
-        return;
-      }
-      window.setTimeout(() => {
-        const state = api.getAppState();
-        if (state.activeTool.type === "selection" && Object.keys(state.selectedElementIds ?? {}).length === 0) {
-          api.setActiveTool({ type: "hand" });
-        }
-      }, 0);
-    };
-
     host.addEventListener("pointerdown", onDown, true);
-    host.addEventListener("pointerup", onUp, true);
-    return () => {
-      host.removeEventListener("pointerdown", onDown, true);
-      host.removeEventListener("pointerup", onUp, true);
-    };
+    return () => host.removeEventListener("pointerdown", onDown, true);
   }, [api]);
 
 
@@ -264,6 +241,20 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
    * own redo button, which is disabled exactly when the stack is empty. Read it
    * after the commit that follows a change.
    */
+  /*
+   * The cursor button is a mode of its own: armed only when pressed, so a drag on
+   * empty paper draws a marquee. Selecting an element arms the selection tool
+   * silently — it lets Excalidraw move the element — without lighting the button.
+   */
+  const toggleSelection = useCallback((): void => {
+    setSelectionArmed((armed) => {
+      const next = !armed;
+      selectionArmedRef.current = next;
+      api?.setActiveTool({ type: next ? "selection" : "hand" });
+      return next;
+    });
+  }, [api]);
+
   const syncHistoryState = useCallback((): void => {
     const schedule = typeof window.requestAnimationFrame === "function"
       ? window.requestAnimationFrame.bind(window)
@@ -392,6 +383,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       style,
       selectionCount,
       textSelected,
+      selectionArmed,
+      onToggleSelection: toggleSelection,
       canRedo,
       isTouchDevice,
       getCanvasElement

@@ -54,6 +54,8 @@ interface CanvasToolbarProps {
   style: StyleState;
   selectionCount: number;
   textSelected: boolean;
+  selectionArmed: boolean;
+  onToggleSelection: () => void;
   canRedo: boolean;
   isTouchDevice: boolean;
   getCanvasElement: () => HTMLElement | null;
@@ -155,6 +157,8 @@ export function CanvasToolbar({
   style,
   selectionCount,
   textSelected,
+  selectionArmed,
+  onToggleSelection,
   canRedo,
   isTouchDevice,
   getCanvasElement
@@ -336,14 +340,21 @@ export function CanvasToolbar({
     return () => document.removeEventListener("pointerdown", onOutside, true);
   }, [shapeMenuOpen, styleMenuOpen]);
 
-  const toolButton = ({ tool, icon, label }: ToolDefinition, onClick = selectTool) => createElement("button", {
-    key: tool,
-    type: "button",
-    className: `jse-tool clickable-icon${activeTool === tool ? " is-active" : ""}`,
-    "aria-label": label,
-    "aria-pressed": activeTool === tool,
-    onClick: onClick(tool)
-  }, createElement(Icon, { name: icon }));
+  const toolButton = (
+    { tool, icon, label }: ToolDefinition,
+    onClick = selectTool,
+    activeOverride?: boolean
+  ) => {
+    const active = activeOverride ?? activeTool === tool;
+    return createElement("button", {
+      key: tool,
+      type: "button",
+      className: `jse-tool clickable-icon${active ? " is-active" : ""}`,
+      "aria-label": label,
+      "aria-pressed": active,
+      onClick: onClick(tool)
+    }, createElement(Icon, { name: icon }));
+  };
 
   const actionButton = (
     key: string,
@@ -480,7 +491,7 @@ export function CanvasToolbar({
   createElement("div", { className: `jse-tools__pill${entered ? " jse-anim" : ""}` },
     isTouchDevice
       ? [
-          toolButton(TOOL_DEFINITIONS.selection),
+          toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
           toolButton(TOOL_DEFINITIONS.freedraw),
           shapeButton,
           toolButton(TOOL_DEFINITIONS.text),
