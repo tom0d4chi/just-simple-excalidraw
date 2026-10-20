@@ -449,6 +449,12 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
       styleSignatureRef.current = signature;
       setStyle(nextStyle);
     }
+    // Any tool that is not the cursor disarms it: an armed marquee must never
+    // survive a switch to the pen, the eraser or a shape.
+    if (activeToolRef.current.type !== "selection" && selectionArmedRef.current) {
+      selectionArmedRef.current = false;
+      setSelectionArmed(false);
+    }
     const selectedIds = Object.keys(appState?.selectedElementIds ?? {});
     const selected = selectedIds.length;
     const previouslySelected = selectionCountRef.current;
