@@ -446,11 +446,12 @@ export function CanvasToolbar({
         "aria-hidden": !shapeMenuOpen,
         onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
       },
-      SHAPES.map((tool) => createElement("button", {
+      SHAPES.map((tool, index) => createElement("button", {
         key: tool,
         type: "button",
         role: "menuitem",
-        className: `jse-tool clickable-icon jse-tool--shape${activeTool === tool ? " is-active" : ""}`,
+        className: `jse-tool clickable-icon jse-tool--shape jse-shapes__item${shapeMenuOpen ? " is-entering" : ""}${activeTool === tool ? " is-active" : ""}`,
+        style: { animationDelay: `${index * 26}ms` },
         "aria-label": TOOL_DEFINITIONS[tool].label,
         "aria-pressed": activeTool === tool,
         onClick: pickShape(tool)
@@ -459,7 +460,8 @@ export function CanvasToolbar({
       createElement("button", {
         type: "button",
         role: "menuitem",
-        className: `jse-tool clickable-icon jse-tool--shape${locked ? " is-active" : ""}`,
+        className: `jse-tool clickable-icon jse-tool--shape jse-shapes__item${shapeMenuOpen ? " is-entering" : ""}${locked ? " is-active" : ""}`,
+        style: { animationDelay: `${SHAPES.length * 26}ms` },
         "aria-label": locked ? t("stopKeepingShape") : t("keepShape"),
         "aria-pressed": locked,
         onClick: toggleLock

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.38 - 2026-10-20
+
+- The shape list is a horizontal strip now, and it has no plate either: icons
+  straight on the sheet, with a thin rule before the lock.
+- Its items land one after the other (26ms apart) instead of all at once.
+
 ## 0.1.37 - 2026-10-20
 
 - Every tool button is a switch: pressing the one that is already active gives the
