@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.35 - 2026-10-20
+
+- The gesture decides, as the finger lands: on an element the selection tool is
+  armed (and the element selected), so the drag moves it; on empty paper the hand
+  takes over, so the drag pans instead of starting a marquee. A cursor armed
+  deliberately from its button keeps its marquee on empty paper.
+
 ## 0.1.34 - 2026-10-20
 
 - A selection no longer changes the tool: tapping an element selects it and leaves

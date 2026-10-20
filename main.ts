@@ -136,6 +136,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
   const textSelectedRef = useRef(false);
   const [canRedo, setCanRedo] = useState(false);
   const canRedoRef = useRef(false);
+  const manualSelectionRef = useRef(false);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const excalidrawElementRef = useRef<HTMLElement | null>(null);
@@ -174,42 +175,24 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
   }, []);
 
   /*
-   * The hand tool ignores taps, so with a finger there would be no way to pick an
-   * element without first switching tools, and no way back to the hand once the
-   * cursor is armed. A tap (never a drag) is hit-tested here: on an element it
-   * selects it and arms the selection tool, on empty paper it drops the selection
-   * and hands the sheet back to the hand.
+   * One finger, one decision per gesture. The hand ignores taps, so the gesture is
+   * hit-tested as the finger lands:
+   *   - on an element: it is selected and the selection tool is armed, which is
+   *     what lets Excalidraw move it under the finger;
+   *   - on empty paper: the hand takes over, so the drag pans instead of drawing a
+   *     marquee — unless the cursor was armed by its button, in which case the
+   *     marquee is exactly what was asked for.
+   * A tap on empty paper still hands the sheet back to the hand.
    */
   useEffect(() => {
     const host = canvasHostRef.current;
     if (!host || !api) {
       return undefined;
     }
-    let start: { x: number; y: number; at: number } | null = null;
+    let gesture: { pointerId: number; x: number; y: number; at: number; hit: boolean } | null = null;
 
-    const onDown = (event: PointerEvent): void => {
-      const tool = api.getAppState().activeTool.type;
-      if (event.pointerType === "mouse" || (tool !== "hand" && tool !== "selection")) {
-        start = null;
-        return;
-      }
-      start = { x: event.clientX, y: event.clientY, at: Date.now() };
-    };
-
-    const onUp = (event: PointerEvent): void => {
-      const origin = start;
-      start = null;
-      if (!origin || event.pointerType === "mouse") {
-        return;
-      }
-      if (Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10 || Date.now() - origin.at > 350) {
-        return;
-      }
+    const elementUnder = (event: PointerEvent): string | null => {
       const state = api.getAppState();
-      const tool = state.activeTool.type;
-      if (tool !== "hand" && tool !== "selection") {
-        return;
-      }
       const bounds = host.getBoundingClientRect();
       const zoom = state.zoom.value || 1;
       const sceneX = (event.clientX - bounds.left) / zoom - state.scrollX;
@@ -221,22 +204,47 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, ...props }: ExcalidrawC
         sceneY >= element.y &&
         sceneY <= element.y + element.height
       ));
-      if (hit) {
-        api.updateScene({ appState: { selectedElementIds: { [hit.id]: true } } });
+      return hit ? hit.id : null;
+    };
+
+    const onDown = (event: PointerEvent): void => {
+      if (event.pointerType === "mouse") {
         return;
       }
-      if (tool !== "selection") {
+      const state = api.getAppState();
+      const tool = state.activeTool.type;
+      if (tool !== "hand" && tool !== "selection") {
+        gesture = null;
         return;
       }
-      /*
-       * Empty paper. Excalidraw clears the selection on its own during this same
-       * tap, so the decision is taken one tick later, once the canvas has had its
-       * say: nothing selected means the tap landed on paper and the hand takes
-       * over again.
-       */
+      const id = elementUnder(event);
+      gesture = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: Date.now(), hit: Boolean(id) };
+      if (id) {
+        if (!Object.hasOwn(state.selectedElementIds ?? {}, id)) {
+          api.updateScene({ appState: { selectedElementIds: { [id]: true } } });
+        }
+        if (tool !== "selection") {
+          api.setActiveTool({ type: "selection" });
+        }
+        return;
+      }
+      if (tool === "selection" && !manualSelectionRef.current) {
+        api.setActiveTool({ type: "hand" });
+      }
+    };
+
+    const onUp = (event: PointerEvent): void => {
+      const current = gesture;
+      gesture = null;
+      if (!current || current.pointerId !== event.pointerId || current.hit) {
+        return;
+      }
+      if (Math.hypot(event.clientX - current.x, event.clientY - current.y) > 10 || Date.now() - current.at > 350) {
+        return;
+      }
       window.setTimeout(() => {
-        const current = api.getAppState();
-        if (current.activeTool.type === "selection" && Object.keys(current.selectedElementIds ?? {}).length === 0) {
+        const state = api.getAppState();
+        if (state.activeTool.type === "selection" && Object.keys(state.selectedElementIds ?? {}).length === 0) {
           api.setActiveTool({ type: "hand" });
         }
       }, 0);
