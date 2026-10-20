@@ -60,6 +60,8 @@ interface CanvasToolbarProps {
   capabilities: Capabilities;
   /** True when a shape or an image sits under the column: it then needs a backing. */
   contentUnder?: boolean;
+  /** Dark sheet: the ink has to go light. */
+  dark?: boolean;
   onMenusToggled?: () => void;
   selectionArmed: boolean;
   onToggleSelection: () => void;
@@ -153,6 +155,7 @@ export function CanvasToolbar({
   textSelected,
   capabilities,
   contentUnder = false,
+  dark = false,
   onMenusToggled = () => {},
   selectionArmed,
   onToggleSelection,
@@ -548,7 +551,7 @@ export function CanvasToolbar({
     className: `jse-tools${contentUnder ? " has-content-under" : ""}`,
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
-  createElement("div", { className: `jse-tools__pill${entered ? " jse-anim" : ""}` },
+  createElement("div", { className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}` },
     isTouchDevice
       ? [
           toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),

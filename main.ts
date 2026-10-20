@@ -443,6 +443,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       textSelected,
       capabilities,
       contentUnder,
+      dark: theme === THEME.DARK,
       onMenusToggled: scheduleContentUnder,
       selectionArmed,
       onToggleSelection: toggleSelection,
