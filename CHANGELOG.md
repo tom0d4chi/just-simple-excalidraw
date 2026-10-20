@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here.
 
-## Unreleased
+## 0.1.11 - 2026-10-20
 
 - The hand tool is now the default, so a drag pans the canvas; selection is one
   tap away in the toolbar.
