@@ -689,11 +689,24 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   background-color: color-mix(in srgb, var(--jse-accent, var(--color-accent)) 12%, transparent);
 }
 
-/* A round swatch keeps a round marker: the ring follows the dot, it does not turn into a
-   rounded square that reads as a bigger radius. */
+/*
+ * A colour is marked on the dot itself: the ring hugs the 20 px swatch instead of drawing a
+ * 36 px disc behind it. The cell keeps its size for the finger, but nothing larger than the
+ * colour ever appears.
+ */
 .jse-appearance__chip--color,
 .jse-appearance__chip--color.is-active {
   border-radius: 50%;
+}
+
+.jse-appearance__chip--color.is-active {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.jse-appearance__chip--color.is-active .jse-appearance__dot,
+.jse-appearance__chip--color.is-active .jse-appearance__none {
+  box-shadow: 0 0 0 2px var(--jse-accent, var(--color-accent));
 }
 
 .jse-appearance__dot {
