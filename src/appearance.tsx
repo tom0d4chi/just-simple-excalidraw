@@ -94,11 +94,9 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
   }, content);
 }
 
-function line(label: string, children: ReactNode): ReactNode {
-  return createElement("div", { className: "jse-appearance__row" },
-    createElement("span", { className: "jse-appearance__label" }, label),
-    createElement("div", { className: "jse-appearance__choices" }, children)
-  );
+/* One grid for every family: no label, the icon that opened it says what it is. */
+function grid(children: ReactNode): ReactNode {
+  return createElement("div", { className: "jse-appearance__grid" }, children);
 }
 
 export function AppearanceMenu({ open, style, capabilities, onPick, onPreview }: AppearanceMenuProps) {
@@ -259,7 +257,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview }:
       )
     );
   } else if (category === "style") {
-    panel = line(t("lineStyle"), STROKE_STYLES.map((entry) => chip(
+    panel = grid(STROKE_STYLES.map((entry) => chip(
       style.strokeStyle === entry.value,
       entry.label(),
       pick({ strokeStyle: entry.value }),
@@ -267,7 +265,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview }:
       "jse-appearance__chip--line"
     )));
   } else if (category === "corners") {
-    panel = line(t("corners"), EDGES.map((edge) => chip(
+    panel = grid(EDGES.map((edge) => chip(
       edge.value === null ? style.roundness === null : style.roundness !== null,
       edge.label(),
       pick({ roundness: edge.value }),
@@ -275,7 +273,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview }:
       "jse-appearance__chip--line"
     )));
   } else if (category === "text") {
-    panel = line(t("size"), FONT_SIZES.map((font) => chip(
+    panel = grid(FONT_SIZES.map((font) => chip(
       style.fontSize === font.value,
       font.label(),
       pick({ fontSize: font.value }),
