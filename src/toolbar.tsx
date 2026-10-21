@@ -164,6 +164,7 @@ export function CanvasToolbar({
   getCanvasElement
 }: CanvasToolbarProps) {
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  const [appearanceExpanded, setAppearanceExpanded] = useState(false);
   // "Keep the tool" is a preference of the column, not a property of Excalidraw's
   // current tool: it can be armed before choosing a shape, and it then applies to
   // whatever is picked next.
@@ -491,7 +492,7 @@ export function CanvasToolbar({
       onClick: toggleStyleMenu
     }, createElement(Icon, { name: "palette" })),
     createElement("div", {
-      className: `jse-shapes__menu jse-appearance-menu${entered ? " jse-anim" : ""}${styleMenuOpen ? "" : " is-closed"}`,
+      className: `jse-shapes__menu jse-appearance-menu${appearanceExpanded ? " is-expanded" : ""}${entered ? " jse-anim" : ""}${styleMenuOpen ? "" : " is-closed"}`,
       role: "menu",
       "aria-hidden": !styleMenuOpen,
       onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
@@ -501,7 +502,8 @@ export function CanvasToolbar({
       style,
       capabilities,
       onPick: applyStyle,
-      onPreview: previewStyle
+      onPreview: previewStyle,
+      onExpand: setAppearanceExpanded
     }))
   );
 

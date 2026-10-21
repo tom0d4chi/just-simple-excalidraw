@@ -640,6 +640,10 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   /* The strip's vertical centring must not follow this one: it grows upwards. */
   translate: none;
   bottom: calc(-1 * var(--size-4-1, 4px));
+  /* A capsule while it is only its row of families: the radius clamps to half the height,
+     which is what makes the short state look fully rounded. */
+  border-radius: var(--touch-size-l, 52px);
+  transition: border-radius 160ms ease;
   padding: var(--size-4-1, 6px);
   border-radius: var(--radius-m, 12px);
   max-height: min(78vh, 520px);
@@ -993,6 +997,15 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   stroke-dasharray: 1 4;
 }
 
+/*
+ * Once a family is open the popover is a panel, not a capsule: the radius drops to the
+ * ordinary panel corner so that growing does not read as "everything became round".
+ */
+.jse-appearance-menu.is-expanded,
+.jse-appearance-menu.is-expanded::before {
+  border-radius: var(--radius-l, 12px);
+}
+
 .jse-appearance__panel {
   display: flex;
   flex-direction: column;
@@ -1079,6 +1092,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   transition:
     background-color 160ms ease,
     box-shadow 160ms ease,
+    border-radius 160ms ease,
     backdrop-filter 160ms ease;
   pointer-events: none;
 }

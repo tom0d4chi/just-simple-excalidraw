@@ -81,6 +81,8 @@ interface AppearanceMenuProps {
   capabilities: Capabilities;
   onPick: (patch: StylePatch) => void;
   onPreview: (patch: StylePatch) => void;
+  /** Tells the owner when a family is open, so the popover can change shape. */
+  onExpand?: (expanded: boolean) => void;
 }
 
 function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = ""): ReactNode {
@@ -99,7 +101,7 @@ function grid(children: ReactNode): ReactNode {
   return createElement("div", { className: "jse-appearance__grid" }, children);
 }
 
-export function AppearanceMenu({ open, style, capabilities, onPick, onPreview }: AppearanceMenuProps) {
+export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, onExpand }: AppearanceMenuProps) {
   // The slider has its own value while it is being dragged: the element is only
   // rewritten on release, so its style would otherwise lag a whole round trip.
   const [dragging, setDragging] = useState<number | null>(null);
@@ -113,6 +115,12 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview }:
       setCategory(null);
     }
   }, [open]);
+
+  // The popover is a capsule while it is only its row of families; once a family opens it
+  // takes the ordinary panel corners, so growing does not blow the radius up.
+  useEffect(() => {
+    onExpand?.(open && category !== null);
+  }, [onExpand, open, category]);
 
   // A family that no longer applies (the selection changed) closes itself.
   useEffect(() => {
