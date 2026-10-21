@@ -270,6 +270,13 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     families.push({ key: "text", label: t("size"), content: createElement(Icon, { name: "type" }) });
   }
 
+  /*
+   * Colours sit nearest the thumb. The popover opens at the right edge of the screen, so the
+   * last cells of the row are the easy ones to reach: the families are built in reading
+   * order, then reversed so stroke and fill end up there.
+   */
+  families.reverse();
+
   const panelFor = (which: Category | null): ReactNode => {
     let panel: ReactNode = null;
     if (which === "stroke") {
