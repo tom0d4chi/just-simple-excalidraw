@@ -106,6 +106,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   // rewritten on release, so its style would otherwise lag a whole round trip.
   const [dragging, setDragging] = useState<number | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
+  // Kept mounted while it collapses, so the panel can animate its height both ways.
+  const [shownCategory, setShownCategory] = useState<Category | null>(null);
   const width = dragging ?? style.strokeWidth;
 
   // Closing the menu ends any half-finished drag and forgets the open family.
@@ -115,6 +117,12 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       setCategory(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (category) {
+      setShownCategory(category);
+    }
+  }, [category]);
 
   // The popover is a capsule while it is only its row of families; once a family opens it
   // takes the ordinary panel corners, so growing does not blow the radius up.
@@ -202,8 +210,9 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     families.push({ key: "text", label: t("size"), content: createElement(Icon, { name: "type" }) });
   }
 
-  let panel: ReactNode = null;
-  if (category === "stroke") {
+  const panelFor = (which: Category | null): ReactNode => {
+    let panel: ReactNode = null;
+    if (which === "stroke") {
     panel = createElement("div", { className: "jse-appearance__grid" }, STROKE_COLORS.map((color) => chip(
       style.strokeColor.toLowerCase() === color,
       `${t("colourStroke")} ${color}`,
@@ -211,7 +220,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
     )));
-  } else if (category === "fill") {
+  } else if (which === "fill") {
     panel = createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.map((color) => chip(
       (color === null && noFill) || (color !== null && style.backgroundColor.toLowerCase() === color),
       color === null ? t("noFill") : `${t("colourFill")} ${color}`,
@@ -223,7 +232,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
         : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
     )));
-  } else if (category === "width") {
+  } else if (which === "width") {
     panel = createElement("div", { className: "jse-appearance__stack" },
       createElement("div", { className: "jse-appearance__choices" }, STROKE_WIDTHS.map((preset) => chip(
         style.strokeWidth === preset.value,
@@ -264,7 +273,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
         createElement("span", { className: "jse-appearance__value" }, width.toFixed(1))
       )
     );
-  } else if (category === "style") {
+  } else if (which === "style") {
     panel = grid(STROKE_STYLES.map((entry) => chip(
       style.strokeStyle === entry.value,
       entry.label(),
@@ -272,7 +281,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       createElement("span", { className: `jse-appearance__line jse-appearance__line--${entry.value}` }),
       "jse-appearance__chip--line"
     )));
-  } else if (category === "corners") {
+  } else if (which === "corners") {
     panel = grid(EDGES.map((edge) => chip(
       edge.value === null ? style.roundness === null : style.roundness !== null,
       edge.label(),
@@ -280,7 +289,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       createElement("span", { className: `jse-appearance__shape${edge.value ? " is-round" : ""}` }),
       "jse-appearance__chip--line"
     )));
-  } else if (category === "text") {
+  } else if (which === "text") {
     panel = grid(FONT_SIZES.map((font) => chip(
       style.fontSize === font.value,
       font.label(),
@@ -290,10 +299,17 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     )));
   }
 
+  return panel;
+  };
+
   return createElement("div", { className: "jse-appearance" },
-    panel
-      ? createElement("div", { className: "jse-appearance__panel", key: category }, panel)
-      : null,
+    /*
+     * The panel animates its own height, and stays mounted while it collapses, so the
+     * popover grows and shrinks smoothly instead of jumping.
+     */
+    createElement("div", {
+      className: `jse-appearance__panel${category ? " is-open" : ""}`
+    }, panelFor(shownCategory)),
     createElement("div", { className: "jse-appearance__categories" }, families.map((family, index) => (
       categoryButton(family.key, family.label, family.content, delayFor(index))
     )))

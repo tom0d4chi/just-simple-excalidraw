@@ -631,7 +631,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * group of a row is a fixed grid, so the swatches line up whatever the theme.
  */
 .jse-appearance-menu {
-  width: auto;
+  /* As wide as the widest panel, whatever the family row holds: opening one cannot
+     change the popover's width, so the icons never move a pixel. */
+  width: calc(5 * 36px + 4 * var(--size-4-1, 4px) + 2 * var(--size-4-1, 4px));
   align-items: stretch;
   /* The button sits low in the column, so the menu grows upwards from it — and it is
      nudged down by its own padding, so the family row inside sits centred on the
@@ -653,6 +655,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   display: flex;
   flex-direction: column;
   gap: var(--size-4-1, 6px);
+  /* Fills the popover, whose width is fixed: the family row therefore never changes width,
+     so opening a panel cannot nudge the icons sideways. */
+  width: 100%;
 }
 
 .jse-appearance__row {
@@ -938,6 +943,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-appearance__categories {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--size-4-1, 4px);
 }
 
@@ -1006,8 +1012,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  */
 .jse-appearance-menu.is-expanded,
 .jse-appearance-menu.is-expanded::before,
-.jse-appearance-menu:has(.jse-appearance__panel),
-.jse-appearance-menu:has(.jse-appearance__panel)::before {
+.jse-appearance-menu:has(.jse-appearance__panel.is-open),
+.jse-appearance-menu:has(.jse-appearance__panel.is-open)::before {
   border-radius: var(--radius-l, 12px);
 }
 
@@ -1016,7 +1022,25 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   flex-direction: column;
   gap: var(--size-4-2, 8px);
   padding: 2px 2px var(--size-4-2, 8px);
-  animation: jse-appearance-in 140ms ease-out;
+  /* Collapsed it takes no room; open it takes what it needs. Animating the height is what
+     makes the popover grow instead of jumping, and the panel stays mounted while it
+     collapses so the way out is animated too. */
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
+  transition:
+    max-height 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 140ms ease,
+    padding 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.jse-appearance__panel.is-open {
+  max-height: 320px;
+  opacity: 1;
+  padding-top: 2px;
+  padding-bottom: var(--size-4-2, 8px);
 }
 
 @keyframes jse-appearance-in {
