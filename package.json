@@ -1,6 +1,6 @@
 {
   "name": "just-simple-excalidraw",
-  "version": "0.1.84",
+  "version": "0.1.85",
   "private": true,
   "description": "A fully local Excalidraw editor for Obsidian.",
   "author": "David Hurtado",
@@ -10,7 +10,7 @@
   },
   "type": "module",
   "scripts": {
-    "test": "node scripts/test-file-isolation.mjs && node scripts/test-excalidraw-environment.mjs && npm run test:preview && npm run test:naming && npm run test:snap && npm run test:capabilities && npm run test:overlap",
+    "test": "node scripts/test-file-isolation.mjs && node scripts/test-excalidraw-environment.mjs && npm run test:preview && npm run test:naming && npm run test:snap && npm run test:capabilities && npm run test:overlap && npm run test:panels",
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit && node esbuild.config.mjs production && node scripts/generate-third-party-notices.mjs && node scripts/copy-assets.mjs",
     "audit:release": "node scripts/audit-release.mjs",
@@ -19,7 +19,8 @@
     "test:naming": "node scripts/naming.test.mjs",
     "test:snap": "node scripts/snap.test.mjs",
     "test:capabilities": "node scripts/capabilities.test.mjs",
-    "test:overlap": "node scripts/overlap.test.mjs"
+    "test:overlap": "node scripts/overlap.test.mjs",
+    "test:panels": "node scripts/panels.test.mjs"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",

@@ -21,6 +21,7 @@ import { attachInteraction } from "./src/interaction";
 import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
 import { capabilitiesForTool, capabilitiesForTypes, anyCapability } from "./src/capabilities";
 import { anyElementUnder } from "./src/overlap";
+import { watchPanelSizes, type PanelWatch } from "./src/panels";
 import { snapElements } from "./src/snap";
 import { keepViewportInSync } from "./src/viewport";
 
@@ -127,6 +128,10 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   // eagerly), so nothing reaches a ref that has not been initialised yet.
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const contentUnderScheduled = useRef(false);
+  // The popovers are measured, and their box changes long after they open (a family panel
+  // animates its height in): one observer keeps the backing in step with the geometry
+  // instead of a single read taken when the menu was toggled.
+  const panelWatchRef = useRef<PanelWatch | null>(null);
   // Level to come back to when a double tap zooms back out.
   const zoomBaseRef = useRef(1);
   const zoomFrameRef = useRef<number | null>(null);
@@ -325,6 +330,19 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   }, [api]);
 
   /*
+   * A measure is only honest for the box it was taken on, and these boxes move: the
+   * appearance popover grows when a family panel opens and shrinks when it closes. The
+   * observer, re-synced on every measure, is what turns those changes into a new read —
+   * otherwise the backing ignores the area the panel has just gained.
+   */
+  const observePanels = useCallback((nodes: Element[]): void => {
+    if (!panelWatchRef.current) {
+      panelWatchRef.current = watchPanelSizes(() => scheduleContentUnder());
+    }
+    panelWatchRef.current.observe(nodes);
+  }, []);
+
+  /*
    * The column has no background of its own. It gets one only when a shape or an image
    * passes beneath it, where a bare icon would be unreadable. The same goes for the menus
    * that open from it.
@@ -343,10 +361,12 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       if (!current || typeof document?.querySelectorAll !== "function") {
         return;
       }
-      const panels = [
-        ...document.querySelectorAll<HTMLElement>(".jse-tools"),
-        ...document.querySelectorAll<HTMLElement>(".jse-shapes__menu:not(.is-closed)")
-      ];
+      const column = [...document.querySelectorAll<HTMLElement>(".jse-tools")];
+      const menus = [...document.querySelectorAll<HTMLElement>(".jse-shapes__menu")];
+      observePanels([...column, ...menus]);
+      // A closed menu is still in the DOM (it has to be, to animate out) but nothing can
+      // sit under it: only the open ones count.
+      const panels = [...column, ...menus.filter((menu) => !menu.classList.contains("is-closed"))];
       const rects = panels
         .map((panel) => panel.getBoundingClientRect())
         .filter((rect) => rect.width > 0 && rect.height > 0)
@@ -463,6 +483,17 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   useEffect(() => {
     syncHistoryState();
   }, [api, syncHistoryState]);
+
+  // Measure once the view is up, and again if the API is replaced (the column and both
+  // menus exist by then, so the observer has something to watch).
+  useEffect(() => {
+    scheduleContentUnder();
+  }, [api, scheduleContentUnder]);
+
+  useEffect(() => () => {
+    panelWatchRef.current?.disconnect();
+    panelWatchRef.current = null;
+  }, []);
 
   return createElement("div", {
     className: `jse-root${dotGrid ? " has-dots" : ""}`,

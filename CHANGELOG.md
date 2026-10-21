@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.85 - 2026-10-21
+
+- The backing behind the column follows the appearance popover while it grows: a family
+  panel animates its height in after the menu opens, and the rectangle used to decide
+  the backing was read once, at open time, so the area the panel gained was ignored. The
+  column and both popovers are now watched for size changes and re-measured whenever one
+  lands (a closed menu is still ignored — nothing can sit under something invisible).
+
 ## 0.1.44 - 2026-10-20
 
 - Removed a marquee rule left over from the first touch implementation: it was
