@@ -643,7 +643,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   /* A capsule while it is only its row of families: the radius clamps to half the height,
      which is what makes the short state look fully rounded. */
   border-radius: var(--touch-size-l, 52px);
-  transition: border-radius 160ms ease;
   padding: var(--size-4-1, 6px);
   border-radius: var(--radius-m, 12px);
   max-height: min(78vh, 520px);
@@ -1001,8 +1000,14 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * Once a family is open the popover is a panel, not a capsule: the radius drops to the
  * ordinary panel corner so that growing does not read as "everything became round".
  */
+/*
+ * Decided by the DOM, not by a React state: an open family is visible in the same frame it
+ * is inserted, so the popover never spends a frame as a tall box wearing a capsule radius.
+ */
 .jse-appearance-menu.is-expanded,
-.jse-appearance-menu.is-expanded::before {
+.jse-appearance-menu.is-expanded::before,
+.jse-appearance-menu:has(.jse-appearance__panel),
+.jse-appearance-menu:has(.jse-appearance__panel)::before {
   border-radius: var(--radius-l, 12px);
 }
 
@@ -1092,7 +1097,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   transition:
     background-color 160ms ease,
     box-shadow 160ms ease,
-    border-radius 160ms ease,
     backdrop-filter 160ms ease;
   pointer-events: none;
 }
