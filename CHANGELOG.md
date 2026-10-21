@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.86 - 2026-10-21
+
+- The mark on the active tool is one disc that travels between the buttons instead of a
+  grey circle fading in under the new tool while it fades out under the old one. It is
+  measured from the button itself (`offsetTop/offsetLeft`, which no transform touches, so
+  a press or the column's entrance cannot skew it) and re-measured whenever the column
+  reflows, so it stays on its tool while a group folds in or out. With the hand tool
+  active nothing is lit and the disc steps aside.
+
 ## 0.1.85 - 2026-10-21
 
 - The backing behind the column follows the appearance popover while it grows: a family

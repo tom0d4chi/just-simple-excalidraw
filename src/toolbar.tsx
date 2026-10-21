@@ -177,6 +177,54 @@ export function CanvasToolbar({
   const activeShape = SHAPES.includes(activeTool as ToolName) ? (activeTool as ToolName) : null;
 
   /*
+   * The active tool's backing is one disc that travels from button to button, not a
+   * grey circle that fades in under the new tool while the old one fades out. It is
+   * measured from the button itself with `offsetTop/offsetLeft`, which no transform
+   * touches: a rect read during the press (`scale(0.92)`) or during the column's
+   * entrance would land a few pixels off.
+   */
+  const pillRef = useRef<HTMLDivElement | null>(null);
+  const glideRef = useRef<HTMLDivElement | null>(null);
+  const glideReadyRef = useRef(false);
+  const [glideReady, setGlideReady] = useState(false);
+
+  const measureGlideRef = useRef<() => void>(() => {});
+  measureGlideRef.current = (): void => {
+    const pill = pillRef.current;
+    const glide = glideRef.current;
+    if (!pill || !glide || typeof pill.querySelectorAll !== "function") {
+      return;
+    }
+
+    // The popovers live inside the pill too, and their items carry `is-active` as
+    // well: only a button that is a tool of the column can own the disc.
+    const candidates = Array.prototype.slice.call(
+      pill.querySelectorAll(".jse-tool.is-active")
+    ) as HTMLElement[];
+    const target = candidates.find((button) => button.closest(".jse-shapes__menu") === null) ?? null;
+
+    let x = 0;
+    let y = 0;
+    let node: HTMLElement | null = target;
+    while (node && node !== pill) {
+      x += node.offsetLeft;
+      y += node.offsetTop;
+      node = node.offsetParent as HTMLElement | null;
+    }
+
+    glide.style.setProperty("--jse-glide-x", `${x}px`);
+    glide.style.setProperty("--jse-glide-y", `${y}px`);
+    // The hand tool has no lit button: the disc steps aside instead of sitting on
+    // whatever was active last.
+    glide.dataset.empty = target ? "false" : "true";
+
+    if (!glideReadyRef.current) {
+      glideReadyRef.current = true;
+      setGlideReady(true);
+    }
+  };
+
+  /*
    * The appearance menu is worth showing whenever a pick has somewhere to go: with
    * a selection it restyles it, with a drawing tool it sets what the next stroke
    * will look like — that is how the pen gets its thickness.
@@ -394,6 +442,25 @@ export function CanvasToolbar({
     return () => document.removeEventListener("pointerdown", onOutside, true);
   }, [shapeMenuOpen, styleMenuOpen]);
 
+  /*
+   * Placed on every commit (a tool switch, a group folding in or out, a locale
+   * change all move the button), and again on every size the column takes while it
+   * animates its height.
+   */
+  useEffect(() => {
+    measureGlideRef.current();
+  });
+
+  useEffect(() => {
+    const pill = pillRef.current;
+    if (!pill || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(() => measureGlideRef.current());
+    observer.observe(pill);
+    return () => observer.disconnect();
+  }, []);
+
   const toolButton = (
     { tool, icon, label }: ToolDefinition,
     onClick = selectTool,
@@ -553,7 +620,15 @@ export function CanvasToolbar({
     className: `jse-tools${contentUnder ? " has-content-under" : ""}`,
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
-  createElement("div", { className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}` },
+  createElement("div", {
+    className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}${glideReady ? " has-glide" : ""}`,
+    ref: pillRef
+  },
+    createElement("div", {
+      className: "jse-tools__glide",
+      ref: glideRef,
+      "aria-hidden": true
+    }),
     isTouchDevice
       ? [
           toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),

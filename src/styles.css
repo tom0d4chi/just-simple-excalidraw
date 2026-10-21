@@ -377,6 +377,63 @@
 }
 
 /*
+ * The active tool's backing is a single disc that travels down the column, so a
+ * tool change reads as the mark moving instead of two backgrounds cross-fading on
+ * their own spot. It is placed with `transform` from the button's own offsets.
+ */
+.jse-tools__glide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: var(--jse-tool-size, 42px);
+  height: var(--jse-tool-size, 42px);
+  border-radius: 999px;
+  background-color: var(
+    --background-modifier-active-hover,
+    var(--background-modifier-hover)
+  );
+  transform: translate(var(--jse-glide-x, 0px), var(--jse-glide-y, 0px));
+  opacity: 1;
+  pointer-events: none;
+}
+
+/* Nothing is active (the hand tool): the disc steps aside rather than marking a stale spot. */
+.jse-tools__glide[data-empty="true"] {
+  opacity: 0;
+}
+
+/* Only once the disc has a measured position does the mark travel, never on the first placement. */
+.jse-tools__pill.has-glide .jse-tools__glide {
+  transition:
+    transform 260ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 140ms ease;
+}
+
+/* The disc sits behind the icons: every control it can underline paints above it. */
+.jse-tools__pill > .jse-tool,
+.jse-tools__pill > .jse-shapes {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * The disc carries the mark, so the buttons stop painting their own. `is-open` keeps
+ * its backing (a menu can be open on a tool that is not the active one), and the
+ * popovers' items are out of scope: they are not tools of the column.
+ */
+.jse-root .jse-tools__pill.has-glide > .jse-tool.clickable-icon.is-active:not(.is-open),
+.jse-root .jse-tools__pill.has-glide > .jse-shapes > .jse-tool.clickable-icon.is-active:not(.is-open) {
+  background-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-tools__pill.has-glide .jse-tools__glide {
+    transition: none;
+  }
+}
+
+/*
  * The shape list: same surface as the column, anchored to its button and
  * opening towards the canvas so it never runs under the screen edge.
  */
