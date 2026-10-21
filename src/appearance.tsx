@@ -113,6 +113,10 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
      a ring blinking out here and on over there. */
   const panelRef = useRef<HTMLDivElement | null>(null);
   const markerSignatureRef = useRef("");
+  /* The family row gets the same travelling disc as the values below it. */
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const familySignatureRef = useRef("");
+  const [familyMarker, setFamilyMarker] = useState<{ left: number; top: number; size: number } | null>(null);
   const [marker, setMarker] = useState<{ left: number; top: number; size: number; round: boolean } | null>(null);
   const width = dragging ?? style.strokeWidth;
 
@@ -163,6 +167,28 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     }
     // shownCategory matters: the cells only exist on the pass after the family is kept.
   }, [category, shownCategory, style, open]);
+
+  // Where the open family sits in its row, measured from the row itself.
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) {
+      return;
+    }
+    const active = row.querySelector<HTMLElement>(".jse-appearance__category.is-active");
+    if (!active) {
+      if (familySignatureRef.current !== "none") {
+        familySignatureRef.current = "none";
+        setFamilyMarker(null);
+      }
+      return;
+    }
+    const next = { left: active.offsetLeft, top: active.offsetTop, size: active.offsetWidth };
+    const signature = `${next.left},${next.top},${next.size}`;
+    if (signature !== familySignatureRef.current) {
+      familySignatureRef.current = signature;
+      setFamilyMarker(next);
+    }
+  }, [category, capabilities, open]);
 
   // A family that no longer applies (the selection changed) closes itself.
   useEffect(() => {
@@ -358,7 +384,19 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
           })
         : null,
       panelFor(shownCategory)),
-    createElement("div", { className: "jse-appearance__categories" }, families.map((family, index) => (
+    createElement("div", { className: "jse-appearance__categories", ref: rowRef },
+      familyMarker
+        ? createElement("div", {
+            className: "jse-appearance__family-marker",
+            style: {
+              left: `${familyMarker.left}px`,
+              top: `${familyMarker.top}px`,
+              width: `${familyMarker.size}px`,
+              height: `${familyMarker.size}px`
+            }
+          })
+        : null,
+      families.map((family, index) => (
       categoryButton(family.key, family.label, family.content, delayFor(index))
     )))
   );
