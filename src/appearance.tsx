@@ -1,6 +1,7 @@
 import {
   createElement,
   useEffect,
+  useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode
@@ -108,6 +109,11 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   const [category, setCategory] = useState<Category | null>(null);
   // Kept mounted while it collapses, so the panel can animate its height both ways.
   const [shownCategory, setShownCategory] = useState<Category | null>(null);
+  /* One marker for the whole panel: it slides from the old value to the new one instead of
+     a ring blinking out here and on over there. */
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const markerSignatureRef = useRef("");
+  const [marker, setMarker] = useState<{ left: number; top: number; size: number; round: boolean } | null>(null);
   const width = dragging ?? style.strokeWidth;
 
   // Closing the menu ends any half-finished drag and forgets the open family.
@@ -129,6 +135,34 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   useEffect(() => {
     onExpand?.(open && category !== null);
   }, [onExpand, open, category]);
+
+  // Where the chosen value sits right now, measured from the panel itself.
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel || !category) {
+      return;
+    }
+    const active = panel.querySelector<HTMLElement>(".jse-appearance__chip.is-active");
+    if (!active) {
+      if (markerSignatureRef.current !== "none") {
+        markerSignatureRef.current = "none";
+        setMarker(null);
+      }
+      return;
+    }
+    const next = {
+      left: active.offsetLeft,
+      top: active.offsetTop,
+      size: active.offsetWidth,
+      round: active.classList.contains("jse-appearance__chip--color")
+    };
+    const signature = `${next.left},${next.top},${next.size},${next.round}`;
+    if (signature !== markerSignatureRef.current) {
+      markerSignatureRef.current = signature;
+      setMarker(next);
+    }
+    // shownCategory matters: the cells only exist on the pass after the family is kept.
+  }, [category, shownCategory, style, open]);
 
   // A family that no longer applies (the selection changed) closes itself.
   useEffect(() => {
@@ -308,8 +342,22 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
      * popover grows and shrinks smoothly instead of jumping.
      */
     createElement("div", {
+      ref: panelRef,
       className: `jse-appearance__panel${category ? " is-open" : ""}`
-    }, panelFor(shownCategory)),
+    },
+      marker
+        ? createElement("div", {
+            className: "jse-appearance__marker",
+            style: {
+              left: `${marker.left}px`,
+              top: `${marker.top}px`,
+              width: `${marker.size}px`,
+              height: `${marker.size}px`,
+              borderRadius: marker.round ? "50%" : "var(--radius-s, 8px)"
+            }
+          })
+        : null,
+      panelFor(shownCategory)),
     createElement("div", { className: "jse-appearance__categories" }, families.map((family, index) => (
       categoryButton(family.key, family.label, family.content, delayFor(index))
     )))

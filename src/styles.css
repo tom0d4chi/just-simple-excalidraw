@@ -734,6 +734,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * border, so choosing a value cannot nudge the rest of the panel.
  */
 .jse-appearance__chip {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   box-sizing: border-box;
@@ -750,8 +752,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-appearance__chip.is-active {
-  box-shadow: inset 0 0 0 1.5px var(--jse-accent, var(--color-accent));
-  background-color: color-mix(in srgb, var(--jse-accent, var(--color-accent)) 12%, transparent);
+  background-color: transparent;
+  box-shadow: none;
 }
 
 /*
@@ -767,11 +769,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-appearance__chip--color.is-active {
   background-color: transparent;
   box-shadow: none;
-}
-
-.jse-appearance__chip--color.is-active .jse-appearance__dot,
-.jse-appearance__chip--color.is-active .jse-appearance__none {
-  box-shadow: 0 0 0 2px var(--jse-accent, var(--color-accent));
 }
 
 .jse-appearance__dot {
@@ -1074,7 +1071,26 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   border-radius: var(--radius-l, 12px);
 }
 
+/*
+ * The mark of the chosen value: one element for the whole panel, sliding between cells.
+ * A ring that simply appears elsewhere gives no sense of the choice having moved.
+ */
+.jse-appearance__marker {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--jse-accent, var(--color-accent)) 14%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--jse-accent, var(--color-accent));
+  transition:
+    left 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    top 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    border-radius 140ms ease;
+}
+
 .jse-appearance__panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--size-4-2, 8px);
