@@ -118,6 +118,11 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   const familySignatureRef = useRef("");
   const [familyMarker, setFamilyMarker] = useState<{ left: number; top: number; size: number } | null>(null);
   const [marker, setMarker] = useState<{ left: number; top: number; size: number; round: boolean } | null>(null);
+  /* Height is measured from the content, so switching family animates from one height to the
+     other instead of jumping: max-height can only animate collapsing and expanding. */
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const heightSignatureRef = useRef("");
+  const [panelHeight, setPanelHeight] = useState(0);
   const width = dragging ?? style.strokeWidth;
 
   // Closing the menu ends any half-finished drag and forgets the open family.
@@ -167,6 +172,17 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     }
     // shownCategory matters: the cells only exist on the pass after the family is kept.
   }, [category, shownCategory, style, open]);
+
+  // How tall the open family is right now.
+  useEffect(() => {
+    const inner = innerRef.current;
+    const next = inner && category ? Math.ceil(inner.getBoundingClientRect().height) : 0;
+    const signature = String(next);
+    if (signature !== heightSignatureRef.current) {
+      heightSignatureRef.current = signature;
+      setPanelHeight(next);
+    }
+  }, [category, shownCategory, capabilities, style, open]);
 
   // Where the open family sits in its row, measured from the row itself.
   useEffect(() => {
@@ -376,8 +392,10 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
      */
     createElement("div", {
       ref: panelRef,
-      className: `jse-appearance__panel${category ? " is-open" : ""}`
+      className: `jse-appearance__panel${category ? " is-open" : ""}`,
+      style: { height: category ? `${panelHeight}px` : "0px" }
     },
+      createElement("div", { ref: innerRef, className: "jse-appearance__inner" },
       marker
         ? createElement("div", {
             className: "jse-appearance__marker",
@@ -390,7 +408,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
             }
           })
         : null,
-      panelFor(shownCategory)),
+      panelFor(shownCategory))),
     createElement("div", { className: "jse-appearance__categories", ref: rowRef },
       familyMarker
         ? createElement("div", {

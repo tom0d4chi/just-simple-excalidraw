@@ -1103,29 +1103,27 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-appearance__panel {
   position: relative;
+  /* Height comes from the measurement, in the style attribute: it is the only way to
+     animate from one family's height to another's. */
+  height: 0;
+  overflow: hidden;
+  transition: height 200ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 140ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2, 8px);
+  padding: 0;
+  opacity: 0;
+}
+
+.jse-appearance__inner {
   display: flex;
   flex-direction: column;
   gap: var(--size-4-2, 8px);
   padding: 2px 2px var(--size-4-2, 8px);
-  /* Collapsed it takes no room; open it takes what it needs. Animating the height is what
-     makes the popover grow instead of jumping, and the panel stays mounted while it
-     collapses so the way out is animated too. */
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  padding-top: 0;
-  padding-bottom: 0;
-  transition:
-    max-height 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    opacity 140ms ease,
-    padding 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .jse-appearance__panel.is-open {
-  max-height: 320px;
   opacity: 1;
-  padding-top: 2px;
-  padding-bottom: var(--size-4-2, 8px);
 }
 
 @keyframes jse-appearance-in {
