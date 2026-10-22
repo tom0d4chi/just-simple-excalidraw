@@ -699,9 +699,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   /* The strip's vertical centring must not follow this one: it grows upwards. */
   translate: none;
   bottom: calc(-1 * var(--size-4-1, 4px));
-  /* A capsule while it is only its row of families: the radius clamps to half the height,
-     which is what makes the short state look fully rounded. */
-  border-radius: var(--touch-size-l, 52px);
+
   padding: var(--size-4-1, 6px);
   border-radius: var(--radius-m, 12px);
   max-height: min(78vh, 520px);
@@ -1083,12 +1081,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * Decided by the DOM, not by a React state: an open family is visible in the same frame it
  * is inserted, so the popover never spends a frame as a tall box wearing a capsule radius.
  */
-.jse-appearance-menu.is-expanded,
-.jse-appearance-menu.is-expanded::before,
-.jse-appearance-menu:has(.jse-appearance__panel.is-open),
-.jse-appearance-menu:has(.jse-appearance__panel.is-open)::before {
-  border-radius: var(--radius-l, 12px);
-}
+
 
 /*
  * The mark of the chosen value: one element for the whole panel, sliding between cells.
@@ -1213,6 +1206,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   transition:
     background-color 160ms ease,
     box-shadow 160ms ease,
+    border-radius 200ms cubic-bezier(0.22, 0.61, 0.36, 1),
     backdrop-filter 160ms ease;
   pointer-events: none;
 }
@@ -1230,4 +1224,26 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   .jse-shapes__menu::before {
     transition: none;
   }
+}
+
+/*
+ * Appearance popover: the same shape language as the shape strip, but its radius is a
+ * concrete value rather than a clamp, so it can be animated while the popover grows.
+ * Collapsed it is exactly half the short height — a pill; open it is the ordinary panel
+ * corner. Both states are stated here, after the strip's generic rules, so they win.
+ */
+.jse-tools .jse-appearance-menu {
+  border-radius: calc(var(--touch-size-m, 40px) / 2 + var(--size-4-1, 4px));
+  transition: border-radius 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.jse-tools .jse-appearance-menu::before {
+  border-radius: inherit;
+}
+
+.jse-tools .jse-appearance-menu.is-expanded,
+.jse-tools .jse-appearance-menu:has(.jse-appearance__panel.is-open),
+.jse-tools .jse-appearance-menu.is-expanded::before,
+.jse-tools .jse-appearance-menu:has(.jse-appearance__panel.is-open)::before {
+  border-radius: var(--radius-l, 12px);
 }
