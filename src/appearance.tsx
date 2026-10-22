@@ -109,21 +109,54 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   const [category, setCategory] = useState<Category | null>(null);
   // Kept mounted while it collapses, so the panel can animate its height both ways.
   const [shownCategory, setShownCategory] = useState<Category | null>(null);
-  /* One marker for the whole panel: it slides from the old value to the new one instead of
-     a ring blinking out here and on over there. */
+  const width = dragging ?? style.strokeWidth;
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const markerSignatureRef = useRef("");
-  /* The family row gets the same travelling disc as the values below it. */
-  const rowRef = useRef<HTMLDivElement | null>(null);
-  const familySignatureRef = useRef("");
-  const [familyMarker, setFamilyMarker] = useState<{ left: number; top: number; size: number } | null>(null);
-  const [marker, setMarker] = useState<{ left: number; top: number; size: number; round: boolean } | null>(null);
-  /* Height is measured from the content, so switching family animates from one height to the
-     other instead of jumping: max-height can only animate collapsing and expanding. */
   const innerRef = useRef<HTMLDivElement | null>(null);
   const heightSignatureRef = useRef("");
   const [panelHeight, setPanelHeight] = useState(0);
-  const width = dragging ?? style.strokeWidth;
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const familySignatureRef = useRef("");
+  const [familyMarker, setFamilyMarker] = useState<{ left: number; top: number; size: number } | null>(null);
+
+  /*
+   * The mark is computed from the index of the chosen value, not measured from the DOM: the
+   * cells are a fixed 5-column grid (36 px + 4 px gap, 2 px of panel padding), so the position
+   * is known before the family is even painted. Measuring raced the render and left the mark
+   * on the previous family's cell.
+   */
+  const activeIndex = (() => {
+    if (!category) {
+      return -1;
+    }
+    if (category === "stroke") {
+      return STROKE_COLORS.indexOf(style.strokeColor.toLowerCase());
+    }
+    if (category === "fill") {
+      return FILL_COLORS.findIndex((color) => (color === null
+        ? style.backgroundColor === "transparent"
+        : style.backgroundColor.toLowerCase() === color));
+    }
+    if (category === "width") {
+      return STROKE_WIDTHS.findIndex((entry) => entry.value === style.strokeWidth);
+    }
+    if (category === "style") {
+      return STROKE_STYLES.findIndex((entry) => entry.value === style.strokeStyle);
+    }
+    if (category === "corners") {
+      return EDGES.findIndex((edge) => (edge.value === null ? style.roundness === null : style.roundness !== null));
+    }
+    return FONT_SIZES.findIndex((font) => font.value === style.fontSize);
+  })();
+  // The thickness family wraps its presets in a stack that adds 2 px of its own.
+  const markerInset = category === "width" ? 2 : 0;
+  const marker = activeIndex < 0
+    ? null
+    : {
+        left: markerInset + (activeIndex % 5) * 40,
+        top: 2 + Math.floor(activeIndex / 5) * 40,
+        round: category === "stroke" || category === "fill"
+      };
+
 
   // Closing the menu ends any half-finished drag and forgets the open family.
   useEffect(() => {
@@ -144,34 +177,6 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   useEffect(() => {
     onExpand?.(open && category !== null);
   }, [onExpand, open, category]);
-
-  // Where the chosen value sits right now, measured from the panel itself.
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel || !category) {
-      return;
-    }
-    const active = panel.querySelector<HTMLElement>(".jse-appearance__chip.is-active");
-    if (!active) {
-      if (markerSignatureRef.current !== "none") {
-        markerSignatureRef.current = "none";
-        setMarker(null);
-      }
-      return;
-    }
-    const next = {
-      left: active.offsetLeft,
-      top: active.offsetTop,
-      size: active.offsetWidth,
-      round: active.classList.contains("jse-appearance__chip--color")
-    };
-    const signature = `${next.left},${next.top},${next.size},${next.round}`;
-    if (signature !== markerSignatureRef.current) {
-      markerSignatureRef.current = signature;
-      setMarker(next);
-    }
-    // shownCategory matters: the cells only exist on the pass after the family is kept.
-  }, [category, shownCategory, style, open]);
 
   // How tall the open family is right now.
   useEffect(() => {
@@ -398,12 +403,15 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       createElement("div", { ref: innerRef, className: "jse-appearance__inner" },
       marker
         ? createElement("div", {
+            // One marker per family: switching family starts a fresh one where the value is,
+            // instead of dragging the previous family's circle across and morphing it.
+            key: `marker-${shownCategory}`,
             className: "jse-appearance__marker",
             style: {
               left: `${marker.left}px`,
               top: `${marker.top}px`,
-              width: `${marker.size}px`,
-              height: `${marker.size}px`,
+              width: "36px",
+              height: "36px",
               borderRadius: marker.round ? "50%" : "var(--radius-s, 8px)"
             }
           })
