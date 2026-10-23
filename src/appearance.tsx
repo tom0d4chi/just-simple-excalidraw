@@ -200,7 +200,9 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
         ...markerCell(),
         size: markSize,
         round: isColour,
-        // `null` means "no fill": there is no colour to wear, the accent stays.
+        // `null` means "no fill": there is no colour to wear, the accent stays — and the ring is
+        // dashed, like the crossed circle it surrounds: a solid ring would promise a colour.
+        void: isColour && chosen === null,
         ring: chosen ?? undefined
       };
 
@@ -465,7 +467,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
             // One marker per family: switching family starts a fresh one where the value is,
             // instead of dragging the previous family's circle across and morphing it.
             key: `marker-${shownCategory}`,
-            className: "jse-appearance__marker",
+            className: `jse-appearance__marker${marker.void ? " is-void" : ""}`,
             style: {
               left: `${marker.left}px`,
               top: `${marker.top}px`,
