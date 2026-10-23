@@ -249,21 +249,35 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
        */
       onPinchSample: (sample) => {
         /*
-         * What a hand actually does, measured on the phone: zoom gestures run 80-160 ms and move the
-         * fingers 100-300 px. So "light" cannot mean "small" - it would never fire. What it means
-         * here is "brief, and closing": the fingers came together, which is a zoom out, and a zoom
-         * out is how anyone asks to see the whole sheet. Zooming in is left alone.
+         * Procreate's rule, not a threshold of our own: a pinch is left to do its zoom, and the
+         * drawing is only re-fitted when the zoom goes past the point where the whole sheet is
+         * already on screen. Below that point, zooming out has nothing left to show - so the view
+         * settles on the fit instead of shrinking the drawing into a stamp.
+         *
+         * What a hand actually does here, measured: 80-160 ms, fingers travelling 100-300 px, ratio
+         * 0.3-0.7 on a closing pinch. Any "small gesture" threshold would never fire.
          */
         const stamp = new Date().toISOString().slice(11, 19);
-        const zoom = api ? Number(api.getAppState().zoom.value.toFixed(2)) : 0;
-        pinchLogger?.(
-          `| ${stamp} | ${sample.ms} | ${sample.spread} | ${sample.ratio} | ${sample.travel} | ${sample.drift} | ${sample.moves} | ${zoom} |`
-        );
-        if (!api || sample.ratio > 0.86 || sample.ms > 380) {
-          return;
+        const state = api?.getAppState();
+        const zoom = state ? state.zoom.value : 0;
+        const elements = api ? api.getSceneElements().filter((element) => !element.isDeleted) : [];
+        let fits = false;
+        if (state && host && elements.length > 0) {
+          const bounds = elements.reduce((box, element) => ({
+            minX: Math.min(box.minX, element.x),
+            minY: Math.min(box.minY, element.y),
+            maxX: Math.max(box.maxX, element.x + Math.abs(element.width)),
+            maxY: Math.max(box.maxY, element.y + Math.abs(element.height))
+          }), { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+          const rect = host.getBoundingClientRect();
+          const width = (bounds.maxX - bounds.minX) * zoom;
+          const height = (bounds.maxY - bounds.minY) * zoom;
+          fits = width > 0 && height > 0 && width <= rect.width && height <= rect.height;
         }
-        const elements = api.getSceneElements();
-        if (elements.length === 0) {
+        pinchLogger?.(
+          `| ${stamp} | ${sample.ms} | ${sample.spread} | ${sample.ratio} | ${sample.travel} | ${sample.drift} | ${sample.moves} | ${zoom.toFixed(2)} | ${fits ? "oui" : "non"} |`
+        );
+        if (!api || !fits || sample.ratio >= 1) {
           return;
         }
         haptic("light");
@@ -650,7 +664,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       const adapter = this.app.vault.adapter;
       void (async () => {
         const exists = await adapter.exists(PINCH_LOG);
-        const head = "| heure | ms | écart 0 | ratio | débattement | dérive | mouvements | zoom |\n|---|---|---|---|---|---|---|---|\n";
+        const head = "| heure | ms | écart 0 | ratio | débattement | dérive | mouvements | zoom | tient |\n|---|---|---|---|---|---|---|---|---|\n";
         await adapter.append(PINCH_LOG, exists ? line + "\n" : head + line + "\n");
       })();
     };
