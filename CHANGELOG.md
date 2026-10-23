@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.172 - 2026-10-23
+
+- The marquee ticks for distance, flat: one tap every 32 px travelled, whatever the speed. What the
+  hand feels is how far it has gone, not how fast.
+- Every tap is a MEDIUM impact - the whole column, the pen, the text, the cadrage - and a shape joining
+  the box lands as a HEAVY one, once per shape. The sweep is a rhythm, the arrival is an event.
+
 ## 0.1.171 - 2026-10-23
 
 - LIGHT is a whisper on most phones, and a 5 ms pulse is under what an Android vibrator will render at all - the tick was being sent and arriving as nothing. A tick is a MEDIUM impact now, or 16 ms through the vibration API; a plain light press goes from 8 to 10 ms.

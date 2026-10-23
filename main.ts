@@ -248,7 +248,13 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
        */
       onMarqueeTick: (ticks) => {
         for (let index = 0; index < Math.min(ticks, 3); index += 1) {
-          haptic("tick");
+          haptic("medium");
+        }
+      },
+      /* A shape joining the box is not more of the same: it is an event, and it lands heavier. */
+      onMarqueeCatch: (caught) => {
+        for (let index = 0; index < Math.min(caught, 3); index += 1) {
+          haptic("heavy");
         }
       },
       snapping: () => ((shouldSnapToGrid?.() ?? snapToGrid) ? api.getAppState().gridSize || 20 : 0),
@@ -289,7 +295,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         if (!api || !fits || sample.ratio >= 1) {
           return;
         }
-        haptic("light");
+        haptic("medium");
         api.scrollToContent(elements, {
           fitToContent: true,
           animate: true,
@@ -709,7 +715,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
           new Notice("Nothing drawn yet.");
           return;
         }
-        haptic("light");
+        haptic("medium");
         currentApi.scrollToContent(elements, {
           fitToContent: true,
           animate: true,

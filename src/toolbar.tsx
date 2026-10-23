@@ -558,7 +558,7 @@ export function CanvasToolbar({
         return;
       }
       if (target.closest(".jse-tool, .jse-shapes__item, .jse-appearance-values button")) {
-        haptic("light");
+        haptic("medium");
       }
     };
     document.addEventListener("pointerdown", onPress, true);
@@ -926,7 +926,7 @@ export function CanvasToolbar({
      * pressed, and the delegated listener never reached them on the device - so the confirmation is
      * wired where the press is actually delivered.
      */
-    onPointerDown: () => haptic("light"),
+    onPointerDown: () => haptic("medium"),
     onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
@@ -956,7 +956,7 @@ export function CanvasToolbar({
     className: `jse-tool jse-tool--action clickable-icon jse-tools__text${activeTool === "text" ? " is-active" : ""}${textAway ? " is-away" : ""}`,
     "aria-label": TOOL_DEFINITIONS.text.label,
     "aria-pressed": activeTool === "text",
-    onPointerDown: () => haptic("light"),
+    onPointerDown: () => haptic("medium"),
     onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
