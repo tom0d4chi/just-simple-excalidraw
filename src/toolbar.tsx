@@ -9,7 +9,7 @@ import {
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { anyCapability, type Capabilities } from "./capabilities";
 import { Icon, type IconName } from "./icons";
-import { AppearanceValues, familiesFor, type Category, type StylePatch, type StyleState } from "./appearance";
+import { AppearanceValues, familiesFor, type Category, type Family, type StylePatch, type StyleState } from "./appearance";
 import { t } from "./i18n";
 import { MENU_MOTION_VARS, menuDelay } from "./motion";
 
@@ -538,6 +538,38 @@ export function CanvasToolbar({
    * well would be a second animation in the same moment, so they are mounted at their final size
    * and the layer's fade is the only thing that moves.
    */
+  const propertiesMode = isTouchDevice && stylingTarget && selectionCount > 0;
+
+  /*
+   * What the properties layer last showed, kept while it leaves. Without this, deselecting empties
+   * `families` (nothing selected, nothing to style) in the same frame that starts the exit, and the
+   * buttons are gone before the fade can be seen: they vanish at once instead of sliding right.
+   */
+  const shownRef = useRef<null | {
+    families: Family[];
+    style: StyleState;
+    textSelected: boolean;
+    hasSelection: boolean;
+  }>(null);
+  const families = familiesFor(style, capabilities);
+  if (propertiesMode) {
+    shownRef.current = {
+      families,
+      style,
+      textSelected,
+      hasSelection: selectionCount > 0
+    };
+  }
+  const shown = shownRef.current;
+  const shownFamilies = propertiesMode || !shown ? families : shown.families;
+  const shownStyle = propertiesMode || !shown ? style : shown.style;
+  const shownTextSelected = propertiesMode || !shown ? textSelected : shown.textSelected;
+  const shownHasSelection = propertiesMode || !shown ? selectionCount > 0 : shown.hasSelection;
+  /*
+   * Always mounted, never conditional: the properties layer has to keep its height while it is
+   * hidden, or the column would grow the moment something is selected.
+   */
+
   const contextClass = (available: boolean): string =>
     `jse-tool--context jse-tool--collapsible${available ? "" : " is-collapsed"}`;
   const contextButtons = [
@@ -547,19 +579,19 @@ export function CanvasToolbar({
         // "Edit" button in the hidden bar is enabled but does nothing when
         // clicked from here, so it is not used.
         replayShortcut(getCanvasElement, "Enter", false, false, 13, "Enter");
-      }), false, false, contextClass(textSelected)),
+      }), false, false, contextClass(shownTextSelected)),
     actionButton("duplicate", "copy", t("duplicate"), (event) =>
       stopAndRun(event, () => {
         if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Duplicate"]')) {
           replayShortcut(getCanvasElement, "d", false, true, 68, "KeyD");
         }
-      }), false, false, contextClass(selectionCount > 0)),
+      }), false, false, contextClass(shownHasSelection)),
     actionButton("delete", "trash-2", t("remove"), (event) =>
       stopAndRun(event, () => {
         if (!pressExcalidrawButton('.App-bottom-bar button[aria-label="Delete"]')) {
           replayShortcut(getCanvasElement, "Delete", false, false, 46, "Delete");
         }
-      }), false, false, contextClass(selectionCount > 0))
+      }), false, false, contextClass(shownHasSelection))
   ];
 
   const lockButton = actionButton(
@@ -584,13 +616,7 @@ export function CanvasToolbar({
    * properties of what is selected: one button per family, each painted with the value it holds.
    * Nothing selected, nothing to style: the tools come back.
    */
-  const propertiesMode = isTouchDevice && stylingTarget && selectionCount > 0;
-  const families = familiesFor(style, capabilities);
-  /*
-   * Always mounted, never conditional: the properties layer has to keep its height while it is
-   * hidden, or the column would grow the moment something is selected.
-   */
-  const propertyButtons = families.map((family) => createElement("button", {
+  const propertyButtons = shownFamilies.map((family) => createElement("button", {
         key: family.key,
         type: "button",
         className: `jse-tool jse-tool--action clickable-icon${openFamily === family.key ? " is-open" : ""}`,
@@ -727,7 +753,7 @@ export function CanvasToolbar({
         },
         createElement(AppearanceValues, {
           category: openFamily,
-          style,
+          style: shownStyle,
           onPick: applyStyle
         }))
       : null,
