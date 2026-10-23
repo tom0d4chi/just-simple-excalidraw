@@ -17,6 +17,7 @@ import { CanvasToolbar } from "./src/toolbar";
 import { trackBottomUiInset } from "./src/layout";
 import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
+import { haptic } from "./src/haptics";
 import { attachInteraction } from "./src/interaction";
 import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
 import { capabilitiesForTool, capabilitiesForTypes, anyCapability } from "./src/capabilities";
@@ -241,6 +242,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         if (api.getSceneElements().length === 0) {
           return false;
         }
+        // A tap in the palm: the gesture is invisible, so the confirmation has to be felt.
+        haptic("light");
         api.scrollToContent(api.getSceneElements(), {
           fitToContent: true,
           animate: true,

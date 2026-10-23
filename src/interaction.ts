@@ -253,7 +253,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    * the pair. It only ever observes - Excalidraw keeps its own zoom - and speaks once, on release.
    */
   const pinchPoints = new Map<number, { x: number; y: number }>();
-  const pinch = { active: false, from: 0, at: 0, cx: 0, cy: 0, ratio: 1, drift: 0 };
+  const pinch = { active: false, from: 0, at: 0, cx: 0, cy: 0, ratio: 1, travel: 0, drift: 0 };
 
   const pinchMeasure = (): { distance: number; cx: number; cy: number } | null => {
     if (pinchPoints.size < 2) {
@@ -285,6 +285,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     pinch.cx = measured.cx;
     pinch.cy = measured.cy;
     pinch.ratio = 1;
+    pinch.travel = 0;
     pinch.drift = 0;
   };
 
@@ -301,6 +302,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       return;
     }
     pinch.ratio = measured.distance / pinch.from;
+    pinch.travel = Math.abs(measured.distance - pinch.from);
     pinch.drift = Math.hypot(measured.cx - pinch.cx, measured.cy - pinch.cy);
   };
 
@@ -316,10 +318,15 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
      * Light, in three numbers: short, almost no spread, and the pair of fingers did not travel.
      * A pinch meant as a zoom fails all three, and a two-finger pan fails the last one.
      */
-    const light = Date.now() - pinch.at <= 330
-      && pinch.ratio >= 0.88
-      && pinch.ratio <= 1.12
-      && pinch.drift <= 26;
+    /*
+     * Fingers are not pixels. Two fingers land a couple of centimetres apart, so a 10 % change of
+     * that distance is a few millimetres of travel - a band nobody hits by accident, and the reason
+     * the first version never fired with a real hand. What makes a pinch light is how little the
+     * hand moved, so the test is on the distance travelled, not on the ratio.
+     */
+    const light = Date.now() - pinch.at <= 400
+      && pinch.travel <= 44
+      && pinch.drift <= 44;
     pinch.active = false;
     pinch.from = 0;
     if (light) {
