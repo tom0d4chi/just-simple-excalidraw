@@ -14,6 +14,14 @@ import { menuDelay, rowDelay } from "./motion";
 /** Excalidraw stores rounded corners as `roundness: { type: 3 }` on shapes. */
 const ROUND = 3;
 
+/* The values panel is a fixed box: five cells of 36 px and four gaps of 4 px. Everything the mark
+   needs to place itself is derived from those three numbers. */
+const CELL = 36;
+const GAP = 4;
+const PANEL_WIDTH = 5 * CELL + 4 * GAP;
+/** Every panel carries its property name on a row this tall, above the values. */
+const LABEL_HEIGHT = 20;
+
 /*
  * Appearance, in two levels: one icon per family along a row that slides out of the
  * button, then the values of that family in a list that opens above it. The single
@@ -77,6 +85,16 @@ export interface StylePatch {
 
 type Category = "stroke" | "fill" | "width" | "style" | "corners" | "text";
 
+/** How many cells each family holds: it decides how the panel centres its grid. */
+const FAMILY_COLUMNS: Record<Category, number> = {
+  stroke: 5,
+  fill: 5,
+  width: STROKE_WIDTHS.length,
+  style: STROKE_STYLES.length,
+  corners: EDGES.length,
+  text: FONT_SIZES.length
+};
+
 interface AppearanceMenuProps {
   open: boolean;
   style: StyleState;
@@ -87,10 +105,10 @@ interface AppearanceMenuProps {
   onExpand?: (expanded: boolean) => void;
 }
 
-function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = "", delay = "0ms", caption = ""): ReactNode {
+function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = "", delay = "0ms"): ReactNode {
   return createElement("button", {
     type: "button",
-    className: `jse-appearance__chip${extra ? ` ${extra}` : ""}${caption ? " jse-appearance__chip--labelled" : ""}${active ? " is-active" : ""}`,
+    className: `jse-appearance__chip${extra ? ` ${extra}` : ""}${active ? " is-active" : ""}`,
     "aria-label": label,
     "aria-pressed": active,
     title: label,
@@ -107,16 +125,14 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
       boxShadow: "none"
     },
     onClick
-  },
-  caption ? createElement("span", { className: "jse-appearance__glyph-box" }, content) : content,
-  caption ? createElement("span", { className: "jse-appearance__caption" }, caption) : null);
+  }, content);
 }
 
-/* One grid for every family: no label, the icon that opened it says what it is. */
-function grid(children: ReactNode[], cols = 5, cell = 36): ReactNode {
+/* One grid for every family: no label per cell, the panel has one for the whole property. */
+function grid(children: ReactNode[], cols = 5): ReactNode {
   return createElement("div", {
-    className: `jse-appearance__grid${cell !== 36 ? " jse-appearance__grid--labelled" : ""}`,
-    style: { gridTemplateColumns: `repeat(${cols}, ${cell}px)` }
+    className: "jse-appearance__grid",
+    style: { gridTemplateColumns: `repeat(${cols}, 36px)` }
   }, children);
 }
 
@@ -167,7 +183,6 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   })();
   // The thickness family wraps its presets in a stack with its own 6 px gap; the grid inside it
   // starts flush, so no extra inset is needed since the panel lost its inline padding.
-  const markerInset = 0;
   /*
    * The mark sits close to a colour and wears that colour: a coloured value is best announced by
    * itself, not by the app's accent. It is smaller than a cell, so the ring hugs the dot instead
@@ -184,41 +199,29 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
    * is a plain five-column grid.
    */
   const markerCell = (): { left: number; top: number } => {
-    const centre = (36 - markSize) / 2;
-    /*
-     * Labelled families are 46x48 cells, 50 px apart across and 52 down; the colours and the
-     * stroke palette stay 36 px cells, 40 apart.
-     */
-    const labelledCols: Partial<Record<Category, number>> = {
-      width: STROKE_WIDTHS.length,
-      style: STROKE_STYLES.length,
-      corners: EDGES.length,
-      text: FONT_SIZES.length
-    };
-    const cols = category ? labelledCols[category] : undefined;
-    if (cols) {
-      // A labelled grid is narrower than the panel and centred in it: 196 px is the panel's
-      // content width (five cells of 36 and four gaps of 4), the same arithmetic as the colours.
-      const rowWidth = cols * 46 + (cols - 1) * 4;
-      const inset = (196 - rowWidth) / 2;
-      return {
-        left: inset + (activeIndex % cols) * 50 + (46 - markSize) / 2,
-        top: Math.floor(activeIndex / cols) * 52 + (48 - markSize) / 2
-      };
-    }
+    const centre = (CELL - markSize) / 2;
+    const pitch = CELL + GAP;
+    // A grid narrower than the panel is centred in it: the mark must start where its cells do.
+    const columns = category ? Math.min(FAMILY_COLUMNS[category], 5) : 5;
+    const offset = (PANEL_WIDTH - (columns * pitch - GAP)) / 2;
+    const top = LABEL_HEIGHT + centre;
+
     if (category !== "fill") {
       return {
-        left: markerInset + (activeIndex % 5) * 40 + centre,
-        top: Math.floor(activeIndex / 5) * 40 + centre
+        left: offset + (activeIndex % columns) * pitch + centre,
+        top: top + Math.floor(activeIndex / columns) * pitch
       };
     }
     if (activeIndex === 0) {
-      // Last of five columns: flush with the right edge, where the thumb lands.
-      return { left: 4 * 40 + centre, top: centre };
+      // "No fill" sits alone, in the last column of its own row.
+      return { left: offset + 4 * pitch + centre, top };
     }
     const cell = activeIndex - 1;
-    // The colours start one row (36) and one gap (4) below the "no fill" row.
-    return { left: (cell % 5) * 40 + centre, top: 40 + Math.floor(cell / 5) * 40 + centre };
+    // The colours start one row and one gap below the "no fill" row.
+    return {
+      left: offset + (cell % 5) * pitch + centre,
+      top: top + pitch + Math.floor(cell / 5) * pitch
+    };
   };
   const marker = activeIndex < 0
     ? null
@@ -375,6 +378,15 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
    */
   families.reverse();
 
+  const panelLabel = (which: Category | null): string => {
+    if (which === "stroke") return t("panelStroke");
+    if (which === "fill") return t("panelFill");
+    if (which === "width") return t("panelWeight");
+    if (which === "style") return t("panelStyle");
+    if (which === "corners") return t("panelRadius");
+    return t("panelSize");
+  };
+
   const panelFor = (which: Category | null): ReactNode => {
     let panel: ReactNode = null;
     if (which === "stroke") {
@@ -413,9 +425,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       pick({ strokeWidth: preset.value }),
       createElement("span", { className: "jse-appearance__line", style: { height: `${Math.min(6, preset.value)}px` } }),
       "jse-appearance__chip--line",
-      rowDelay(index, 5),
-      preset.label()
-    )), STROKE_WIDTHS.length, 46);
+      rowDelay(index, 5)
+    )), STROKE_WIDTHS.length);
   } else if (which === "style") {
     panel = grid(STROKE_STYLES.map((entry, index) => chip(
       style.strokeStyle === entry.value,
@@ -423,9 +434,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       pick({ strokeStyle: entry.value }),
       createElement("span", { className: `jse-appearance__line jse-appearance__line--${entry.value}` }),
       "jse-appearance__chip--line",
-      rowDelay(index, 5),
-      entry.label()
-    )), STROKE_STYLES.length, 46);
+      rowDelay(index, 5)
+    )), STROKE_STYLES.length);
   } else if (which === "corners") {
     panel = grid(EDGES.map((edge, index) => chip(
       edge.value === null ? style.roundness === null : style.roundness !== null,
@@ -435,9 +445,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       // control: a square, and the same square with a rounded corner.
       createElement(Icon, { name: edge.value ? "square-round-corner" : "square" }),
       "jse-appearance__chip--line",
-      rowDelay(index, 5),
-      edge.label()
-    )), EDGES.length, 46);
+      rowDelay(index, 5)
+    )), EDGES.length);
   } else if (which === "text") {
     panel = grid(FONT_SIZES.map((font, index) => chip(
       style.fontSize === font.value,
@@ -445,12 +454,13 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       pick({ fontSize: font.value }),
       createElement("span", { className: "jse-appearance__size" }, "A"),
       "jse-appearance__chip--font",
-      rowDelay(index, 5),
-      font.label()
-    )), FONT_SIZES.length, 46);
+      rowDelay(index, 5)
+    )), FONT_SIZES.length);
   }
 
-  return panel;
+  return createElement("div", { className: "jse-appearance__body" },
+    createElement("div", { className: "jse-appearance__label" }, panelLabel(which)),
+    panel);
   };
 
   return createElement("div", { className: "jse-appearance" },

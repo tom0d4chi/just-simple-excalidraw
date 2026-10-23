@@ -1030,9 +1030,14 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   justify-content: center;
 }
 
-.jse-appearance__category.is-active {
-  /* The disc carries the mark. The icon's ink is already handled by the column's own rule
-     (.jse-tool.clickable-icon.is-active), which gives it the accent — the same in both levels. */
+/*
+ * The column gives its active tool a grey backing, and these buttons are tools of the column, so
+ * they inherited it — a fixed disc behind the icon *and* the disc that travels between them. The
+ * travelling one is the mark; this rule removes the other. Same specificity as the column's rule
+ * and later in the file, so it wins without an extra class.
+ */
+.jse-root .jse-tools .jse-appearance__category.is-active,
+.jse-root .jse-tools .jse-appearance__category.is-active.clickable-icon {
   background-color: transparent;
 }
 
@@ -1158,6 +1163,26 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   gap: var(--size-4-1, 4px);
 }
 
+/* One panel, one name: the property is labelled once, above its values. */
+.jse-appearance__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.jse-appearance__label {
+  /* Exactly 20 px, because the mark of a chosen value is placed against that number. */
+  display: block;
+  box-sizing: border-box;
+  height: 20px;
+  line-height: 20px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* The fills: "no fill" on a row of its own, then the ten colours in two rows. */
 .jse-appearance__fill {
   display: flex;
@@ -1170,41 +1195,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 /* A labelled cell: the glyph on top, its name under it, still one tappable box. */
-.jse-appearance__chip--labelled {
-  width: 46px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  height: 48px;
-}
-
-.jse-appearance__glyph-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 20px;
-}
-
-.jse-appearance__caption {
-  font-size: 8.5px;
-  line-height: 9.5px;
-  color: var(--text-muted);
-  /* Two short lines beat one truncated word: the names are the point of the label. */
-  max-width: 44px;
-  text-align: center;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.jse-appearance__grid--labelled {
-  grid-auto-rows: 48px;
-  gap: var(--size-4-1, 4px);
-}
-
 .jse-appearance__stack {
   display: flex;
   flex-direction: column;
