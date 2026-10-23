@@ -333,7 +333,9 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     families.push({
       key: "corners",
       label: t("corners"),
-      content: createElement(Icon, { name: style.roundness === null ? "square" : "squircle" })
+      // Lucide's square-round-corner says "the corners of this box", where a circle suggested a
+      // shape rather than a property.
+      content: createElement(Icon, { name: style.roundness === null ? "square" : "square-round-corner" })
     });
   }
   if (capabilities.text) {
