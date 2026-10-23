@@ -94,8 +94,18 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
     "aria-label": label,
     "aria-pressed": active,
     title: label,
-    // The same step as the strip, one row of cells at a time.
-    style: { animationDelay: delay },
+    /*
+     * The cell is a bare box: only the colour inside it should be visible. Obsidian's button
+     * base and community themes give every button a filled, ringed surface, and a theme rule
+     * that targets the theme class can outrank any selector of ours. An inline surface beats
+     * all of them without `!important`.
+     */
+    style: {
+      animationDelay: delay,
+      backgroundColor: "transparent",
+      border: "0",
+      boxShadow: "none"
+    },
     onClick
   }, content);
 }
