@@ -1356,12 +1356,17 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   z-index: 2;
   transition:
     top 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
     opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-/* Properties of a selection: the pen is not part of that column. */
-.jse-tools__pen.is-away {
+/*
+ * Properties of a selection, or another tool's page: the pen leaves the way everything else leaves,
+ * fading towards the left edge, not fading upwards while the frame changes height.
+ */
+.jse-root .jse-tool.jse-tools__pen.is-away {
   opacity: 0;
+  translate: calc(-50% - 18px) 0;
   pointer-events: none;
 }
 

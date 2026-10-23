@@ -677,6 +677,11 @@ export function CanvasToolbar({
     if (!pill || !pen) {
       return;
     }
+    // While it is leaving there is no row to follow: the frame is changing height and following it
+    // would drag the pen upwards as it fades.
+    if (penAway) {
+      return;
+    }
     const scope = penAtTop ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
     /*
      * Measured from the slot's *row*, never from its screen position: the frame's height is animated,
