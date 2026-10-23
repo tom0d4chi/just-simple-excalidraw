@@ -229,6 +229,27 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       },
       snapping: () => ((shouldSnapToGrid?.() ?? snapToGrid) ? api.getAppState().gridSize || 20 : 0),
       /*
+       * A light pinch puts the drawing back in front of the eyes: everything, centred, at the zoom
+       * that fits it. The gesture is Procreate's, and Excalidraw already knows how to do the work -
+       * scrollToContent measures the scene and the viewport for us.
+       */
+      onLightPinch: () => {
+        if (!api) {
+          return false;
+        }
+        // Nothing drawn: fitting would only throw the view at the origin.
+        if (api.getSceneElements().length === 0) {
+          return false;
+        }
+        api.scrollToContent(api.getSceneElements(), {
+          fitToContent: true,
+          animate: true,
+          duration: 320,
+          viewportZoomFactor: 0.9
+        });
+        return true;
+      },
+      /*
        * Double tap on empty paper toggles the zoom around the point touched: in to 2x,
        * back out to the level that was there before — the way a photo behaves.
        */

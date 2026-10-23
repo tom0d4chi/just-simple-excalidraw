@@ -83,6 +83,12 @@ export interface InteractionOptions {
    * swallows the event, so Excalidraw does not turn it into a text element.
    */
   onDoubleTap?: (scene: { x: number; y: number }) => boolean;
+  /**
+   * Two fingers down, barely any spread, released quickly: a pinch that was not a zoom. The same
+   * gesture means "bring the canvas back to me" in Procreate, and it costs nothing to offer.
+   * Returning true accepts it as handled.
+   */
+  onLightPinch?: () => boolean;
 }
 
 export interface InteractionHandle {
@@ -242,6 +248,85 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
   };
 
+  /*
+   * The light pinch, tracked on its own: both fingers, the distance between them and the middle of
+   * the pair. It only ever observes - Excalidraw keeps its own zoom - and speaks once, on release.
+   */
+  const pinchPoints = new Map<number, { x: number; y: number }>();
+  const pinch = { active: false, from: 0, at: 0, cx: 0, cy: 0, ratio: 1, drift: 0 };
+
+  const pinchMeasure = (): { distance: number; cx: number; cy: number } | null => {
+    if (pinchPoints.size < 2) {
+      return null;
+    }
+    const [a, b] = [...pinchPoints.values()];
+    return {
+      distance: Math.hypot(a.x - b.x, a.y - b.y),
+      cx: (a.x + b.x) / 2,
+      cy: (a.y + b.y) / 2
+    };
+  };
+
+  const onPinchDown = (event: PointerEvent): void => {
+    if (event.pointerType === "mouse") {
+      return;
+    }
+    pinchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pinchPoints.size !== 2) {
+      return;
+    }
+    const measured = pinchMeasure();
+    if (!measured) {
+      return;
+    }
+    pinch.active = true;
+    pinch.from = measured.distance;
+    pinch.at = Date.now();
+    pinch.cx = measured.cx;
+    pinch.cy = measured.cy;
+    pinch.ratio = 1;
+    pinch.drift = 0;
+  };
+
+  const onPinchMove = (event: PointerEvent): void => {
+    if (!pinchPoints.has(event.pointerId)) {
+      return;
+    }
+    pinchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (!pinch.active) {
+      return;
+    }
+    const measured = pinchMeasure();
+    if (!measured || !pinch.from) {
+      return;
+    }
+    pinch.ratio = measured.distance / pinch.from;
+    pinch.drift = Math.hypot(measured.cx - pinch.cx, measured.cy - pinch.cy);
+  };
+
+  const onPinchUp = (event: PointerEvent): void => {
+    if (!pinchPoints.has(event.pointerId)) {
+      return;
+    }
+    pinchPoints.delete(event.pointerId);
+    if (!pinch.active || pinchPoints.size >= 2) {
+      return;
+    }
+    /*
+     * Light, in three numbers: short, almost no spread, and the pair of fingers did not travel.
+     * A pinch meant as a zoom fails all three, and a two-finger pan fails the last one.
+     */
+    const light = Date.now() - pinch.at <= 330
+      && pinch.ratio >= 0.88
+      && pinch.ratio <= 1.12
+      && pinch.drift <= 26;
+    pinch.active = false;
+    pinch.from = 0;
+    if (light) {
+      options.onLightPinch?.();
+    }
+  };
+
   const onDown = (event: PointerEvent): void => {
     const state = api.getAppState();
     beforeGesture = new Map(api.getSceneElements().map((element) => [element.id, element.versionNonce]));
@@ -263,7 +348,9 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
      * Two taps on empty paper, close in time and place, are a zoom toggle: the second
      * one is swallowed so Excalidraw cannot turn it into a text element.
      */
-    if (!id && event.pointerType !== "mouse" && options.onDoubleTap) {
+    /* A second finger is not a second tap: without this, every two-finger pinch reads as a double
+       tap on the way down and zooms in before the fingers have moved. */
+    if (!id && event.pointerType !== "mouse" && event.isPrimary !== false && options.onDoubleTap) {
       const now = Date.now();
       const near = lastTap && now - lastTap.at < 320
         && Math.hypot(event.clientX - lastTap.x, event.clientY - lastTap.y) < 30;
@@ -516,6 +603,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   host.addEventListener("pointermove", onMove, true);
   host.addEventListener("pointerup", onUpBox, true);
   host.addEventListener("pointercancel", onUpBox, true);
+  host.addEventListener("pointerdown", onPinchDown, true);
+  host.addEventListener("pointermove", onPinchMove, true);
+  host.addEventListener("pointerup", onPinchUp, true);
+  host.addEventListener("pointercancel", onPinchUp, true);
 
   return {
     detach: () => {
@@ -533,6 +624,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       host.removeEventListener("pointermove", onMove, true);
       host.removeEventListener("pointerup", onUpBox, true);
       host.removeEventListener("pointercancel", onUpBox, true);
+      host.removeEventListener("pointerdown", onPinchDown, true);
+      host.removeEventListener("pointermove", onPinchMove, true);
+      host.removeEventListener("pointerup", onPinchUp, true);
+      host.removeEventListener("pointercancel", onPinchUp, true);
       clearBox();
       pointerSnap = null;
       options.onMarqueeCancel?.(null);
