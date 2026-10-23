@@ -234,8 +234,10 @@
   position: absolute;
   z-index: 6;
   display: flex;
-  align-items: center;
+  /* the column hangs from the top now, by the same margin it keeps on the right */
+  align-items: flex-start;
   justify-content: flex-end;
+  padding-top: var(--jse-nav-gap, var(--size-4-2, 8px));
   pointer-events: none;
   /*
    * The band is the canvas box itself, edge to edge: any inset (safe areas,
