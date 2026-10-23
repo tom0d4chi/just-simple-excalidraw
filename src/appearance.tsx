@@ -187,8 +187,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       };
     }
     if (activeIndex === 0) {
-      // Third of five columns: centred on its own row.
-      return { left: 2 * 40 + centre, top: centre };
+      // Last of five columns: flush with the right edge, where the thumb lands.
+      return { left: 4 * 40 + centre, top: centre };
     }
     const cell = activeIndex - 1;
     // The colours start one row (36) and one gap (4) below the "no fill" row.
@@ -367,7 +367,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     );
     panel = createElement("div", { className: "jse-appearance__fill" },
       createElement("div", { className: "jse-appearance__grid jse-appearance__grid--single" },
-        createElement("span", { style: { gridColumn: "3" } }, emptyChip)),
+        createElement("span", { style: { gridColumn: "5" } }, emptyChip)),
       createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.slice(1).map((color, index) => chip(
         style.backgroundColor.toLowerCase() === color,
         `${t("colourFill")} ${color}`,
