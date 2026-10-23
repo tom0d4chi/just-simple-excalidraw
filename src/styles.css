@@ -819,24 +819,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   background: repeating-linear-gradient(90deg, var(--text-normal) 0 2px, transparent 2px 6px);
 }
 
-/* Same size as the icon on the level 1 corners button: the two states must read as one control. */
-.jse-appearance__shape {
-  box-sizing: border-box;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--text-normal);
-  border-radius: 2px;
-}
-
-/* An icon inside a value cell has no .jse-tool to size it: five cells of 36 px are set here,
-   at the same size as the one in the row of families. */
+/* An icon inside a value cell has no .jse-tool to size it: it is drawn at the same 20 px as the
+   one on the level 1 button, because the two have to read as one control. */
 .jse-appearance__chip .svg-icon {
-  width: 14px;
-  height: 14px;
-}
-
-.jse-appearance__shape.is-round {
-  border-radius: 8px;
+  width: 20px;
+  height: 20px;
 }
 
 .jse-appearance__size {

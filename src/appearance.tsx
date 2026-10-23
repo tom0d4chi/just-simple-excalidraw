@@ -403,10 +403,9 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       edge.value === null ? style.roundness === null : style.roundness !== null,
       edge.label(),
       pick({ roundness: edge.value }),
-      edge.value
-        // The property, not a shape: a square whose corner is rounded.
-        ? createElement(Icon, { name: "square-round-corner" })
-        : createElement("span", { className: "jse-appearance__shape" }),
+      // Both states are the same Lucide glyph the level 1 button uses, so they read as one
+      // control: a square, and the same square with a rounded corner.
+      createElement(Icon, { name: edge.value ? "square-round-corner" : "square" }),
       "jse-appearance__chip--line",
       rowDelay(index, 5)
     )));
