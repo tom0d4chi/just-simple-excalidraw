@@ -434,7 +434,9 @@
  * popovers' items are out of scope: they are not tools of the column.
  */
 .jse-root .jse-tools__pill.has-glide .jse-tools__layer > .jse-tool.clickable-icon.is-active:not(.is-open),
-.jse-root .jse-tools__pill.has-glide .jse-tools__layer > .jse-shapes > .jse-tool.clickable-icon.is-active:not(.is-open) {
+.jse-root .jse-tools__pill.has-glide .jse-tools__layer > .jse-shapes > .jse-tool.clickable-icon.is-active:not(.is-open),
+/* The pen lives outside the layers, so it needs its own line here or it keeps its own disc. */
+.jse-root .jse-tools__pill.has-glide > .jse-tools__pen.is-active {
   background-color: transparent;
 }
 

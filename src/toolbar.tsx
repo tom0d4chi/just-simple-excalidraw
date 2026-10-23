@@ -713,6 +713,32 @@ export function CanvasToolbar({
     const frameHeight = content + (pad + border) * 2;
     const rowCentre = pad + above + pen.offsetHeight / 2;
     pen.style.setProperty("--pen-offset", `${rowCentre - frameHeight / 2}px`);
+
+    /*
+     * The disc under the pen has to travel with it. Measured once, it lands where the pen was and
+     * walks the rest of the way on its own: that is the second disc seen arriving from below. With
+     * its transition off for the length of the move, it is re-measured on every frame instead.
+     */
+    const glide = glideRef.current;
+    if (!glide || activeTool !== "freedraw") {
+      return;
+    }
+    glide.classList.add("is-placing");
+    let frame = 0;
+    const started = Date.now();
+    const follow = (): void => {
+      measureGlideRef.current();
+      if (Date.now() - started < 320) {
+        frame = requestAnimationFrame(follow);
+      } else {
+        glide.classList.remove("is-placing");
+      }
+    };
+    frame = requestAnimationFrame(follow);
+    return () => {
+      cancelAnimationFrame(frame);
+      glide.classList.remove("is-placing");
+    };
   }, [propertiesMode, hasSelection, toolOptions, shownFamilies.length]);
 
   const applyHeight = (): void => {
