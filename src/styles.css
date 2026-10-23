@@ -1006,8 +1006,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   position: absolute;
   z-index: 0;
   border-radius: 50%;
-  background-color: color-mix(in srgb, var(--jse-accent, var(--color-accent)) 14%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--jse-accent, var(--color-accent));
+  /* Exactly the disc the column puts behind the active tool: one language for "chosen". */
+  background-color: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  box-shadow: none;
   pointer-events: none;
   transition:
     left 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
@@ -1030,8 +1031,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-appearance__category.is-active {
-  color: var(--text-accent);
-  /* the disc carries the mark; the button only tints its icon */
+  /* The disc carries the mark. The icon's ink is already handled by the column's own rule
+     (.jse-tool.clickable-icon.is-active), which gives it the accent — the same in both levels. */
   background-color: transparent;
 }
 
@@ -1099,6 +1100,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   box-sizing: border-box;
   border: 1.5px solid var(--text-faint, var(--text-muted, currentColor));
   box-shadow: none;
+}
+
+/* A value that is not a colour is marked exactly like a tool of the column. */
+.jse-appearance__marker.is-plain {
+  background-color: var(--background-modifier-active-hover, var(--background-modifier-hover));
+  box-shadow: none;
+  border: 0;
 }
 
 .jse-appearance__marker {

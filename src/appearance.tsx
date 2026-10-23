@@ -199,7 +199,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     : {
         ...markerCell(),
         size: markSize,
-        round: isColour,
+        plain: !isColour,
+        round: true,
         // `null` means "no fill": there is no colour to wear, the accent stays — and the ring is
         // dashed, like the crossed circle it surrounds: a solid ring would promise a colour.
         void: isColour && chosen === null,
@@ -439,13 +440,13 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
             // One marker per family: switching family starts a fresh one where the value is,
             // instead of dragging the previous family's circle across and morphing it.
             key: `marker-${shownCategory}`,
-            className: `jse-appearance__marker${marker.void ? " is-void" : ""}`,
+            className: `jse-appearance__marker${marker.void ? " is-void" : ""}${marker.plain ? " is-plain" : ""}`,
             style: {
               left: `${marker.left}px`,
               top: `${marker.top}px`,
               width: `${marker.size}px`,
               height: `${marker.size}px`,
-              borderRadius: marker.round ? "50%" : "var(--radius-s, 8px)",
+              borderRadius: "50%",
               ["--jse-marker-ring" as never]: marker.ring
             }
           })
