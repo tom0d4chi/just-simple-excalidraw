@@ -164,6 +164,12 @@ export function CanvasToolbar({
   getCanvasElement
 }: CanvasToolbarProps) {
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  /*
+   * The strip is mounted closed, and its exit animation starts from a visible state. Leaving a
+   * selection remounts the tools, so an unopened strip would play that exit from opacity 1 —
+   * a flash in front of the canvas. It only earns the animation once it has been opened.
+   */
+  const [shapeMenuAnimated, setShapeMenuAnimated] = useState(false);
   /* Which property panel is open, and the middle of the button that opened it: the panel is
      anchored to that button, not to the column. */
   const [openFamily, setOpenFamily] = useState<Category | null>(null);
@@ -344,6 +350,7 @@ export function CanvasToolbar({
     event.preventDefault();
     event.stopPropagation();
     setShapeMenuOpen((value) => !value);
+    setShapeMenuAnimated(true);
   };
 
   /*
@@ -590,7 +597,7 @@ export function CanvasToolbar({
       onClick: toggleShapeMenu
     }, createElement(Icon, { name: TOOL_DEFINITIONS[activeShape ?? lastShape].icon })),
     createElement("div", {
-        className: `jse-shapes__menu${entered ? " jse-anim" : ""}${shapeMenuOpen ? "" : " is-closed"}`,
+        className: `jse-shapes__menu${entered && shapeMenuAnimated ? " jse-anim" : ""}${shapeMenuOpen ? "" : " is-closed"}`,
         role: "menu",
         "aria-hidden": !shapeMenuOpen,
         onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
@@ -635,8 +642,8 @@ export function CanvasToolbar({
       ? (propertiesMode
           ? [
               toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
-              ...contextButtons,
-              ...propertyButtons
+              ...propertyButtons,
+              ...contextButtons
             ]
           : [
               toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),

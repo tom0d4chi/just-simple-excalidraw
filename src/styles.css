@@ -1048,9 +1048,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 /*
- * The values of a property, beside the column and centred on the button that opened it. It
- * carries its own plate: it sits over the drawing, and ten colour dots or a slider need a
- * surface to be legible and grabbable.
+ * The values of a property: the same surface and the same entrance as the shape strip — no
+ * plate of its own, only the translucent one the column shows when something passes under it.
  */
 .jse-appearance-values {
   position: absolute;
@@ -1063,12 +1062,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   overscroll-behavior: contain;
   width: max-content;
   padding: var(--size-4-1, 4px);
-  border-radius: var(--radius-l, 12px);
-  background-color: color-mix(in srgb, var(--background-primary) 90%, transparent);
-  box-shadow: var(--shadow-s), 0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 80%, transparent);
-  backdrop-filter: blur(10px) saturate(1.05);
-  -webkit-backdrop-filter: blur(10px) saturate(1.05);
-  animation: jse-appearance-in 140ms ease-out backwards;
+  border-radius: var(--touch-size-l, 52px);
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
+  animation: jse-menu-in 140ms ease-out backwards;
 }
 
 .jse-appearance__values-inner {
@@ -1126,7 +1124,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-tools__pill::before,
-.jse-shapes__menu::before {
+.jse-shapes__menu::before,
+.jse-appearance-values::before {
   content: "";
   position: absolute;
   inset: calc(-1 * var(--size-4-1, 4px));
@@ -1146,7 +1145,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-tools.has-content-under .jse-tools__pill::before,
-.jse-tools.has-content-under .jse-shapes__menu::before {
+.jse-tools.has-content-under .jse-shapes__menu::before,
+.jse-tools.has-content-under .jse-appearance-values::before {
   background-color: color-mix(in srgb, var(--background-primary) 58%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
   backdrop-filter: blur(14px) saturate(1.05);
