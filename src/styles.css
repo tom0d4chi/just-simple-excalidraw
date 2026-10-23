@@ -687,6 +687,24 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * Appearance controls, in the same column-of-a-menu as the shape picker: the
  * group of a row is a fixed grid, so the swatches line up whatever the theme.
  */
+.jse-appearance-menu {
+  /* As wide as the widest panel, whatever the family row holds: opening one cannot
+     change the popover's width, so the icons never move a pixel. */
+  width: calc(5 * 36px + 4 * var(--size-4-1, 4px) + 2 * var(--size-4-1, 4px));
+  align-items: stretch;
+  /* The button sits low in the column, so the menu grows upwards from it — and it is
+     nudged down by its own padding, so the family row inside sits centred on the
+     button rather than a padding above it. */
+  top: auto;
+  /* The strip's vertical centring must not follow this one: it grows upwards. */
+  translate: none;
+  bottom: calc(-1 * var(--size-4-1, 4px));
+
+  padding: var(--size-4-1, 6px);
+  border-radius: var(--radius-m, 12px);
+  max-height: min(78vh, 520px);
+  overflow: visible;
+}
 
 .jse-appearance {
   display: flex;
@@ -705,7 +723,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-appearance__choices {
   display: grid;
-  justify-content: start;
+  grid-template-columns: repeat(5, 36px);
   gap: var(--size-4-1, 4px);
 }
 
@@ -973,6 +991,42 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   pointer-events: none;
 }
 
+/* Appearance, two levels: a row of families, then the values of one above it. */
+.jse-appearance__categories {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-4-1, 4px);
+}
+
+/* Same disc as below, for the row of families: it travels between the icons. */
+.jse-appearance__family-marker {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--jse-accent, var(--color-accent)) 14%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--jse-accent, var(--color-accent));
+  pointer-events: none;
+  transition:
+    left 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    top 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.jse-appearance__category {
+  position: relative;
+  z-index: 1;
+  --icon-size: var(--icon-m, 20px);
+  width: var(--touch-size-m, 40px);
+  height: var(--touch-size-m, 40px);
+  border-radius: var(--radius-s, 8px);
+  color: var(--icon-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .jse-appearance__category.is-active {
   color: var(--text-accent);
@@ -1047,39 +1101,40 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
     border-radius 140ms ease;
 }
 
-/*
- * The values of a property: the same surface and the same entrance as the shape strip — no
- * plate of its own, only the translucent one the column shows when something passes under it.
- */
-.jse-appearance-values {
-  position: absolute;
-  right: calc(100% + var(--size-4-2, 8px));
-  /* The shift is set by the component when the panel would hang off an edge. */
-  translate: 0 calc(-50% + var(--jse-panel-shift, 0px));
-  z-index: 8;
-  width: max-content;
-  padding: var(--size-4-1, 4px);
-  /* A panel is a menu, not a pill: two rows of colours under a capsule corner read as a
-     mistake. */
-  border-radius: var(--radius-l, 12px);
-  background-color: transparent;
-  border: 0;
-  box-shadow: none;
-  animation: jse-menu-in 140ms ease-out backwards;
-}
-
-.jse-appearance__values-inner {
+.jse-appearance__panel {
   position: relative;
+  /* Height comes from the measurement, in the style attribute: it is the only way to
+     animate from one family's height to another's. */
+  height: 0;
+  overflow: hidden;
+  transition: height 200ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 140ms ease;
   display: flex;
   flex-direction: column;
-  gap: var(--size-4-1, 4px);
-  padding: 2px;
+  gap: var(--size-4-2, 8px);
+  padding: 0;
+  opacity: 0;
 }
 
-/* Columns are set per family by the component: the panel is only as wide as its cells. */
+.jse-appearance__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2, 8px);
+  padding: 2px 2px var(--size-4-2, 8px);
+}
+
+.jse-appearance__panel.is-open {
+  opacity: 1;
+}
+
+@keyframes jse-appearance-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .jse-appearance__grid {
   display: grid;
-  justify-content: start;
+  grid-template-columns: repeat(5, 36px);
+  justify-content: center;
   gap: var(--size-4-1, 4px);
 }
 
@@ -1089,18 +1144,31 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   gap: var(--size-4-1, 6px);
 }
 
-/* Exactly the entrance the shape strip uses, one row of cells after the other. */
-.jse-appearance-values .jse-appearance__chip {
+/* Same entrance as the shape strip: the row lands one icon after another. */
+.jse-appearance__category.is-entering {
   animation: jse-shape-in 150ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
-.jse-appearance-values .jse-appearance__chip:nth-child(n + 6) {
-  animation-delay: 24ms;
+/* And inside the panel, the values follow each other too. */
+.jse-appearance__panel .jse-appearance__chip {
+  animation: jse-appearance-in 140ms ease-out backwards;
 }
 
+.jse-appearance__panel .jse-appearance__chip:nth-child(1) { animation-delay: 0ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(2) { animation-delay: 18ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(3) { animation-delay: 36ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(4) { animation-delay: 54ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(5) { animation-delay: 72ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(6) { animation-delay: 90ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(7) { animation-delay: 108ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(8) { animation-delay: 126ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(9) { animation-delay: 144ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(10) { animation-delay: 162ms; }
+.jse-appearance__panel .jse-appearance__chip:nth-child(11) { animation-delay: 180ms; }
+
 @media (prefers-reduced-motion: reduce) {
-  .jse-appearance-values,
-  .jse-appearance-values .jse-appearance__chip {
+  .jse-appearance__category.is-entering,
+  .jse-appearance__panel .jse-appearance__chip {
     animation: none;
   }
 }
@@ -1122,8 +1190,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-tools__pill::before,
-.jse-shapes__menu::before,
-.jse-appearance-values::before {
+.jse-shapes__menu::before {
   content: "";
   position: absolute;
   inset: calc(-1 * var(--size-4-1, 4px));
@@ -1143,8 +1210,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-tools.has-content-under .jse-tools__pill::before,
-.jse-tools.has-content-under .jse-shapes__menu::before,
-.jse-tools.has-content-under .jse-appearance-values::before {
+.jse-tools.has-content-under .jse-shapes__menu::before {
   background-color: color-mix(in srgb, var(--background-primary) 58%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
   backdrop-filter: blur(14px) saturate(1.05);
@@ -1158,3 +1224,24 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   }
 }
 
+/*
+ * Appearance popover: the same shape language as the shape strip, but its radius is a
+ * concrete value rather than a clamp, so it can be animated while the popover grows.
+ * Collapsed it is exactly half the short height — a pill; open it is the ordinary panel
+ * corner. Both states are stated here, after the strip's generic rules, so they win.
+ */
+.jse-tools .jse-appearance-menu {
+  border-radius: calc(var(--touch-size-m, 40px) / 2 + var(--size-4-1, 4px));
+  transition: border-radius 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.jse-tools .jse-appearance-menu::before {
+  border-radius: inherit;
+}
+
+.jse-tools .jse-appearance-menu.is-expanded,
+.jse-tools .jse-appearance-menu:has(.jse-appearance__panel.is-open),
+.jse-tools .jse-appearance-menu.is-expanded::before,
+.jse-tools .jse-appearance-menu:has(.jse-appearance__panel.is-open)::before {
+  border-radius: var(--radius-l, 12px);
+}

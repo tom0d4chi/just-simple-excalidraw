@@ -362,9 +362,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         return;
       }
       const column = [...document.querySelectorAll<HTMLElement>(".jse-tools")];
-      // The property panels are menus too: they need the same backing when a shape slides
-      // under them, and they have no closed state of their own.
-      const menus = [...document.querySelectorAll<HTMLElement>(".jse-shapes__menu, .jse-appearance-values")];
+      const menus = [...document.querySelectorAll<HTMLElement>(".jse-shapes__menu")];
       observePanels([...column, ...menus]);
       // A closed menu is still in the DOM (it has to be, to animate out) but nothing can
       // sit under it: only the open ones count.

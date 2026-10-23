@@ -1,7 +1,6 @@
 import {
   createElement,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -15,9 +14,9 @@ import { t } from "./i18n";
 const ROUND = 3;
 
 /*
- * The properties of a selection, as a row of families in the column itself: each button shows
- * the value it currently holds, and tapping it opens that family's values beside the column.
- * There is no palette to open first — the column *is* the palette while something is selected.
+ * Appearance, in two levels: one icon per family along a row that slides out of the
+ * button, then the values of that family in a list that opens above it. The single
+ * long panel it replaces took the whole column height and pushed the drawing away.
  */
 
 export const STROKE_COLORS: readonly string[] = [
@@ -75,13 +74,16 @@ export interface StylePatch {
   roundness?: number | null;
 }
 
-export type Category = "stroke" | "fill" | "width" | "style" | "corners" | "text";
+type Category = "stroke" | "fill" | "width" | "style" | "corners" | "text";
 
-export interface Family {
-  key: Category;
-  label: string;
-  /** The button's face: the value it holds right now. */
-  content: ReactNode;
+interface AppearanceMenuProps {
+  open: boolean;
+  style: StyleState;
+  capabilities: Capabilities;
+  onPick: (patch: StylePatch) => void;
+  onPreview: (patch: StylePatch) => void;
+  /** Tells the owner when a family is open, so the popover can change shape. */
+  onExpand?: (expanded: boolean) => void;
 }
 
 function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = ""): ReactNode {
@@ -96,59 +98,188 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
 }
 
 /* One grid for every family: no label, the icon that opened it says what it is. */
-function grid(children: ReactNode[], cols: number): ReactNode {
-  return createElement("div", {
-    className: "jse-appearance__grid",
-    // The panel is only as wide as its family: two corners do not hold five columns.
-    style: { gridTemplateColumns: `repeat(${cols}, 36px)` }
-  }, children);
+function grid(children: ReactNode): ReactNode {
+  return createElement("div", { className: "jse-appearance__grid" }, children);
 }
 
-/**
- * The families this selection can actually be styled with, in the order they appear in the
- * column. Built in reading order, then reversed: the column grows downwards, so the last
- * entries are the lowest and nearest the thumb — the two colours.
- */
-export function familiesFor(style: StyleState, capabilities: Capabilities): Family[] {
+export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, onExpand }: AppearanceMenuProps) {
+  // The slider has its own value while it is being dragged: the element is only
+  // rewritten on release, so its style would otherwise lag a whole round trip.
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [category, setCategory] = useState<Category | null>(null);
+  // Kept mounted while it collapses, so the panel can animate its height both ways.
+  const [shownCategory, setShownCategory] = useState<Category | null>(null);
+  const width = dragging ?? style.strokeWidth;
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const heightSignatureRef = useRef("");
+  const [panelHeight, setPanelHeight] = useState(0);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const familySignatureRef = useRef("");
+  const [familyMarker, setFamilyMarker] = useState<{ left: number; top: number; size: number } | null>(null);
+
+  /*
+   * The mark is computed from the index of the chosen value, not measured from the DOM: the
+   * cells are a fixed 5-column grid (36 px + 4 px gap, 2 px of panel padding), so the position
+   * is known before the family is even painted. Measuring raced the render and left the mark
+   * on the previous family's cell.
+   */
+  const activeIndex = (() => {
+    if (!category) {
+      return -1;
+    }
+    if (category === "stroke") {
+      return STROKE_COLORS.indexOf(style.strokeColor.toLowerCase());
+    }
+    if (category === "fill") {
+      return FILL_COLORS.findIndex((color) => (color === null
+        ? style.backgroundColor === "transparent"
+        : style.backgroundColor.toLowerCase() === color));
+    }
+    if (category === "width") {
+      return STROKE_WIDTHS.findIndex((entry) => entry.value === style.strokeWidth);
+    }
+    if (category === "style") {
+      return STROKE_STYLES.findIndex((entry) => entry.value === style.strokeStyle);
+    }
+    if (category === "corners") {
+      return EDGES.findIndex((edge) => (edge.value === null ? style.roundness === null : style.roundness !== null));
+    }
+    return FONT_SIZES.findIndex((font) => font.value === style.fontSize);
+  })();
+  // The thickness family wraps its presets in a stack that adds 2 px of its own.
+  const markerInset = category === "width" ? 2 : 0;
+  const marker = activeIndex < 0
+    ? null
+    : {
+        left: markerInset + (activeIndex % 5) * 40,
+        top: 2 + Math.floor(activeIndex / 5) * 40,
+        round: category === "stroke" || category === "fill"
+      };
+
+
+  // Closing the menu ends any half-finished drag and forgets the open family.
+  useEffect(() => {
+    if (!open) {
+      setDragging(null);
+      setCategory(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (category) {
+      setShownCategory(category);
+    }
+  }, [category]);
+
+  // The popover is a capsule while it is only its row of families; once a family opens it
+  // takes the ordinary panel corners, so growing does not blow the radius up.
+  useEffect(() => {
+    onExpand?.(open && category !== null);
+  }, [onExpand, open, category]);
+
+  // How tall the open family is right now.
+  useEffect(() => {
+    const inner = innerRef.current;
+    const next = inner && category ? Math.ceil(inner.getBoundingClientRect().height) : 0;
+    const signature = String(next);
+    if (signature !== heightSignatureRef.current) {
+      heightSignatureRef.current = signature;
+      setPanelHeight(next);
+    }
+  }, [category, shownCategory, capabilities, style, open]);
+
+  // Where the open family sits in its row, measured from the row itself.
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) {
+      return;
+    }
+    const active = row.querySelector<HTMLElement>(".jse-appearance__category.is-active");
+    if (!active) {
+      if (familySignatureRef.current !== "none") {
+        familySignatureRef.current = "none";
+        setFamilyMarker(null);
+      }
+      return;
+    }
+    const next = { left: active.offsetLeft, top: active.offsetTop, size: active.offsetWidth };
+    const signature = `${next.left},${next.top},${next.size}`;
+    if (signature !== familySignatureRef.current) {
+      familySignatureRef.current = signature;
+      setFamilyMarker(next);
+    }
+  }, [category, capabilities, open]);
+
+  // A family that no longer applies (the selection changed) closes itself.
+  useEffect(() => {
+    const available: Category[] = [
+      ...(capabilities.stroke ? ["stroke" as Category] : []),
+      ...(capabilities.fill ? ["fill" as Category] : []),
+      ...(capabilities.width ? ["width" as Category] : []),
+      ...(capabilities.style ? ["style" as Category] : []),
+      ...(capabilities.corners ? ["corners" as Category] : []),
+      ...(capabilities.text ? ["text" as Category] : [])
+    ];
+    if (category && !available.includes(category)) {
+      setCategory(null);
+    }
+  }, [capabilities, category]);
+
+  const pick = (patch: StylePatch) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    onPick(patch);
+  };
+
+  const categoryButton = (key: Category, label: string, content: ReactNode, delay = 0): ReactNode => createElement("button", {
+    type: "button",
+    className: `jse-tool clickable-icon jse-appearance__category${open ? " is-entering" : ""}${category === key ? " is-active" : ""}`,
+    style: { animationDelay: `${delay}ms` },
+    "aria-label": label,
+    "aria-pressed": category === key,
+    title: label,
+    onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setCategory((current) => (current === key ? null : key));
+    }
+  }, content);
+
   const noFill = style.backgroundColor === "transparent";
-  const families: Family[] = [];
-  if (capabilities.stroke) {
-    families.push({
-      key: "stroke",
+  // Rightmost appears first, like the shape strip: the delay shrinks along the row.
+  const delayFor = (index: number): number => (families.length - index) * 26;
+  const families: { key: Category; label: string; content: ReactNode }[] = [
+    ...(capabilities.stroke ? [{
+      key: "stroke" as Category,
       label: t("stroke"),
       content: createElement("span", {
         className: "jse-appearance__swatch jse-appearance__swatch--ring",
         style: { borderColor: style.strokeColor }
       })
-    });
-  }
-  if (capabilities.fill) {
-    families.push({
-      key: "fill",
+    }] : []),
+    ...(capabilities.fill ? [{
+      key: "fill" as Category,
       label: t("fill"),
       content: createElement("span", {
         className: `jse-appearance__swatch${noFill ? " is-empty" : ""}`,
         style: noFill ? {} : { backgroundColor: style.backgroundColor }
       })
-    });
-  }
-  if (capabilities.width) {
-    families.push({
-      key: "width",
+    }] : []),
+    ...(capabilities.width ? [{
+      key: "width" as Category,
       label: t("thickness"),
       content: createElement("span", {
         className: "jse-appearance__bar",
         style: { height: `${Math.min(6, Math.max(1, style.strokeWidth))}px` }
       })
-    });
-  }
-  if (capabilities.style) {
-    families.push({
-      key: "style",
+    }] : []),
+    ...(capabilities.style ? [{
+      key: "style" as Category,
       label: t("lineStyle"),
       content: createElement(Icon, { name: "dashes", className: `jse-line-style jse-line-style--${style.strokeStyle}` })
-    });
-  }
+    }] : [])
+  ];
   if (capabilities.corners) {
     families.push({
       key: "corners",
@@ -159,132 +290,26 @@ export function familiesFor(style: StyleState, capabilities: Capabilities): Fami
   if (capabilities.text) {
     families.push({ key: "text", label: t("size"), content: createElement(Icon, { name: "type" }) });
   }
-  return families.reverse();
-}
-
-/* Index of the chosen value in its family, or -1 when the selection mixes values. */
-function activeIndexFor(category: Category, style: StyleState): number {
-  if (category === "stroke") {
-    return STROKE_COLORS.indexOf(style.strokeColor.toLowerCase());
-  }
-  if (category === "fill") {
-    return FILL_COLORS.findIndex((color) => (color === null
-      ? style.backgroundColor === "transparent"
-      : style.backgroundColor.toLowerCase() === color));
-  }
-  if (category === "width") {
-    return STROKE_WIDTHS.findIndex((entry) => entry.value === style.strokeWidth);
-  }
-  if (category === "style") {
-    return STROKE_STYLES.findIndex((entry) => entry.value === style.strokeStyle);
-  }
-  if (category === "corners") {
-    return EDGES.findIndex((edge) => (edge.value === null ? style.roundness === null : style.roundness !== null));
-  }
-  return FONT_SIZES.findIndex((font) => font.value === style.fontSize);
-}
-
-interface AppearanceValuesProps {
-  category: Category;
-  style: StyleState;
-  onPick: (patch: StylePatch) => void;
-  onPreview: (patch: StylePatch) => void;
-  /** Called once the panel is in the DOM: the column re-measures what sits under it. */
-  onShown?: () => void;
-}
-
-/**
- * The values of one family, in a panel anchored to the button that opened it. Nothing here is
- * measured: the cells are a fixed 5-column grid (36 px + 4 px gap), so the mark of the chosen
- * value sits at a position that is known before it is painted.
- */
-export function AppearanceValues({ category, style, onPick, onPreview, onShown }: AppearanceValuesProps): ReactNode {
-  // The slider has its own value while it is being dragged: the element is only
-  // rewritten on release, so its style would otherwise lag a whole round trip.
-  const [dragging, setDragging] = useState<number | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const width = dragging ?? style.strokeWidth;
-  const noFill = style.backgroundColor === "transparent";
-
-  const activeIndex = activeIndexFor(category, style);
-  // Columns follow the family, so each family is only as wide as its cells.
-  const counts: Record<Category, number> = {
-    stroke: STROKE_COLORS.length,
-    fill: FILL_COLORS.length,
-    width: STROKE_WIDTHS.length,
-    style: STROKE_STYLES.length,
-    corners: EDGES.length,
-    text: FONT_SIZES.length
-  };
-  const cols = Math.min(counts[category], 5);
-  /*
-   * The mark is placed from the cell it belongs to, measured after the DOM is written — the
-   * panel's width now follows its family, so no arithmetic could predict where a cell lands.
-   */
-  const innerRef = useRef<HTMLDivElement | null>(null);
-  const [mark, setMark] = useState<{ left: number; top: number } | null>(null);
-  useLayoutEffect(() => {
-    const inner = innerRef.current;
-    const active = inner && typeof inner.getBoundingClientRect === "function"
-      ? inner.querySelector<HTMLElement>(".jse-appearance__chip.is-active")
-      : null;
-    if (!inner || !active) {
-      setMark(null);
-      return;
-    }
-    const frame = inner.getBoundingClientRect();
-    const cell = active.getBoundingClientRect();
-    setMark({ left: Math.round(cell.left - frame.left), top: Math.round(cell.top - frame.top) });
-  }, [category, style.strokeColor, style.backgroundColor, style.strokeWidth, style.strokeStyle, style.roundness, style.fontSize, cols]);
-
-  const marker = activeIndex < 0 || !mark
-    ? null
-    : { ...mark, round: category === "stroke" || category === "fill" };
-
-  // The panel is a menu the column had no way to measure before it existed: tell it now, so
-  // the backing appears if a shape sits under the values.
-  useEffect(() => {
-    onShown?.();
-  }, [category, onShown]);
 
   /*
-   * The panel is centred on its button, and the lowest button sits near the bottom of the
-   * screen: a tall family would hang off the edge. Nudge it back inside, without changing
-   * which button it belongs to.
+   * Colours sit nearest the thumb. The popover opens at the right edge of the screen, so the
+   * last cells of the row are the easy ones to reach: the families are built in reading
+   * order, then reversed so stroke and fill end up there.
    */
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel) {
-      return;
-    }
-    panel.style.setProperty("--jse-panel-shift", "0px");
-    const rect = panel.getBoundingClientRect();
-    const margin = 8;
-    const overTop = margin - rect.top;
-    const overBottom = rect.bottom - (window.innerHeight - margin);
-    const shift = overTop > 0 ? overTop : overBottom > 0 ? -overBottom : 0;
-    if (shift !== 0) {
-      panel.style.setProperty("--jse-panel-shift", `${Math.round(shift)}px`);
-    }
-  }, [category, dragging]);
+  families.reverse();
 
-  const pick = (patch: StylePatch) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
-    event.preventDefault();
-    event.stopPropagation();
-    onPick(patch);
-  };
-
-  let content: ReactNode = null;
-  if (category === "stroke") {
-    content = grid(STROKE_COLORS.map((color) => chip(
+  const panelFor = (which: Category | null): ReactNode => {
+    let panel: ReactNode = null;
+    if (which === "stroke") {
+    panel = createElement("div", { className: "jse-appearance__grid" }, STROKE_COLORS.map((color) => chip(
       style.strokeColor.toLowerCase() === color,
       `${t("colourStroke")} ${color}`,
       pick({ strokeColor: color }),
       createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
-    )), cols);
-  } else if (category === "fill") {
-    content = grid(FILL_COLORS.map((color) => chip(
+    )));
+  } else if (which === "fill") {
+    panel = createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.map((color) => chip(
       (color === null && noFill) || (color !== null && style.backgroundColor.toLowerCase() === color),
       color === null ? t("noFill") : `${t("colourFill")} ${color}`,
       pick(color === null
@@ -294,13 +319,10 @@ export function AppearanceValues({ category, style, onPick, onPreview, onShown }
         ? createElement("span", { className: "jse-appearance__none" })
         : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
-    )), cols);
-  } else if (category === "width") {
-    content = createElement("div", { className: "jse-appearance__stack" },
-      createElement("div", {
-        className: "jse-appearance__choices",
-        style: { gridTemplateColumns: `repeat(${cols}, 36px)` }
-      }, STROKE_WIDTHS.map((preset) => chip(
+    )));
+  } else if (which === "width") {
+    panel = createElement("div", { className: "jse-appearance__stack" },
+      createElement("div", { className: "jse-appearance__choices" }, STROKE_WIDTHS.map((preset) => chip(
         style.strokeWidth === preset.value,
         preset.label(),
         pick({ strokeWidth: preset.value }),
@@ -339,48 +361,76 @@ export function AppearanceValues({ category, style, onPick, onPreview, onShown }
         createElement("span", { className: "jse-appearance__value" }, width.toFixed(1))
       )
     );
-  } else if (category === "style") {
-    content = grid(STROKE_STYLES.map((entry) => chip(
+  } else if (which === "style") {
+    panel = grid(STROKE_STYLES.map((entry) => chip(
       style.strokeStyle === entry.value,
       entry.label(),
       pick({ strokeStyle: entry.value }),
       createElement("span", { className: `jse-appearance__line jse-appearance__line--${entry.value}` }),
       "jse-appearance__chip--line"
-    )), cols);
-  } else if (category === "corners") {
-    content = grid(EDGES.map((edge) => chip(
+    )));
+  } else if (which === "corners") {
+    panel = grid(EDGES.map((edge) => chip(
       edge.value === null ? style.roundness === null : style.roundness !== null,
       edge.label(),
       pick({ roundness: edge.value }),
       createElement("span", { className: `jse-appearance__shape${edge.value ? " is-round" : ""}` }),
       "jse-appearance__chip--line"
-    )), cols);
-  } else {
-    content = grid(FONT_SIZES.map((font) => chip(
+    )));
+  } else if (which === "text") {
+    panel = grid(FONT_SIZES.map((font) => chip(
       style.fontSize === font.value,
       font.label(),
       pick({ fontSize: font.value }),
       createElement("span", { className: "jse-appearance__size" }, "A"),
       "jse-appearance__chip--font"
-    )), cols);
+    )));
   }
 
-  return createElement("div", { className: "jse-appearance__values-inner", ref: (node: HTMLDivElement | null) => {
-    panelRef.current = node;
-    innerRef.current = node;
-    return undefined as never;
-  } },
-    marker
-      ? createElement("div", {
-          className: "jse-appearance__marker",
-          style: {
-            left: `${marker.left}px`,
-            top: `${marker.top}px`,
-            width: "36px",
-            height: "36px",
-            borderRadius: marker.round ? "50%" : "var(--radius-s, 8px)"
-          }
-        })
-      : null,
-    content);
+  return panel;
+  };
+
+  return createElement("div", { className: "jse-appearance" },
+    /*
+     * The panel animates its own height, and stays mounted while it collapses, so the
+     * popover grows and shrinks smoothly instead of jumping.
+     */
+    createElement("div", {
+      ref: panelRef,
+      className: `jse-appearance__panel${category ? " is-open" : ""}`,
+      style: { height: category ? `${panelHeight}px` : "0px" }
+    },
+      createElement("div", { ref: innerRef, className: "jse-appearance__inner" },
+      marker
+        ? createElement("div", {
+            // One marker per family: switching family starts a fresh one where the value is,
+            // instead of dragging the previous family's circle across and morphing it.
+            key: `marker-${shownCategory}`,
+            className: "jse-appearance__marker",
+            style: {
+              left: `${marker.left}px`,
+              top: `${marker.top}px`,
+              width: "36px",
+              height: "36px",
+              borderRadius: marker.round ? "50%" : "var(--radius-s, 8px)"
+            }
+          })
+        : null,
+      panelFor(shownCategory))),
+    createElement("div", { className: "jse-appearance__categories", ref: rowRef },
+      familyMarker
+        ? createElement("div", {
+            className: "jse-appearance__family-marker",
+            style: {
+              left: `${familyMarker.left}px`,
+              top: `${familyMarker.top}px`,
+              width: `${familyMarker.size}px`,
+              height: `${familyMarker.size}px`
+            }
+          })
+        : null,
+      families.map((family, index) => (
+      categoryButton(family.key, family.label, family.content, delayFor(index))
+    )))
+  );
 }

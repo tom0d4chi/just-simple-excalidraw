@@ -80,7 +80,6 @@ const mocks = {
       return { type, props: resolved };
     }
     export function useEffect(effect) { effect(); }
-    export function useLayoutEffect(effect) { effect(); }
     export function useCallback(fn) { return fn; }
     export function useRef(value) { return { current: value }; }
     export function useState(value) { return [value, () => {}]; }
