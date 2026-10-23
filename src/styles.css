@@ -404,6 +404,14 @@
   opacity: 0;
 }
 
+/*
+ * Placing is not travelling: one frame with the transition off, so an appearance lands on the
+ * button instead of gliding in from the last position, by specificity rather than force.
+ */
+.jse-tools__pill.has-glide .jse-tools__glide.is-placing {
+  transition: none;
+}
+
 /* Only once the disc has a measured position does the mark travel, never on the first placement. */
 .jse-tools__pill.has-glide .jse-tools__glide {
   transition:

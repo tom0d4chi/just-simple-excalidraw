@@ -217,6 +217,15 @@ export function CanvasToolbar({
     ) as HTMLElement[];
     const target = candidates.find((button) => button.closest(".jse-shapes__menu") === null) ?? null;
 
+    /*
+     * Nothing lit: the disc fades out where it stands. Re-placing it at 0,0 here was the bug —
+     * the next tool then looked like it was arriving from the top of the column.
+     */
+    if (!target) {
+      glide.dataset.empty = "true";
+      return;
+    }
+
     let x = 0;
     let y = 0;
     let node: HTMLElement | null = target;
@@ -226,11 +235,24 @@ export function CanvasToolbar({
       node = node.offsetParent as HTMLElement | null;
     }
 
+    /*
+     * Coming back from a blank column is an appearance, not a move: the disc is placed on the
+     * tapped tool with the travel switched off for that one frame, so it does not glide in from
+     * wherever it was last. Between two tools it travels, which is the case the travel is for.
+     */
+    const appearing = glide.dataset.empty !== "false";
+    if (appearing) {
+      glide.classList.add("is-placing");
+    }
     glide.style.setProperty("--jse-glide-x", `${x}px`);
     glide.style.setProperty("--jse-glide-y", `${y}px`);
-    // The hand tool has no lit button: the disc steps aside instead of sitting on
-    // whatever was active last.
-    glide.dataset.empty = target ? "false" : "true";
+    glide.dataset.empty = "false";
+    if (appearing) {
+      // Read a layout value: without it the class is removed before the new position is painted,
+      // and the travel runs after all.
+      void glide.offsetWidth;
+      glide.classList.remove("is-placing");
+    }
 
     if (!glideReadyRef.current) {
       glideReadyRef.current = true;
