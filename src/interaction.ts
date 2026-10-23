@@ -93,7 +93,14 @@ export interface InteractionOptions {
    * Every two-finger gesture, with what was measured: the only way to know why a hand does or does
    * not reach the gesture on a device we cannot see.
    */
-  onPinchSample?: (sample: { ms: number; travel: number; drift: number; light: boolean }) => void;
+  onPinchSample?: (sample: {
+    ms: number;
+    spread: number;
+    travel: number;
+    drift: number;
+    moves: number;
+    light: boolean;
+  }) => void;
 }
 
 export interface InteractionHandle {
@@ -258,7 +265,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    * the pair. It only ever observes - Excalidraw keeps its own zoom - and speaks once, on release.
    */
   const pinchPoints = new Map<number, { x: number; y: number }>();
-  const pinch = { active: false, from: 0, at: 0, cx: 0, cy: 0, ratio: 1, travel: 0, drift: 0 };
+  const pinch = { active: false, from: 0, at: 0, cx: 0, cy: 0, ratio: 1, travel: 0, drift: 0, moves: 0 };
 
   const pinchMeasure = (): { distance: number; cx: number; cy: number } | null => {
     if (pinchPoints.size < 2) {
@@ -292,6 +299,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     pinch.ratio = 1;
     pinch.travel = 0;
     pinch.drift = 0;
+    pinch.moves = 0;
   };
 
   const onPinchMove = (event: PointerEvent): void => {
@@ -306,6 +314,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     if (!measured || !pinch.from) {
       return;
     }
+    pinch.moves += 1;
     pinch.ratio = measured.distance / pinch.from;
     pinch.travel = Math.abs(measured.distance - pinch.from);
     pinch.drift = Math.hypot(measured.cx - pinch.cx, measured.cy - pinch.cy);
@@ -336,8 +345,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     pinch.from = 0;
     options.onPinchSample?.({
       ms: Date.now() - pinch.at,
+      spread: Math.round(pinch.from),
       travel: Math.round(pinch.travel),
       drift: Math.round(pinch.drift),
+      moves: pinch.moves,
       light
     });
     if (light) {

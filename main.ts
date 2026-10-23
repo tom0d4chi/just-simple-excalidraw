@@ -129,6 +129,13 @@ function withDefaultTool(scene: StoredScene, isTouchDevice: boolean): StoredScen
  */
 let currentApi: ExcalidrawImperativeAPI | null = null;
 
+/*
+ * Where a two-finger gesture is written down. It goes to a note in the vault rather than to a console
+ * we cannot open: the vault reaches this side, so the measurements of a real hand do too.
+ */
+let pinchLogger: ((line: string) => void) | null = null;
+const PINCH_LOG = "pinch-log.md";
+
 function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, shouldSnapToGrid, ...props }: ExcalidrawCanvasProps) {
   // Declared before any hook that could run immediately (the test harness calls effects
   // eagerly), so nothing reaches a ref that has not been initialised yet.
@@ -245,6 +252,10 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         new Notice(sample.light
           ? `Pinch reconnu — cadrage.  ${sample.ms} ms · ${sample.travel} px · ${sample.drift} px`
           : `Pinch ignoré — ${sample.ms} ms · ${sample.travel} px · ${sample.drift} px`);
+        const stamp = new Date().toISOString().slice(11, 19);
+        pinchLogger?.(
+          `| ${stamp} | ${sample.ms} | ${sample.spread} | ${sample.travel} | ${sample.drift} | ${sample.moves} | ${sample.light ? "ok" : "non"} |`
+        );
       },
       onLightPinch: () => {
         if (!api) {
@@ -632,6 +643,18 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     this.registerView(VIEW_TYPE_EXCALIDRAW, (leaf) => new ExcalidrawView(leaf, this));
     this.registerExtensions(["excalidraw"], VIEW_TYPE_EXCALIDRAW);
 
+    /*
+     * One line per gesture, appended to a note: a table this side can actually read. The header is
+     * written when the file is empty, so the note is legible on its own.
+     */
+    pinchLogger = (line: string): void => {
+      const adapter = this.app.vault.adapter;
+      void (async () => {
+        const exists = await adapter.exists(PINCH_LOG);
+        const head = "| heure | ms | écart 0 | débattement | dérive | mouvements | reconnu |\n|---|---|---|---|---|---|---|\n";
+        await adapter.append(PINCH_LOG, exists ? line + "\n" : head + line + "\n");
+      })();
+    };
     this.addCommand({
       id: "fit-drawing-to-view",
       name: "Fit drawing to view",
