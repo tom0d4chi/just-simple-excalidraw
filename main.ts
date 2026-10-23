@@ -1,4 +1,4 @@
-import { FileView, Notice, Platform, Plugin, TFile, WorkspaceLeaf, normalizePath, requestUrl } from "obsidian";
+import { FileView, Notice, Platform, Plugin, TFile, WorkspaceLeaf, normalizePath } from "obsidian";
 import { createElement, useCallback, useEffect, useRef, useState, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -100,7 +100,6 @@ function imageByteLength(dataURL: string): number {
   const payloadLength = commaIndex === -1 ? dataURL.length : dataURL.length - commaIndex - 1;
   return Math.floor((payloadLength * 3) / 4);
 }
-
 
 
 /**
@@ -308,7 +307,6 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       }
     };
   }, [api]);
-
 
   /*
    * Excalidraw keeps its history private; the only honest window on it is its
@@ -563,21 +561,11 @@ export interface JustSimpleExcalidrawSettings {
   drawingSuffix: string;
   /** Stamp pattern: YYYY MM DD HH mm ss. Empty leaves the stamp out. */
   drawingDateFormat: string;
-  /** Poll the build branch and install a newer build by itself, when the editor is idle. */
-  autoUpdate: boolean;
-  /** Last build installed by the updater; kept in data.json so a reload cannot forget it. */
-  lastInstalledBuild?: string;
   /** Round shapes onto the dot lattice when a gesture ends. */
   snapToGrid: boolean;
 }
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
-  /** Date of the last touch or key press: an automatic reload waits for this to be old. */
-  private lastTouch = Date.now();
-  /** One update at a time, whether it came from the timer or the command. */
-  private updating = false;
-  /** Version this session has already installed, so a stale in-memory manifest cannot loop. */
-  private installed: string | null = null;
   private readonly fileOwners = new Map<TFile, ExcalidrawView>();
   settings: JustSimpleExcalidrawSettings = {
     dotGrid: true,
@@ -586,7 +574,6 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     drawingPrefix: "Drawing",
     drawingSuffix: "",
     drawingDateFormat: "YYYY-MM-DD HH.mm.ss",
-    autoUpdate: true,
     snapToGrid: true
   };
 
@@ -602,9 +589,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       drawingSuffix: "",
       drawingDateFormat: "YYYY-MM-DD HH.mm.ss",
       snapToGrid: true,
-      ...(saved ?? {}),
-      // After the spread: an older data.json has no such key and must not blank it.
-      autoUpdate: saved?.autoUpdate ?? true
+      ...(saved ?? {})
     };
     this.applyDotGrid();
     this.addSettingTab(new JustSimpleExcalidrawSettingTab(this.app, this));
@@ -618,178 +603,6 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     });
     // A canvas, not a pencil: the icon should say what the file is, not which engine draws it.
     this.addRibbonIcon("lucide-layout-dashboard", "Create new drawing", () => void this.createDrawing());
-    /*
-     * Development loop: BRAT only updates at startup and cannot be pushed, so the plugin fetches
-     * its own build from the `build` branch and restarts itself — one command, two seconds, no
-     * app restart. The three files are written through the vault adapter, which works on mobile.
-     */
-    this.addCommand({
-      id: "update-from-build",
-      name: "Update from GitHub build",
-      callback: () => void this.updateFromBuild()
-    });
-    // Any touch postpones an automatic reload: a build must never land mid-gesture.
-    if (typeof document !== "undefined") {
-      this.registerDomEvent(document, "pointerdown", () => {
-        this.lastTouch = Date.now();
-      }, true);
-      this.registerDomEvent(document, "keydown", () => {
-        this.lastTouch = Date.now();
-      }, true);
-    }
-    setTimeout(() => void this.checkBuildInBackground(), 5000);
-    // `setInterval` is a number in the browser and a Timeout object under Node's types.
-    this.registerInterval(setInterval(() => void this.checkBuildInBackground(), 60000) as unknown as number);
-  }
-
-  /**
-   * The version actually on disk. Obsidian keeps the manifest it loaded at startup in memory, so
-   * after an update `this.manifest.version` still holds the previous one — comparing against it
-   * would install the same build again on every tick, which is a reload loop.
-   */
-  private async versionOnDisk(): Promise<string> {
-    const folder = this.manifest.dir;
-    const fallback = this.manifest.version;
-    if (!folder) {
-      return fallback;
-    }
-    try {
-      const parsed = JSON.parse(await this.app.vault.adapter.read(`${folder}/manifest.json`)) as { version?: string };
-      return parsed.version ?? fallback;
-    } catch {
-      return fallback;
-    }
-  }
-
-  /** `1.2.10` is newer than `1.2.9`, which no string comparison knows. */
-  private isNewer(remote: string, local: string): boolean {
-    const a = remote.split(".").map((part) => Number.parseInt(part, 10) || 0);
-    const b = local.split(".").map((part) => Number.parseInt(part, 10) || 0);
-    for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
-      const left = a[i] ?? 0;
-      const right = b[i] ?? 0;
-      if (left !== right) {
-        return left > right;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * The plugin updates itself: every minute it reads the manifest on the build branch, and when
-   * that version is newer it waits for the editor to go quiet — four seconds without a touch, so
-   * a reload never interrupts a gesture — then installs the build and restarts.
-   */
-  private async checkBuildInBackground(): Promise<void> {
-    if (!this.settings.autoUpdate || this.updating) {
-      return;
-    }
-    let remote: { version?: string };
-    try {
-      const stamp = `?t=${Date.now()}`;
-      remote = JSON.parse((await requestUrl({
-        url: `https://raw.githubusercontent.com/tom0d4chi/just-simple-excalidraw/build/manifest.json${stamp}`
-      })).text) as { version?: string };
-    } catch (error) {
-      // Offline, or the branch is gone: silence, the next tick tries again.
-      return;
-    }
-    if (!remote.version || this.installed === remote.version) {
-      return;
-    }
-    // Three witnesses, because one of them can lie: the session's memory, the manifest on disk,
-    // and data.json. The highest of them is what is really installed.
-    let local = this.installed ?? this.manifest.version;
-    const disk = await this.versionOnDisk();
-    if (this.isNewer(disk, local)) {
-      local = disk;
-    }
-    const saved = this.settings.lastInstalledBuild;
-    if (saved && this.isNewer(saved, local)) {
-      local = saved;
-    }
-    if (!this.isNewer(remote.version, local)) {
-      return;
-    }
-    this.updating = true;
-    try {
-      while (Date.now() - this.lastTouch < 4000) {
-        await new Promise((resolve) => setTimeout(resolve, 700));
-      }
-      await this.installBuild();
-    } finally {
-      this.updating = false;
-    }
-  }
-
-  /** Downloads the three built files and writes them into this plugin's folder. */
-  private async installBuild(): Promise<void> {
-    const base = "https://raw.githubusercontent.com/tom0d4chi/just-simple-excalidraw/build";
-    const stamp = `?t=${Date.now()}`;
-    const folder = this.manifest.dir;
-    if (!folder) {
-      return;
-    }
-    const remote = JSON.parse((await requestUrl({ url: `${base}/manifest.json${stamp}` })).text) as { version?: string };
-    /*
-     * The CDN behind raw.githubusercontent caches each path for five minutes, and it may well
-     * serve the new manifest while still serving the previous main.js. Installing that pair would
-     * write a new manifest over old code, and every later check would then think it is up to date.
-     * The build is stamped with its version on its first line, so a stale file is caught here and
-     * the next tick tries again.
-     */
-    const files: Record<string, string> = {};
-    for (const name of ["main.js", "styles.css"]) {
-      files[name] = (await requestUrl({ url: `${base}/${name}${stamp}` })).text;
-    }
-    // "/* jse-build 0.1.127 */" on the first line, written by the release script.
-    const head = files["main.js"].slice(0, 60);
-    const mark = head.startsWith("/* jse-build ") ? head.slice(13).split(" ")[0] : "";
-    // Strict: every published build is stamped, so a missing stamp means a partial download too.
-    if (remote.version && mark !== remote.version) {
-      return;
-    }
-    for (const [name, body] of Object.entries(files)) {
-      await this.app.vault.adapter.write(`${folder}/${name}`, body);
-    }
-    // The manifest goes last: a half-written update must never look like a finished one.
-    await this.app.vault.adapter.write(`${folder}/manifest.json`, JSON.stringify(remote, null, 2));
-    // Recorded before the reload: if the reload keeps the old manifest in memory, this session
-    // must still know it already installed this version.
-    this.installed = remote.version ?? null;
-    if (remote.version) {
-      this.settings.lastInstalledBuild = remote.version;
-      await this.saveSettings();
-    }
-    new Notice(`Updated to ${remote.version ?? "the latest build"} — reloading…`);
-    const id = this.manifest.id;
-    const registry = (this.app as unknown as {
-      plugins: { disablePlugin(pluginId: string): void; enablePlugin(pluginId: string): void };
-    }).plugins;
-    setTimeout(() => {
-      registry.disablePlugin(id);
-      registry.enablePlugin(id);
-    }, 400);
-  }
-
-  /**
-   * Pulls manifest.json, main.js and styles.css from the branch the build is published to, writes
-   * them into this plugin's own folder, then disables and re-enables the plugin — Obsidian reads
-   * main.js once at load, so a reload is the only way the new code runs.
-   */
-  private async updateFromBuild(): Promise<void> {
-    if (this.updating) {
-      return;
-    }
-    this.updating = true;
-    try {
-      await this.installBuild();
-    } catch (error) {
-      console.error("update from build failed", error);
-      new Notice("Update failed: the build branch is unreachable.");
-    } finally {
-      this.updating = false;
-    }
   }
 
   /** Live switch: the class is all the stylesheet needs. */
