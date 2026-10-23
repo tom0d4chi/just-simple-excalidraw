@@ -677,23 +677,32 @@ export function CanvasToolbar({
     if (!pill || !pen) {
       return;
     }
-    // While it is leaving there is no row to follow: the frame is changing height and following it
-    // would drag the pen upwards as it fades.
+    // Leaving, it keeps the offset it had: updating it here would slide the pen vertically towards
+    // the row of the other column while it fades, which is the drift this placement exists to avoid.
     if (penAway) {
       return;
     }
     const scope = penAtTop ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
-    /*
-     * Measured from the slot's *row*, never from its screen position: the frame's height is animated,
-     * so right after writing it the layout is still the old one and the slot reports where it used to
-     * be. Rows do not move with the frame's height, the centring does - and that is exactly the
-     * padding, which is known.
-     */
+    const layer = propertiesMode ? propsLayerRef.current : toolsLayerRef.current;
     const slot = pill.querySelector<HTMLElement>(`${scope} .jse-tools__pen-slot`);
-    if (!slot) {
+    if (!slot || !layer) {
       return;
     }
-    const pad = parseFloat(getComputedStyle(pill).paddingTop) || 0;
+    /*
+     * The offset is the distance between the pen's row and the middle of the frame, in the layout
+     * the change is heading to. It comes from the rows themselves (their offsetHeight ignores the
+     * height animation and the entrance scale), so it is right before the frame has finished
+     * resizing - which is exactly what removes the vertical drift: the middle of the frame does not
+     * move, the top edge does.
+     */
+    const styles = getComputedStyle(pill);
+    const pad = parseFloat(styles.paddingTop) || 0;
+    const border = parseFloat(styles.borderTopWidth) || 0;
+    const content = Array.prototype.slice.call(layer.children).reduce((sum: number, child: HTMLElement) => {
+      const childStyles = getComputedStyle(child);
+      const margins = (parseFloat(childStyles.marginTop) || 0) + (parseFloat(childStyles.marginBottom) || 0);
+      return sum + child.offsetHeight + margins;
+    }, 0);
     let above = 0;
     for (let row = slot.previousElementSibling as HTMLElement | null; row; row = row.previousElementSibling as HTMLElement | null) {
       const rowStyles = getComputedStyle(row);
@@ -701,7 +710,9 @@ export function CanvasToolbar({
         + (parseFloat(rowStyles.marginTop) || 0)
         + (parseFloat(rowStyles.marginBottom) || 0);
     }
-    pen.style.top = `${pad + above}px`;
+    const frameHeight = content + (pad + border) * 2;
+    const rowCentre = pad + above + pen.offsetHeight / 2;
+    pen.style.setProperty("--pen-offset", `${rowCentre - frameHeight / 2}px`);
   }, [propertiesMode, hasSelection, toolOptions, shownFamilies.length]);
 
   const applyHeight = (): void => {

@@ -1346,16 +1346,16 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   position: absolute;
   left: 50%;
   /*
-   * The second row, which is where the pen lives in the tools column. It is a fallback that matters:
-   * if the measured position never arrives, the pen must not land on the first button.
+   * Measured from the middle of the frame, not from its top: the frame's height is animated and its
+   * centre is what stays put, so a distance from the centre is a position that does not drift while
+   * the frame grows or shrinks. `--pen-offset` is written by the component.
    */
-  top: calc(var(--jse-pad, 4px) + var(--jse-tool-size, 36px) + 2px);
-  translate: -50% 0;
+  top: 50%;
+  translate: -50% calc(-50% + var(--pen-offset, 0px));
   width: var(--jse-tool-size);
   height: var(--jse-tool-size);
   z-index: 2;
   transition:
-    top 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
     translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
     opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
@@ -1366,7 +1366,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  */
 .jse-root .jse-tool.jse-tools__pen.is-away {
   opacity: 0;
-  translate: calc(-50% - 18px) 0;
+  translate: calc(-50% - 18px) calc(-50% + var(--pen-offset, 0px));
   pointer-events: none;
 }
 
