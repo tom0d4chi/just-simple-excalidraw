@@ -408,10 +408,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
             key: `marker-${shownCategory}`,
             className: "jse-appearance__marker",
             style: {
-              left: `${marker.left}px`,
-              top: `${marker.top}px`,
-              width: "36px",
-              height: "36px",
+              transform: `translate(${marker.left}px, ${marker.top}px)`,
               borderRadius: marker.round ? "50%" : "var(--radius-s, 8px)"
             }
           })
@@ -422,10 +419,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
         ? createElement("div", {
             className: "jse-appearance__family-marker",
             style: {
-              left: `${familyMarker.left}px`,
-              top: `${familyMarker.top}px`,
-              width: `${familyMarker.size}px`,
-              height: `${familyMarker.size}px`
+              transform: `translate(${familyMarker.left}px, ${familyMarker.top}px)`
             }
           })
         : null,
