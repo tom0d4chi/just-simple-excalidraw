@@ -9,6 +9,7 @@ import {
 import type { Capabilities } from "./capabilities";
 import { Icon } from "./icons";
 import { t } from "./i18n";
+import { menuDelay, rowDelay } from "./motion";
 
 /** Excalidraw stores rounded corners as `roundness: { type: 3 }` on shapes. */
 const ROUND = 3;
@@ -86,13 +87,15 @@ interface AppearanceMenuProps {
   onExpand?: (expanded: boolean) => void;
 }
 
-function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = ""): ReactNode {
+function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = "", delay = "0ms"): ReactNode {
   return createElement("button", {
     type: "button",
     className: `jse-appearance__chip${extra ? ` ${extra}` : ""}${active ? " is-active" : ""}`,
     "aria-label": label,
     "aria-pressed": active,
     title: label,
+    // The same step as the strip, one row of cells at a time.
+    style: { animationDelay: delay },
     onClick
   }, content);
 }
@@ -232,10 +235,10 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     onPick(patch);
   };
 
-  const categoryButton = (key: Category, label: string, content: ReactNode, delay = 0): ReactNode => createElement("button", {
+  const categoryButton = (key: Category, label: string, content: ReactNode, delay = "0ms"): ReactNode => createElement("button", {
     type: "button",
     className: `jse-tool clickable-icon jse-appearance__category${open ? " is-entering" : ""}${category === key ? " is-active" : ""}`,
-    style: { animationDelay: `${delay}ms` },
+    style: { animationDelay: delay },
     "aria-label": label,
     "aria-pressed": category === key,
     title: label,
@@ -248,7 +251,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
 
   const noFill = style.backgroundColor === "transparent";
   // Rightmost appears first, like the shape strip: the delay shrinks along the row.
-  const delayFor = (index: number): number => (families.length - index) * 26;
+  const delayFor = (index: number): string => menuDelay(index, families.length);
   const families: { key: Category; label: string; content: ReactNode }[] = [
     ...(capabilities.stroke ? [{
       key: "stroke" as Category,
@@ -301,15 +304,16 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   const panelFor = (which: Category | null): ReactNode => {
     let panel: ReactNode = null;
     if (which === "stroke") {
-    panel = createElement("div", { className: "jse-appearance__grid" }, STROKE_COLORS.map((color) => chip(
+    panel = createElement("div", { className: "jse-appearance__grid" }, STROKE_COLORS.map((color, index) => chip(
       style.strokeColor.toLowerCase() === color,
       `${t("colourStroke")} ${color}`,
       pick({ strokeColor: color }),
       createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
-      "jse-appearance__chip--color"
+      "jse-appearance__chip--color",
+      rowDelay(index, 5)
     )));
   } else if (which === "fill") {
-    panel = createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.map((color) => chip(
+    panel = createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.map((color, index) => chip(
       (color === null && noFill) || (color !== null && style.backgroundColor.toLowerCase() === color),
       color === null ? t("noFill") : `${t("colourFill")} ${color}`,
       pick(color === null
@@ -318,7 +322,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       color === null
         ? createElement("span", { className: "jse-appearance__none" })
         : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
-      "jse-appearance__chip--color"
+      "jse-appearance__chip--color",
+      rowDelay(index, 5)
     )));
   } else if (which === "width") {
     panel = createElement("div", { className: "jse-appearance__stack" },
@@ -362,28 +367,31 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       )
     );
   } else if (which === "style") {
-    panel = grid(STROKE_STYLES.map((entry) => chip(
+    panel = grid(STROKE_STYLES.map((entry, index) => chip(
       style.strokeStyle === entry.value,
       entry.label(),
       pick({ strokeStyle: entry.value }),
       createElement("span", { className: `jse-appearance__line jse-appearance__line--${entry.value}` }),
-      "jse-appearance__chip--line"
+      "jse-appearance__chip--line",
+      rowDelay(index, 5)
     )));
   } else if (which === "corners") {
-    panel = grid(EDGES.map((edge) => chip(
+    panel = grid(EDGES.map((edge, index) => chip(
       edge.value === null ? style.roundness === null : style.roundness !== null,
       edge.label(),
       pick({ roundness: edge.value }),
       createElement("span", { className: `jse-appearance__shape${edge.value ? " is-round" : ""}` }),
-      "jse-appearance__chip--line"
+      "jse-appearance__chip--line",
+      rowDelay(index, 5)
     )));
   } else if (which === "text") {
-    panel = grid(FONT_SIZES.map((font) => chip(
+    panel = grid(FONT_SIZES.map((font, index) => chip(
       style.fontSize === font.value,
       font.label(),
       pick({ fontSize: font.value }),
       createElement("span", { className: "jse-appearance__size" }, "A"),
-      "jse-appearance__chip--font"
+      "jse-appearance__chip--font",
+      rowDelay(index, 5)
     )));
   }
 

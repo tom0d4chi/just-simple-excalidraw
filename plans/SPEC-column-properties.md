@@ -80,6 +80,15 @@ endroits ou nulle part.
     changer de sélection pendant qu'un panneau est ouvert, ou sélectionner pendant l'entrée de
     la colonne donne le même résultat.
 
+## 6 bis. Décisions actées
+
+D1 — Dépliage d'un sous-menu : la dernière icône est en place à 140 ms, pas au-delà.
+  Enveloppe 120 ms, courbe ease-out. Icônes 90 ms chacune, décalées de 10 ms en partant du
+  bouton : la sixième (dernière) commence à 50 ms et finit à 140 ms. Repliement plus court que
+  le dépliage, 100 ms.
+  Constat de départ : la version en place prend 280 ms pour la dernière icône (enveloppe 140 ms,
+  icônes 150 ms, écart 26 ms), ce qui est trop lent pour un menu qu'on ouvre et ferme souvent.
+
 ## 7. Méthode de travail
 
 - Branche dédiée, une étape = un commit relu, aucune publication automatique.

@@ -11,6 +11,7 @@ import { anyCapability, type Capabilities } from "./capabilities";
 import { Icon, type IconName } from "./icons";
 import { AppearanceMenu, type StylePatch, type StyleState } from "./appearance";
 import { t } from "./i18n";
+import { MENU_MOTION_VARS, menuDelay } from "./motion";
 
 type ToolName = "hand" | "selection" | "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "freedraw" | "text" | "image" | "eraser";
 
@@ -598,7 +599,7 @@ export function CanvasToolbar({
         type: "button",
         role: "menuitem",
         className: `jse-tool clickable-icon jse-tool--shape jse-shapes__item${shapeMenuOpen ? " is-entering" : ""}${activeTool === tool ? " is-active" : ""}`,
-        style: { animationDelay: `${(shapeOrder.length - index) * 26}ms` },
+        style: { animationDelay: menuDelay(index, shapeOrder.length) },
         "aria-label": TOOL_DEFINITIONS[tool].label,
         "aria-pressed": activeTool === tool,
         onClick: pickShape(tool)
@@ -618,6 +619,8 @@ export function CanvasToolbar({
 
   return createElement("div", {
     className: `jse-tools${contentUnder ? " has-content-under" : ""}`,
+    // The stylesheet reads these; nothing here hardcodes a duration twice.
+    style: MENU_MOTION_VARS,
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
   createElement("div", {

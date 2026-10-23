@@ -476,11 +476,11 @@
 }
 
 .jse-shapes__menu.jse-anim {
-  animation: jse-menu-in 140ms ease-out backwards;
+  animation: jse-menu-in var(--jse-menu-in, 120ms) cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
 .jse-shapes__menu.jse-anim.is-closed {
-  animation: jse-menu-out 120ms ease-in forwards;
+  animation: jse-menu-out var(--jse-menu-out, 100ms) cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
 .jse-shapes__separator {
@@ -885,7 +885,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * set inline per item) instead of all at once.
  */
 .jse-root .jse-shapes__menu .jse-shapes__item.is-entering {
-  animation: jse-shape-in 150ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+  animation: jse-shape-in var(--jse-menu-item, 90ms) cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
 @keyframes jse-shape-in {
@@ -1126,11 +1126,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   opacity: 1;
 }
 
-@keyframes jse-appearance-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .jse-appearance__grid {
   display: grid;
   grid-template-columns: repeat(5, 36px);
@@ -1146,25 +1141,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 /* Same entrance as the shape strip: the row lands one icon after another. */
 .jse-appearance__category.is-entering {
-  animation: jse-shape-in 150ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+  animation: jse-shape-in var(--jse-menu-item, 90ms) cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
 /* And inside the panel, the values follow each other too. */
 .jse-appearance__panel .jse-appearance__chip {
-  animation: jse-appearance-in 140ms ease-out backwards;
+  animation: jse-shape-in var(--jse-menu-item, 90ms) cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
-
-.jse-appearance__panel .jse-appearance__chip:nth-child(1) { animation-delay: 0ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(2) { animation-delay: 18ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(3) { animation-delay: 36ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(4) { animation-delay: 54ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(5) { animation-delay: 72ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(6) { animation-delay: 90ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(7) { animation-delay: 108ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(8) { animation-delay: 126ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(9) { animation-delay: 144ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(10) { animation-delay: 162ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(11) { animation-delay: 180ms; }
 
 @media (prefers-reduced-motion: reduce) {
   .jse-appearance__category.is-entering,
