@@ -9,7 +9,7 @@ import {
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { anyCapability, type Capabilities } from "./capabilities";
 import { Icon, type IconName } from "./icons";
-import { AppearanceMenu, type StylePatch, type StyleState } from "./appearance";
+import { AppearanceValues, familiesFor, type Category, type StylePatch, type StyleState } from "./appearance";
 import { t } from "./i18n";
 import { MENU_MOTION_VARS, menuDelay } from "./motion";
 
@@ -165,13 +165,21 @@ export function CanvasToolbar({
   getCanvasElement
 }: CanvasToolbarProps) {
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
-  const [appearanceExpanded, setAppearanceExpanded] = useState(false);
+  /*
+   * The strip mounts closed, and its exit animation starts from a visible state. Leaving a
+   * selection remounts the tools, so an unopened strip would play that exit from opacity 1 — a
+   * flash in front of the canvas. It only earns the animation once it has been opened.
+   */
+  const [shapeMenuAnimated, setShapeMenuAnimated] = useState(false);
+  /* The property whose values are open beside the column, and where its button sits. */
+  const [openFamily, setOpenFamily] = useState<Category | null>(null);
+  const [familyTop, setFamilyTop] = useState(0);
   // "Keep the tool" is a preference of the column, not a property of Excalidraw's
   // current tool: it can be armed before choosing a shape, and it then applies to
   // whatever is picked next.
   const [keepTool, setKeepTool] = useState(locked);
   const keepToolRef = useRef(locked);
-  const [styleMenuOpen, setStyleMenuOpen] = useState(false);
+
   const [entered, setEntered] = useState(false);
 
   const [lastShape, setLastShape] = useState<ToolName>("rectangle");
@@ -343,12 +351,19 @@ export function CanvasToolbar({
     event.preventDefault();
     event.stopPropagation();
     setShapeMenuOpen((value) => !value);
+    setShapeMenuAnimated(true);
   };
 
-  const toggleStyleMenu = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+  /*
+   * A property button opens the values of its family beside the column, centred on itself: its
+   * own offsetTop is the whole anchor, read at press time before any transform is applied.
+   */
+  const toggleFamily = (key: Category) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
-    setStyleMenuOpen((value) => !value);
+    const button = event.currentTarget;
+    setFamilyTop(button.offsetTop + button.offsetHeight / 2);
+    setOpenFamily((current) => (current === key ? null : key));
     onMenusToggled();
   };
 
@@ -420,28 +435,35 @@ export function CanvasToolbar({
   // A mode change closes whatever was open for the previous one.
   useEffect(() => {
     setShapeMenuOpen(false);
-    setStyleMenuOpen(false);
+    setOpenFamily(null);
   }, [activeTool]);
 
+  // Nothing selected: the properties go with the selection.
   useEffect(() => {
-    if (!stylingTarget) {
-      setStyleMenuOpen(false);
+    if (!stylingTarget || selectionCount === 0) {
+      setOpenFamily(null);
     }
-  }, [stylingTarget]);
+  }, [stylingTarget, selectionCount]);
 
   useEffect(() => {
-    if (!shapeMenuOpen && !styleMenuOpen) {
+    if (!shapeMenuOpen && !openFamily) {
       return;
     }
     const onOutside = (event: PointerEvent): void => {
-      if (!(event.target instanceof HTMLElement) || !event.target.closest(".jse-shapes")) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (!target.closest(".jse-shapes")) {
         setShapeMenuOpen(false);
-        setStyleMenuOpen(false);
+      }
+      if (!target.closest(".jse-appearance-values")) {
+        setOpenFamily(null);
       }
     };
     document.addEventListener("pointerdown", onOutside, true);
     return () => document.removeEventListener("pointerdown", onOutside, true);
-  }, [shapeMenuOpen, styleMenuOpen]);
+  }, [shapeMenuOpen, openFamily]);
 
   /*
    * Placed on every commit (a tool switch, a group folding in or out, a locale
@@ -547,33 +569,24 @@ export function CanvasToolbar({
     api.updateScene({ appState: { currentItemStrokeWidth: patch.strokeWidth } as never });
   };
 
-  const appearanceButton = createElement("div", {
-    className: `jse-shapes jse-shapes--collapsible${entered ? " jse-anim" : ""}${stylingTarget ? "" : " is-collapsed"}`,
-    key: "appearance"
-  },
-    createElement("button", {
-      type: "button",
-      className: `jse-tool jse-tool--action clickable-icon${styleMenuOpen ? " is-open" : ""}`,
-      "aria-label": t("appearance"),
-      "aria-expanded": styleMenuOpen,
-      "aria-hidden": !stylingTarget,
-      onClick: toggleStyleMenu
-    }, createElement(Icon, { name: "palette" })),
-    createElement("div", {
-      className: `jse-shapes__menu jse-appearance-menu${appearanceExpanded ? " is-expanded" : ""}${entered ? " jse-anim" : ""}${styleMenuOpen ? "" : " is-closed"}`,
-      role: "menu",
-      "aria-hidden": !styleMenuOpen,
-      onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
-    },
-    createElement(AppearanceMenu, {
-      open: styleMenuOpen,
-      style,
-      capabilities,
-      onPick: applyStyle,
-      onPreview: previewStyle,
-      onExpand: setAppearanceExpanded
-    }))
-  );
+  /*
+   * With something selected the column stops being a box of drawing tools and becomes the
+   * properties of what is selected: one button per family, each painted with the value it holds.
+   * Nothing selected, nothing to style: the tools come back.
+   */
+  const propertiesMode = isTouchDevice && stylingTarget && selectionCount > 0;
+  const families = familiesFor(style, capabilities);
+  const propertyButtons = propertiesMode
+    ? families.map((family) => createElement("button", {
+        key: family.key,
+        type: "button",
+        className: `jse-tool jse-tool--action clickable-icon${openFamily === family.key ? " is-open" : ""}`,
+        "aria-label": family.label,
+        "aria-expanded": openFamily === family.key,
+        "aria-pressed": openFamily === family.key,
+        onClick: toggleFamily(family.key)
+      }, family.content))
+    : [];
 
   // Reversed, so the strip reads from the button outwards: the shape next to the
   // button is the first one, and the first to land.
@@ -589,7 +602,7 @@ export function CanvasToolbar({
       onClick: toggleShapeMenu
     }, createElement(Icon, { name: TOOL_DEFINITIONS[activeShape ?? lastShape].icon })),
     createElement("div", {
-        className: `jse-shapes__menu${entered ? " jse-anim" : ""}${shapeMenuOpen ? "" : " is-closed"}`,
+        className: `jse-shapes__menu${entered && shapeMenuAnimated ? " jse-anim" : ""}${shapeMenuOpen ? "" : " is-closed"}`,
         role: "menu",
         "aria-hidden": !shapeMenuOpen,
         onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
@@ -633,17 +646,40 @@ export function CanvasToolbar({
       "aria-hidden": true
     }),
     isTouchDevice
-      ? [
-          toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
-          toolButton(TOOL_DEFINITIONS.freedraw),
-          shapeButton,
-          toolButton(TOOL_DEFINITIONS.text),
-          toolButton(TOOL_DEFINITIONS.image, () => insertImage),
-          toolButton(TOOL_DEFINITIONS.eraser),
-          ...contextButtons
-        ]
-      : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool])),
-    appearanceButton,
+      ? (propertiesMode
+          ? [
+              toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
+              ...propertyButtons,
+              ...contextButtons
+            ]
+          : [
+              toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
+              toolButton(TOOL_DEFINITIONS.freedraw),
+              shapeButton,
+              toolButton(TOOL_DEFINITIONS.text),
+              toolButton(TOOL_DEFINITIONS.image, () => insertImage),
+              toolButton(TOOL_DEFINITIONS.eraser),
+              ...contextButtons
+            ])
+      : (propertiesMode
+          ? [
+              toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
+              ...propertyButtons
+            ]
+          : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool]))),
+    openFamily
+      ? createElement("div", {
+          className: "jse-appearance-values",
+          role: "menu",
+          style: { top: `${familyTop}px` },
+          onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
+        },
+        createElement(AppearanceValues, {
+          category: openFamily,
+          style,
+          onPick: applyStyle
+        }))
+      : null,
     isTouchDevice ? null : lockButton,
     actionButton("undo", "undo-2", t("undo"), (event) => {
       event.preventDefault();
