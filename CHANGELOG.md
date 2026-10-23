@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.177 - 2026-10-23
+
+- The sweep at 13 ms.
+
 ## 0.1.176 - 2026-10-23
 
 - The sweep sits at 15 ms: 22 ms was too strong under the finger, and 10 ms was under its threshold. A
