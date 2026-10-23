@@ -12,6 +12,7 @@ import { anyCapability, capabilitiesForTool, type Capabilities } from "./capabil
 import { Icon, type IconName } from "./icons";
 import { AppearanceValues, familiesFor, type Category, type Family, type StylePatch, type StyleState } from "./appearance";
 import { t } from "./i18n";
+import { haptic } from "./haptics";
 import { MENU_MOTION_VARS, menuDelay } from "./motion";
 
 type ToolName = "hand" | "selection" | "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "freedraw" | "text" | "image" | "eraser";
@@ -537,6 +538,28 @@ export function CanvasToolbar({
     document.addEventListener("pointerdown", onOutside, true);
     return () => document.removeEventListener("pointerdown", onOutside, true);
   }, [shapeMenuOpen, openFamily]);
+
+  /*
+   * Every control in the column answers the finger, on press rather than on release: a tap that is
+   * held can still be abandoned, and the confirmation belongs at the moment of contact.
+   */
+  useEffect(() => {
+    const onPress = (event: PointerEvent): void => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      /*
+       * Every real control: the column's buttons, the shape strip, and anything the appearance bar
+       * renders (chips, swatches, the shape grid) - all of them are <button> under that bar.
+       */
+      if (target.closest(".jse-tool, .jse-shapes__item, .jse-appearance-values button")) {
+        haptic("light");
+      }
+    };
+    document.addEventListener("pointerdown", onPress, true);
+    return () => document.removeEventListener("pointerdown", onPress, true);
+  }, []);
 
   /*
    * Placed on every commit (a tool switch, a group folding in or out, a locale
