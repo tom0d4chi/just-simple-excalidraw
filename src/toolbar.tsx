@@ -181,6 +181,14 @@ export function CanvasToolbar({
   const keepToolRef = useRef(locked);
 
   const [entered, setEntered] = useState(false);
+  /*
+   * The column has two lives - the tools, and the properties of a selection - and swapping them
+   * in one frame is a cut. The set that goes leaves to the right, then the new one arrives from
+   * the same side; `shownMode` lags `wantedMode` by the length of the exit.
+   */
+  const [shownMode, setShownMode] = useState<"tools" | "properties">("tools");
+  const [leaving, setLeaving] = useState(false);
+  const [arriving, setArriving] = useState(false);
 
   const [lastShape, setLastShape] = useState<ToolName>("rectangle");
   const activeShape = SHAPES.includes(activeTool as ToolName) ? (activeTool as ToolName) : null;
@@ -432,6 +440,24 @@ export function CanvasToolbar({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  const wantedMode: "tools" | "properties" = isTouchDevice && stylingTarget && selectionCount > 0
+    ? "properties"
+    : "tools";
+
+  useEffect(() => {
+    if (wantedMode === shownMode) {
+      return;
+    }
+    setLeaving(true);
+    const exit = window.setTimeout(() => {
+      setLeaving(false);
+      setShownMode(wantedMode);
+      setArriving(true);
+      window.setTimeout(() => setArriving(false), 200);
+    }, 120);
+    return () => window.clearTimeout(exit);
+  }, [wantedMode, shownMode]);
+
   // A mode change closes whatever was open for the previous one.
   useEffect(() => {
     setShapeMenuOpen(false);
@@ -574,7 +600,7 @@ export function CanvasToolbar({
    * properties of what is selected: one button per family, each painted with the value it holds.
    * Nothing selected, nothing to style: the tools come back.
    */
-  const propertiesMode = isTouchDevice && stylingTarget && selectionCount > 0;
+  const propertiesMode = shownMode === "properties";
   const families = familiesFor(style, capabilities);
   const propertyButtons = propertiesMode
     ? families.map((family) => createElement("button", {
@@ -637,7 +663,7 @@ export function CanvasToolbar({
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
   createElement("div", {
-    className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}${glideReady ? " has-glide" : ""}`,
+    className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}${glideReady ? " has-glide" : ""}${leaving ? " is-leaving-set" : ""}${arriving ? " is-arriving-set" : ""}`,
     ref: pillRef
   },
     createElement("div", {
@@ -648,7 +674,6 @@ export function CanvasToolbar({
     isTouchDevice
       ? (propertiesMode
           ? [
-              toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
               ...propertyButtons,
               ...contextButtons
             ]
@@ -663,8 +688,8 @@ export function CanvasToolbar({
             ])
       : (propertiesMode
           ? [
-              toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
-              ...propertyButtons
+              ...propertyButtons,
+              ...contextButtons
             ]
           : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool]))),
     openFamily
