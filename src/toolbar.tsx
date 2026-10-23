@@ -596,7 +596,7 @@ export function CanvasToolbar({
    * on the pill so the stylesheet can transition it: the column grows and shrinks like a menu
    * opening instead of snapping when the number of buttons changes.
    */
-  useLayoutEffect(() => {
+  const applyHeight = (): void => {
     const pill = pillRef.current;
     const layer = propertiesMode ? propsLayerRef.current : toolsLayerRef.current;
     if (!pill || !layer) {
@@ -605,7 +605,29 @@ export function CanvasToolbar({
     const styles = getComputedStyle(pill);
     const pad = parseFloat(styles.paddingTop) || 0;
     const border = parseFloat(styles.borderTopWidth) || 0;
-    pill.style.height = `${layer.offsetHeight + (pad + border) * 2}px`;
+    // The layer fills the pill, so its own height says nothing about its content: the buttons do.
+    const content = Array.prototype.slice.call(layer.children).reduce((sum: number, child: HTMLElement) => {
+      const childStyles = getComputedStyle(child);
+      const margins = (parseFloat(childStyles.marginTop) || 0) + (parseFloat(childStyles.marginBottom) || 0);
+      return sum + child.getBoundingClientRect().height + margins;
+    }, 0);
+    pill.style.height = `${content + (pad + border) * 2}px`;
+  };
+
+  useLayoutEffect(() => {
+    applyHeight();
+    /*
+     * On the first paint the stylesheet may not have been applied yet, and the buttons then have no
+     * margins: the frame would be a few pixels short until something else changed. One frame later
+     * the real layout exists, so it is measured again.
+     */
+    const later = requestAnimationFrame(() => applyHeight());
+    // The stylesheet of the host can land after the first paint too; one late pass settles it.
+    const late = window.setTimeout(applyHeight, 120);
+    return () => {
+      cancelAnimationFrame(later);
+      window.clearTimeout(late);
+    };
   }, [propertiesMode, shownFamilies.length, shownHasSelection]);
   /*
    * Always mounted, never conditional: the properties layer has to keep its height while it is

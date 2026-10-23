@@ -1230,11 +1230,15 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
    * shrink. The height itself is written by the component, and it is a value, so it can animate.
    */
   position: absolute;
-  top: var(--jse-pad, 4px);
-  left: var(--jse-pad, 4px);
+  /* the pill's padding box, not its corner: the icons are centred on the same axis as the tools,
+     and they stay on it while the frame grows or shrinks around them */
+  inset: 0;
   display: grid;
   grid-template-columns: var(--jse-tool-size);
+  /* centre the column track itself: justify-items would only centre the icon inside its own 36 px */
+  justify-content: center;
   justify-items: center;
+  align-content: center;
   transition:
     opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
     translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
