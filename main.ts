@@ -257,24 +257,6 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         const rect = canvas.getBoundingClientRect();
         const clientX = rect.left + (scene.x + state.scrollX) * zoom;
         const clientY = rect.top + (scene.y + state.scrollY) * zoom;
-        // Reduced motion: land on the target in one step. The anchor maths below does not
-        // depend on the interpolation, so the point under the finger still holds.
-        const reduceMotion = typeof window.matchMedia === "function"
-          && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        if (reduceMotion) {
-          if (zoomFrameRef.current !== null) {
-            window.clearTimeout(zoomFrameRef.current);
-            zoomFrameRef.current = null;
-          }
-          api.updateScene({
-            appState: {
-              zoom: { value: target as never },
-              scrollX: (clientX - rect.left) / target - scene.x,
-              scrollY: (clientY - rect.top) / target - scene.y
-            }
-          });
-          return true;
-        }
         // A zoom that jumps is disorienting on a sheet: it is stepped over ~240 ms, the
         // anchored point held still on every frame. Timers rather than animation frames,
         // because a throttled or hidden view stops frames and would leave the zoom stuck

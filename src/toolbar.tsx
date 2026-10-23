@@ -189,23 +189,6 @@ export function CanvasToolbar({
   const [glideReady, setGlideReady] = useState(false);
 
   const measureGlideRef = useRef<() => void>(() => {});
-
-  /*
-   * A one-shot ring when multi-select arms. It is the only state whose consequences are
-   * invisible until the first drag — an armed cursor draws a box where the user meant to pan —
-   * and it happens rarely enough to afford a cue. It is a piece of state rather than a class
-   * added through the ref: React rewrites the pill's className on every render and would wipe
-   * the class before the animation played.
-   */
-  const [armedPulse, setArmedPulse] = useState(false);
-  useEffect(() => {
-    if (!selectionArmed) {
-      return;
-    }
-    setArmedPulse(true);
-    const timer = window.setTimeout(() => setArmedPulse(false), 200);
-    return () => window.clearTimeout(timer);
-  }, [selectionArmed]);
   measureGlideRef.current = (): void => {
     const pill = pillRef.current;
     const glide = glideRef.current;
@@ -638,7 +621,7 @@ export function CanvasToolbar({
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
   createElement("div", {
-    className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}${glideReady ? " has-glide" : ""}${armedPulse ? " is-armed-pulse" : ""}`,
+    className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}${glideReady ? " has-glide" : ""}`,
     ref: pillRef
   },
     createElement("div", {

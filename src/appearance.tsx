@@ -184,16 +184,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     const next = inner && category ? Math.ceil(inner.getBoundingClientRect().height) : 0;
     const signature = String(next);
     if (signature !== heightSignatureRef.current) {
-      const wasOpen = heightSignatureRef.current !== "" && heightSignatureRef.current !== "0";
       heightSignatureRef.current = signature;
       setPanelHeight(next);
-      // Switching family swaps the content in one frame while the box grows: a short blur
-      // hides the two states being legible at once.
-      if (wasOpen && next > 0) {
-        const panel = panelRef.current;
-        panel?.classList.add("is-swapping");
-        window.setTimeout(() => panel?.classList.remove("is-swapping"), 140);
-      }
     }
   }, [category, shownCategory, capabilities, style, open]);
 
