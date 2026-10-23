@@ -563,11 +563,17 @@ export interface JustSimpleExcalidrawSettings {
   drawingSuffix: string;
   /** Stamp pattern: YYYY MM DD HH mm ss. Empty leaves the stamp out. */
   drawingDateFormat: string;
+  /** Poll the build branch and install a newer build by itself, when the editor is idle. */
+  autoUpdate: boolean;
   /** Round shapes onto the dot lattice when a gesture ends. */
   snapToGrid: boolean;
 }
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
+  /** Date of the last touch or key press: an automatic reload waits for this to be old. */
+  private lastTouch = Date.now();
+  /** One update at a time, whether it came from the timer or the command. */
+  private updating = false;
   private readonly fileOwners = new Map<TFile, ExcalidrawView>();
   settings: JustSimpleExcalidrawSettings = {
     dotGrid: true,
@@ -576,6 +582,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     drawingPrefix: "Drawing",
     drawingSuffix: "",
     drawingDateFormat: "YYYY-MM-DD HH.mm.ss",
+    autoUpdate: true,
     snapToGrid: true
   };
 
@@ -591,7 +598,9 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       drawingSuffix: "",
       drawingDateFormat: "YYYY-MM-DD HH.mm.ss",
       snapToGrid: true,
-      ...(saved ?? {})
+      ...(saved ?? {}),
+      // After the spread: an older data.json has no such key and must not blank it.
+      autoUpdate: saved?.autoUpdate ?? true
     };
     this.applyDotGrid();
     this.addSettingTab(new JustSimpleExcalidrawSettingTab(this.app, this));
@@ -615,6 +624,89 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       name: "Update from GitHub build",
       callback: () => void this.updateFromBuild()
     });
+    // Any touch postpones an automatic reload: a build must never land mid-gesture.
+    if (typeof document !== "undefined") {
+      this.registerDomEvent(document, "pointerdown", () => {
+        this.lastTouch = Date.now();
+      }, true);
+      this.registerDomEvent(document, "keydown", () => {
+        this.lastTouch = Date.now();
+      }, true);
+    }
+    setTimeout(() => void this.checkBuildInBackground(), 5000);
+    // `setInterval` is a number in the browser and a Timeout object under Node's types.
+    this.registerInterval(setInterval(() => void this.checkBuildInBackground(), 60000) as unknown as number);
+  }
+
+  /** `1.2.10` is newer than `1.2.9`, which no string comparison knows. */
+  private isNewer(remote: string, local: string): boolean {
+    const a = remote.split(".").map((part) => Number.parseInt(part, 10) || 0);
+    const b = local.split(".").map((part) => Number.parseInt(part, 10) || 0);
+    for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+      const left = a[i] ?? 0;
+      const right = b[i] ?? 0;
+      if (left !== right) {
+        return left > right;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The plugin updates itself: every minute it reads the manifest on the build branch, and when
+   * that version is newer it waits for the editor to go quiet — four seconds without a touch, so
+   * a reload never interrupts a gesture — then installs the build and restarts.
+   */
+  private async checkBuildInBackground(): Promise<void> {
+    if (!this.settings.autoUpdate || this.updating) {
+      return;
+    }
+    let remote: { version?: string };
+    try {
+      const stamp = `?t=${Date.now()}`;
+      remote = JSON.parse((await requestUrl({
+        url: `https://raw.githubusercontent.com/tom0d4chi/just-simple-excalidraw/build/manifest.json${stamp}`
+      })).text) as { version?: string };
+    } catch (error) {
+      // Offline, or the branch is gone: silence, the next tick tries again.
+      return;
+    }
+    if (!remote.version || !this.isNewer(remote.version, this.manifest.version)) {
+      return;
+    }
+    this.updating = true;
+    try {
+      while (Date.now() - this.lastTouch < 4000) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+      }
+      await this.installBuild();
+    } finally {
+      this.updating = false;
+    }
+  }
+
+  /** Downloads the three built files and writes them into this plugin's folder. */
+  private async installBuild(): Promise<void> {
+    const base = "https://raw.githubusercontent.com/tom0d4chi/just-simple-excalidraw/build";
+    const stamp = `?t=${Date.now()}`;
+    const folder = this.manifest.dir;
+    if (!folder) {
+      return;
+    }
+    const remote = JSON.parse((await requestUrl({ url: `${base}/manifest.json${stamp}` })).text) as { version?: string };
+    for (const name of ["main.js", "styles.css", "manifest.json"]) {
+      const body = (await requestUrl({ url: `${base}/${name}${stamp}` })).text;
+      await this.app.vault.adapter.write(`${folder}/${name}`, body);
+    }
+    new Notice(`Updated to ${remote.version ?? "the latest build"} — reloading…`);
+    const id = this.manifest.id;
+    const registry = (this.app as unknown as {
+      plugins: { disablePlugin(pluginId: string): void; enablePlugin(pluginId: string): void };
+    }).plugins;
+    setTimeout(() => {
+      registry.disablePlugin(id);
+      registry.enablePlugin(id);
+    }, 400);
   }
 
   /**
@@ -623,33 +715,17 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
    * main.js once at load, so a reload is the only way the new code runs.
    */
   private async updateFromBuild(): Promise<void> {
-    const base = "https://raw.githubusercontent.com/tom0d4chi/just-simple-excalidraw/build";
-    const stamp = `?t=${Date.now()}`;
-    const folder = this.manifest.dir;
-    if (!folder) {
-      new Notice("This plugin has no folder on disk; update from BRAT instead.");
+    if (this.updating) {
       return;
     }
+    this.updating = true;
     try {
-      const remote = JSON.parse((await requestUrl({ url: `${base}/manifest.json${stamp}` })).text) as { version?: string };
-      for (const name of ["main.js", "styles.css", "manifest.json"]) {
-        const body = (await requestUrl({ url: `${base}/${name}${stamp}` })).text;
-        await this.app.vault.adapter.write(`${folder}/${name}`, body);
-      }
-      new Notice(`Updated to ${remote.version ?? "the latest build"} — reloading…`);
-      const id = this.manifest.id;
-      // `app.plugins` is Obsidian's internal registry, not part of its public types.
-      const registry = (this.app as unknown as {
-        plugins: { disablePlugin(pluginId: string): void; enablePlugin(pluginId: string): void };
-      }).plugins;
-      // A tick, so the notice is painted before the plugin tears itself down.
-      window.setTimeout(() => {
-        registry.disablePlugin(id);
-        registry.enablePlugin(id);
-      }, 400);
+      await this.installBuild();
     } catch (error) {
       console.error("update from build failed", error);
       new Notice("Update failed: the build branch is unreachable.");
+    } finally {
+      this.updating = false;
     }
   }
 

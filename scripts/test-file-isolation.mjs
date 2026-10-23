@@ -22,10 +22,14 @@ const mocks = {
         this.contentEl = globalThis.__testContentEl;
       }
       registerEvent() {}
+      registerDomEvent() {}
+      registerInterval() {}
     }
     export class Plugin {
       constructor() {
         this.app = globalThis.__testApp;
+        // Obsidian hands every plugin its manifest; the automatic updater reads its version.
+        this.manifest = { id: "just-simple-excalidraw", name: "Canvas Drawings", version: "0.0.0", dir: ".obsidian/plugins/just-simple-excalidraw" };
       }
       registerView(_type, factory) {
         globalThis.__testViewFactory = factory;
@@ -34,6 +38,12 @@ const mocks = {
       addCommand() {}
       addRibbonIcon() {}
       addSettingTab() {}
+      registerDomEvent() {}
+      // The updater's minute timer must not keep a test process alive.
+      registerInterval(id) {
+        if (id && typeof id.unref === "function") id.unref();
+        return id;
+      }
       async loadData() { return globalThis.__testPluginData ?? null; }
       async saveData(data) { globalThis.__testPluginData = data; }
     }

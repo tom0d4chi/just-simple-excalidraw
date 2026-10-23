@@ -127,6 +127,17 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
         });
       });
 
+    new Setting(containerEl)
+      .setName(t("autoUpdate"))
+      .setDesc(t("autoUpdateDesc"))
+      .addToggle((toggle: ToggleComponent) => {
+        toggle.setValue(this.plugin.settings.autoUpdate);
+        toggle.onChange((value: boolean) => {
+          this.plugin.settings.autoUpdate = value;
+          void this.plugin.saveSettings();
+        });
+      });
+
     const previewEl = containerEl.createEl("p", { cls: "setting-item-description" });
     const refreshPreview = (): void => {
       const name = drawingName(new Date(), {
