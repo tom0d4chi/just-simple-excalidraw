@@ -708,7 +708,8 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     // "/* jse-build 0.1.127 */" on the first line, written by the release script.
     const head = files["main.js"].slice(0, 60);
     const mark = head.startsWith("/* jse-build ") ? head.slice(13).split(" ")[0] : "";
-    if (mark && remote.version && mark !== remote.version) {
+    // Strict: every published build is stamped, so a missing stamp means a partial download too.
+    if (remote.version && mark !== remote.version) {
       return;
     }
     for (const [name, body] of Object.entries(files)) {
