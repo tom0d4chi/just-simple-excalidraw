@@ -1075,7 +1075,10 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
      animate from one family's height to another's. */
   height: 0;
   overflow: hidden;
-  transition: height 200ms var(--jse-ease-in-out), opacity 140ms ease;
+  transition:
+    height 200ms var(--jse-ease-in-out),
+    opacity 140ms ease,
+    filter 140ms ease;
   display: flex;
   flex-direction: column;
   gap: var(--size-4-2, 8px);
@@ -1092,6 +1095,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-appearance__panel.is-open {
   opacity: 1;
+}
+
+/* For the length of one height transition: the outgoing family and the incoming one share the
+   box, and without this they are both crisp for 200 ms. 2 px is enough to mask it and cheap
+   enough for a WebView. */
+.jse-appearance__panel.is-swapping {
+  filter: blur(2px);
 }
 
 @keyframes jse-appearance-in {
@@ -1119,20 +1129,15 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 /* And inside the panel, the values follow each other too. */
 .jse-appearance__panel .jse-appearance__chip {
-  animation: jse-appearance-in 140ms ease-out backwards;
+  animation: jse-appearance-in 140ms var(--jse-ease-out) backwards;
 }
 
-.jse-appearance__panel .jse-appearance__chip:nth-child(1) { animation-delay: 0ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(2) { animation-delay: 18ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(3) { animation-delay: 36ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(4) { animation-delay: 54ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(5) { animation-delay: 72ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(6) { animation-delay: 90ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(7) { animation-delay: 108ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(8) { animation-delay: 126ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(9) { animation-delay: 144ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(10) { animation-delay: 162ms; }
-.jse-appearance__panel .jse-appearance__chip:nth-child(11) { animation-delay: 180ms; }
+/* One delay per row of five: the cells of a row land together and the next row follows. The
+   whole entrance is 140 + 24 ms, inside the 300 ms budget — a per-cell sweep pushed the last
+   chip to 320 ms and read as a diagonal instead of rows. */
+.jse-appearance__panel .jse-appearance__chip:nth-child(n + 6) {
+  animation-delay: 24ms;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .jse-appearance__category.is-entering,
@@ -1193,6 +1198,29 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 /*
+ * Arming multi-select is the one state whose effect is invisible until the first drag: a
+ * one-finger drag that was meant to pan draws a box instead. A single ring, then nothing.
+ */
+@keyframes jse-armed-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--jse-accent) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+.jse-tools__pill.is-armed-pulse {
+  animation: jse-armed-pulse 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-tools__pill.is-armed-pulse {
+    animation: none;
+  }
+}
+
+/*
  * Appearance popover: the same shape language as the shape strip, but its radius is a
  * concrete value rather than a clamp, so it can be animated while the popover grows.
  * Collapsed it is exactly half the short height — a pill; open it is the ordinary panel
@@ -1201,6 +1229,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-tools .jse-appearance-menu {
   border-radius: calc(var(--touch-size-m, 40px) / 2 + var(--size-4-1, 4px));
   transition: border-radius 200ms var(--jse-ease-out);
+  /* It is anchored to the bottom-right of its button: growing from that corner is what makes
+     it read as coming out of the button rather than rising from nowhere. */
+  transform-origin: right bottom;
+}
+
+.jse-tools .jse-appearance-menu > * {
+  transform-origin: center;
 }
 
 .jse-tools .jse-appearance-menu::before {
@@ -1212,4 +1247,25 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-tools .jse-appearance-menu.is-expanded::before,
 .jse-tools .jse-appearance-menu:has(.jse-appearance__panel.is-open)::before {
   border-radius: var(--radius-l, 12px);
+}
+
+/*
+ * Reduced motion means fewer and gentler, not none: the marks still land on the chosen cell and
+ * the panel still opens, they just do not travel or grow to get there. Colour and opacity
+ * feedback stays, so nothing looks broken.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .jse-appearance__family-marker,
+  .jse-appearance__marker {
+    transition: opacity 140ms ease;
+  }
+
+  .jse-appearance__panel {
+    transition: opacity 140ms ease;
+  }
+
+  .jse-tools .jse-appearance-menu,
+  .jse-tools .jse-appearance-menu::before {
+    transition: none;
+  }
 }
