@@ -552,8 +552,12 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
         arrived += 1;
       }
     }
+    /*
+     * The set is replaced even when nothing arrived: a shape the box leaves has to be forgotten, or a
+     * shape taken again would be silent - the arrival is an event, and it is owed every time.
+     */
+    caught = seen;
     if (arrived > 0) {
-      caught = seen;
       options.onMarqueeCatch?.(arrived);
     }
     for (const [id, node] of preview) {

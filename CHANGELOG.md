@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.173 - 2026-10-23
+
+- Everything back to LIGHT - the column, the pen, the text, the cadrage, the marquee's ticking - and the
+  arrival of a shape keeps its HEAVY.
+- A shape the box leaves is forgotten, so taking it again announces it again: the set of what the
+  gesture holds is replaced on every frame, not only when something arrives.
+
 ## 0.1.172 - 2026-10-23
 
 - The marquee ticks for distance, flat: one tap every 32 px travelled, whatever the speed. What the
