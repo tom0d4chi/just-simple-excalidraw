@@ -13,6 +13,11 @@ import { snapClient, snapValue, type SnapGesture } from "./snap";
  * The mobile harness imports this too, so what is tested in the browser is the code
  * that ships, not a copy of it.
  */
+/** Pixels of travel per tap: the marquee's tempo is the speed of the hand divided by this. */
+const MARQUEE_TICK_STEP = 55;
+/** Shortest gap between two taps: about thirty a second, which the hand can still count. */
+const MARQUEE_TICK_FLOOR_MS = 32;
+
 export interface PreviewBox {
   left: number;
   top: number;
@@ -70,10 +75,11 @@ export interface InteractionOptions {
   /** Arms or disarms the cursor button. */
   setArmed: (armed: boolean) => void;
   /**
-   * Something just joined the marquee. Called once per element, as the box catches it, so the hand
-   * counts what the eye sees being gathered.
+   * How many taps the marquee owes after travelling this far: one every MARQUEE_TICK_STEP pixels, so
+   * the tempo follows the speed of the hand instead of the content of the drawing. A slow sweep
+   * crackles slowly, a fast one rattles.
    */
-  onMarqueeTick?: (caught: number) => void;
+  onMarqueeTick?: (ticks: number) => void;
   /** Lets the owner cancel a marquee in progress (used on a tool change). */
   onMarqueeCancel?: (cancel: (() => void) | null) => void;
   /**
@@ -443,8 +449,14 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   // as a preview of what the release will select. It is an overlay: the shapes
   // themselves are never touched, so no accent colour can end up in the file.
   const preview = new Map<string, HTMLElement>();
-  // What the marquee has already taken during this gesture: a tick is owed only for a new element.
-  let caught = new Set<string>();
+  /*
+   * The tick is owed for distance, not for content: what the hand feels is how fast the box is
+   * travelling, and a constant step makes the tempo exactly proportional to that speed.
+   */
+  let tickAnchorX = 0;
+  let tickAnchorY = 0;
+  let tickDebt = 0;
+  let lastTickAt = 0;
   let previewLayer: HTMLDivElement | null = null;
   const layer = (): HTMLDivElement => {
     if (!previewLayer || !previewLayer.isConnected) {
@@ -470,6 +482,32 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     if (rect) {
       rect.setAttribute("width", `${Math.max(0, Math.abs(event.clientX - boxStart.x) - 2)}`);
       rect.setAttribute("height", `${Math.max(0, Math.abs(event.clientY - boxStart.y) - 2)}`);
+    }
+    /*
+     * A fast flick arrives as one event with fifteen points inside it; the browser keeps them in
+     * getCoalescedEvents, and counting only the endpoints would make a fast sweep tick slower than a
+     * slow one - the opposite of what the hand expects.
+     */
+    const points = typeof event.getCoalescedEvents === "function" && event.getCoalescedEvents().length > 0
+      ? event.getCoalescedEvents()
+      : [event];
+    for (const point of points) {
+      tickDebt += Math.hypot(point.clientX - tickAnchorX, point.clientY - tickAnchorY);
+      tickAnchorX = point.clientX;
+      tickAnchorY = point.clientY;
+      if (tickDebt >= MARQUEE_TICK_STEP) {
+        /*
+         * Proportional to the speed, up to a ceiling: past thirty taps a second the platform merges
+         * them into one buzz, and a flick would feel like a rumble instead of a rattle. The debt
+         * stays put, so nothing is lost - it is spent as soon as the hand allows.
+         */
+        const now = Date.now();
+        if (now - lastTickAt >= MARQUEE_TICK_FLOOR_MS) {
+          lastTickAt = now;
+          tickDebt -= MARQUEE_TICK_STEP;
+          options.onMarqueeTick?.(1);
+        }
+      }
     }
     updatePreview(event);
   };
@@ -504,16 +542,6 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     );
 
     const seen = new Set(live.map((element) => element.id));
-    let fresh = 0;
-    for (const id of seen) {
-      if (!caught.has(id)) {
-        fresh += 1;
-      }
-    }
-    if (fresh > 0) {
-      caught = seen;
-      options.onMarqueeTick?.(fresh);
-    }
     for (const [id, node] of preview) {
       if (!seen.has(id)) {
         node.remove();
@@ -548,7 +576,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   };
 
   const startBox = (event: PointerEvent): void => {
-    caught = new Set<string>();
+    tickAnchorX = event.clientX;
+    tickAnchorY = event.clientY;
+    tickDebt = 0;
+    lastTickAt = 0;
     const state = api.getAppState();
     if (state.activeTool.type !== "selection" || !armed() || elementUnder(event)) {
       return;
