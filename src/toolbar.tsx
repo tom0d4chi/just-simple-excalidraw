@@ -212,6 +212,7 @@ export function CanvasToolbar({
    */
   const pillRef = useRef<HTMLDivElement | null>(null);
   const toolsLayerRef = useRef<HTMLDivElement | null>(null);
+  const penRef = useRef<HTMLButtonElement | null>(null);
   const propsLayerRef = useRef<HTMLDivElement | null>(null);
   const glideRef = useRef<HTMLDivElement | null>(null);
   const glideReadyRef = useRef(false);
@@ -233,7 +234,9 @@ export function CanvasToolbar({
     const candidates = Array.prototype.slice.call(
       pill.querySelectorAll(`${scope} .jse-tool.is-active`)
     ) as HTMLElement[];
-    const target = candidates.find((button) => button.closest(".jse-shapes__menu") === null) ?? null;
+    // The pen lives outside the layers (it travels between them), so it is looked up first.
+    const pen = pill.querySelector<HTMLElement>(".jse-tools__pen.is-active");
+    const target = pen ?? candidates.find((button) => button.closest(".jse-shapes__menu") === null) ?? null;
 
     /*
      * Nothing lit: the disc fades out where it stands. Re-placing it at 0,0 here was the bug —
@@ -246,11 +249,21 @@ export function CanvasToolbar({
 
     let x = 0;
     let y = 0;
-    let node: HTMLElement | null = target;
-    while (node && node !== pill) {
-      x += node.offsetLeft;
-      y += node.offsetTop;
-      node = node.offsetParent as HTMLElement | null;
+    if (target === pen) {
+      // The pen is placed with `left: 50%` and a centring translate, so its offsets say nothing
+      // about where it is drawn: its box does.
+      const pillRect = pill.getBoundingClientRect();
+      const penRect = pen.getBoundingClientRect();
+      const border = parseFloat(getComputedStyle(pill).borderTopWidth) || 0;
+      x = penRect.left - pillRect.left - border;
+      y = penRect.top - pillRect.top - border;
+    } else {
+      let node: HTMLElement | null = target;
+      while (node && node !== pill) {
+        x += node.offsetLeft;
+        y += node.offsetTop;
+        node = node.offsetParent as HTMLElement | null;
+      }
     }
 
     /*
@@ -645,19 +658,45 @@ export function CanvasToolbar({
     }
   }, [hasSelection]);
 
-  // The first stroke is the end of the visit: the column goes back to the tools, the tool stays.
-  useEffect(() => {
-    if (!toolOptions) {
+  /*
+   * Where the pen belongs right now: its slot in the tools, or the empty first row of its own page.
+   * Measured, not computed from indices, because the frame changes height and its content is
+   * centred in it.
+   */
+  useLayoutEffect(() => {
+    const pill = pillRef.current;
+    const pen = penRef.current;
+    if (!pill || !pen) {
       return;
     }
-    const canvas = getCanvasElement?.();
-    if (!canvas) {
-      return;
-    }
-    const leave = (): void => setToolOptions(false);
-    canvas.addEventListener("pointerdown", leave);
-    return () => canvas.removeEventListener("pointerdown", leave);
-  }, [toolOptions, getCanvasElement]);
+    const scope = propertiesMode && !hasSelection ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
+    const place = (): void => {
+      const slot = pill.querySelector<HTMLElement>(`${scope} .jse-tools__pen-slot`);
+      if (!slot) {
+        return;
+      }
+      const pillRect = pill.getBoundingClientRect();
+      const slotRect = slot.getBoundingClientRect();
+      const border = parseFloat(getComputedStyle(pill).borderTopWidth) || 0;
+      pen.style.top = `${slotRect.top - pillRect.top - border}px`;
+    };
+    /*
+     * The frame is changing height while the pen travels, and its content is centred in it, so the
+     * slot moves for the whole 220 ms. Following it frame by frame is what keeps the pen exactly on
+     * its place instead of heading for a position that was true one frame too early.
+     */
+    place();
+    let frame = 0;
+    const started = Date.now();
+    const tick = (): void => {
+      place();
+      if (Date.now() - started < 320) {
+        frame = requestAnimationFrame(tick);
+      }
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [propertiesMode, hasSelection, toolOptions, shownFamilies.length]);
 
   const applyHeight = (): void => {
     const pill = pillRef.current;
@@ -744,10 +783,43 @@ export function CanvasToolbar({
    * Nothing selected, nothing to style: the tools come back.
    */
   /*
-   * With no selection the column is about a tool, and the tool is the way out: it sits at the top,
-   * lit, exactly where the button was touched. Same shape as a family row, so nothing new to learn.
+   * The pen is not re-created on the other side: the same button moves to the top of the column when
+   * its page opens, and back down when it closes. Each layer keeps an empty slot the size of a
+   * button where the pen belongs, so the rest of the column is laid out around it.
    */
-  const toolRow = !hasSelection && toolOptions
+  const penAtTop = !hasSelection && toolOptions;
+  const penAway = hasSelection;
+  const penElement = createElement("button", {
+    key: "pen",
+    type: "button",
+    ref: penRef,
+    className: `jse-tool jse-tool--action clickable-icon jse-tools__pen${activeTool === "freedraw" ? " is-active" : ""}${penAway ? " is-away" : ""}`,
+    "aria-label": TOOL_DEFINITIONS.freedraw.label,
+    "aria-pressed": activeTool === "freedraw",
+    onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!api) {
+        return;
+      }
+      if (penAtTop) {
+        // Tapping the pen on its own page puts the tool down, which is the way back to the tools.
+        setToolOptions(false);
+        api.setActiveTool({ type: "hand", locked: false });
+        return;
+      }
+      selectTool("freedraw")(event);
+    }
+  }, createElement(Icon, { name: "pencil" }));
+
+  const penSlot = (where: string) => createElement("div", {
+    key: `pen-slot-${where}`,
+    className: "jse-tools__pen-slot",
+    "aria-hidden": true
+  });
+
+  // Other tools keep the plain row: only the pen is worth a button that travels.
+  const toolRow = !hasSelection && toolOptions && activeTool !== "freedraw"
     ? createElement("button", {
         key: "tool-exit",
         type: "button",
@@ -816,7 +888,7 @@ export function CanvasToolbar({
 
   const toolLayer = [
     toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
-    toolButton(TOOL_DEFINITIONS.freedraw),
+    penSlot("tools"),
     shapeButton,
     toolButton(TOOL_DEFINITIONS.text),
     toolButton(TOOL_DEFINITIONS.image, () => insertImage),
@@ -878,6 +950,7 @@ export function CanvasToolbar({
       inert: propertiesMode ? undefined : ""
     },
       ...(toolRow ? [toolRow] : []),
+      ...(penAtTop ? [penSlot("props")] : []),
       ...propertyButtons,
       ...contextButtons)),
     openFamily
@@ -893,6 +966,7 @@ export function CanvasToolbar({
           onPick: applyStyle
         }))
       : null,
+    penElement,
     createElement("div", { className: "jse-tools__history", role: "group", "aria-label": t("undo") },
       undoButton,
       redoButton)

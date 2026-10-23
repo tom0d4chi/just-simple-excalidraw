@@ -1332,3 +1332,42 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
     transition: none;
   }
 }
+
+/*
+ * The pen is one button, not one per layer: it sits outside them and travels to the head of its own
+ * page when that page opens. The slot it leaves behind keeps the rest of the column in place.
+ */
+.jse-tools__pen {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  translate: -50% 0;
+  width: var(--jse-tool-size);
+  height: var(--jse-tool-size);
+  z-index: 2;
+  /* the vertical move is written frame by frame; only the fading is a transition */
+  transition: opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Properties of a selection: the pen is not part of that column. */
+.jse-tools__pen.is-away {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.jse-tools__pen-slot {
+  width: var(--jse-tool-size);
+  height: var(--jse-tool-size);
+  margin-bottom: 2px;
+  pointer-events: none;
+}
+
+.jse-tools__layer > .jse-tools__pen-slot:last-child {
+  margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-tools__pen {
+    transition: none;
+  }
+}
