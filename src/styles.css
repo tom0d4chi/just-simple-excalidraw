@@ -1057,6 +1057,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-appearance__swatch.is-empty {
+  /* The same ring as the "no fill" cell of the values panel: a dashed grey circle, slashed. */
+  border: 1px dashed var(--text-faint, var(--text-muted, currentColor));
+  box-sizing: border-box;
   background-image: linear-gradient(
     135deg,
     transparent 44%,
@@ -1094,10 +1097,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * The mark of the chosen value: one element for the whole panel, sliding between cells.
  * A ring that simply appears elsewhere gives no sense of the choice having moved.
  */
-/* "No fill" is marked with a dashed ring: there is no colour to announce. */
+/* "No fill" is marked in grey — the grey of its crossed circle — solid, not dashed: the dashes
+   belong to the icon inside, the ring only says "this one". */
 .jse-appearance__marker.is-void {
   box-sizing: border-box;
-  border: 1.5px dashed var(--jse-marker-ring, var(--jse-accent, var(--color-accent)));
+  border: 1.5px solid var(--text-faint, var(--text-muted, currentColor));
   box-shadow: none;
 }
 

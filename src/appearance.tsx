@@ -435,7 +435,10 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       edge.value === null ? style.roundness === null : style.roundness !== null,
       edge.label(),
       pick({ roundness: edge.value }),
-      createElement("span", { className: `jse-appearance__shape${edge.value ? " is-round" : ""}` }),
+      edge.value
+        // The property, not a shape: a square whose corner is rounded.
+        ? createElement(Icon, { name: "square-round-corner" })
+        : createElement("span", { className: "jse-appearance__shape" }),
       "jse-appearance__chip--line",
       rowDelay(index, 5)
     )));
