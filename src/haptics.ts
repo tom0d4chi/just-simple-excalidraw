@@ -9,13 +9,18 @@
 
 export type HapticStyle = "tick" | "light" | "medium" | "heavy";
 
-const DURATIONS: Record<HapticStyle, number> = { tick: 5, light: 8, medium: 14, heavy: 22 };
+/*
+ * Durations are for the vibration API, which has no amplitude: on Android a pulse under ~10 ms is
+ * barely perceptible whatever the phone, so the tick sits well above that. The Capacitor impact is the
+ * only lever on strength, and LIGHT is a whisper on most phones.
+ */
+const DURATIONS: Record<HapticStyle, number> = { tick: 16, light: 10, medium: 18, heavy: 26 };
 
 /*
  * Capacitor only knows three impacts. A tick is not a fourth kind - it is the lightest one - and
  * "TICK" would be rejected by the plugin, silently dropping every tap on a phone.
  */
-const IMPACTS: Record<HapticStyle, string> = { tick: "LIGHT", light: "LIGHT", medium: "MEDIUM", heavy: "HEAVY" };
+const IMPACTS: Record<HapticStyle, string> = { tick: "MEDIUM", light: "LIGHT", medium: "MEDIUM", heavy: "HEAVY" };
 
 interface CapacitorHaptics {
   impact?: (options: { style: string }) => Promise<void>;
