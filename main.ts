@@ -123,6 +123,12 @@ function withDefaultTool(scene: StoredScene, isTouchDevice: boolean): StoredScen
   };
 }
 
+/*
+ * The API of the drawing that is on screen, for the commands: a palette entry cannot see a component's
+ * state, and "put the drawing in front of me" is exactly the kind of thing the palette is for.
+ */
+let currentApi: ExcalidrawImperativeAPI | null = null;
+
 function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, shouldSnapToGrid, ...props }: ExcalidrawCanvasProps) {
   // Declared before any hook that could run immediately (the test harness calls effects
   // eagerly), so nothing reaches a ref that has not been initialised yet.
@@ -139,6 +145,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   useEffect(() => {
     apiRef.current = api;
+    currentApi = api;
   }, [api]);
   const isTouchDevice = Platform.isMobile;
   const [activeTool, setActiveTool] = useState<AppState["activeTool"]>(() => defaultActiveTool(isTouchDevice));
@@ -234,6 +241,11 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
        * that fits it. The gesture is Procreate's, and Excalidraw already knows how to do the work -
        * scrollToContent measures the scene and the viewport for us.
        */
+      onPinchSample: (sample) => {
+        new Notice(sample.light
+          ? `Pinch reconnu — cadrage.  ${sample.ms} ms · ${sample.travel} px · ${sample.drift} px`
+          : `Pinch ignoré — ${sample.ms} ms · ${sample.travel} px · ${sample.drift} px`);
+      },
       onLightPinch: () => {
         if (!api) {
           return false;
@@ -620,6 +632,28 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     this.registerView(VIEW_TYPE_EXCALIDRAW, (leaf) => new ExcalidrawView(leaf, this));
     this.registerExtensions(["excalidraw"], VIEW_TYPE_EXCALIDRAW);
 
+    this.addCommand({
+      id: "fit-drawing-to-view",
+      name: "Fit drawing to view",
+      callback: () => {
+        if (!currentApi) {
+          new Notice("Open a drawing first.");
+          return;
+        }
+        const elements = currentApi.getSceneElements();
+        if (elements.length === 0) {
+          new Notice("Nothing drawn yet.");
+          return;
+        }
+        haptic("light");
+        currentApi.scrollToContent(elements, {
+          fitToContent: true,
+          animate: true,
+          duration: 320,
+          viewportZoomFactor: 0.9
+        });
+      }
+    });
     this.addCommand({
       id: "new-excalidraw-drawing",
       name: "Create new drawing",

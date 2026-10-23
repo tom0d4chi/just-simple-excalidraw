@@ -89,6 +89,11 @@ export interface InteractionOptions {
    * Returning true accepts it as handled.
    */
   onLightPinch?: () => boolean;
+  /**
+   * Every two-finger gesture, with what was measured: the only way to know why a hand does or does
+   * not reach the gesture on a device we cannot see.
+   */
+  onPinchSample?: (sample: { ms: number; travel: number; drift: number; light: boolean }) => void;
 }
 
 export interface InteractionHandle {
@@ -329,6 +334,12 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       && pinch.drift <= 44;
     pinch.active = false;
     pinch.from = 0;
+    options.onPinchSample?.({
+      ms: Date.now() - pinch.at,
+      travel: Math.round(pinch.travel),
+      drift: Math.round(pinch.drift),
+      light
+    });
     if (light) {
       options.onLightPinch?.();
     }
