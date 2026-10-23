@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.175 - 2026-10-23
+
+- The marquee's crackle goes to medium - 22 ms at full amplitude instead of 10 - so the sweep is clearly
+  present against the 32 ms of a shape taken.
+
 ## 0.1.174 - 2026-10-23
 
 - Every tap is now a single full-amplitude pulse, and only its length changes: 10 ms for the marquee's
