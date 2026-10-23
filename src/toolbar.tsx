@@ -182,14 +182,11 @@ export function CanvasToolbar({
 
   const [entered, setEntered] = useState(false);
   /*
-   * The column has two lives - the tools, and the properties of a selection - and swapping them
-   * in one frame is a cut. The set that goes leaves to the right, then the new one arrives from
-   * the same side; `shownMode` lags `wantedMode` by the length of the exit.
+   * The column holds two layers at once — the tools and the properties of a selection — and
+   * always both, so the frame is the taller of the two and never moves when the content swaps.
+   * Only opacity and a short slide change, in opposite directions: the set that goes fades
+   * towards the left edge, the one that arrives comes in from the right.
    */
-  const [shownMode, setShownMode] = useState<"tools" | "properties">("tools");
-  const [leaving, setLeaving] = useState(false);
-  const [arriving, setArriving] = useState(false);
-
   const [lastShape, setLastShape] = useState<ToolName>("rectangle");
   const activeShape = SHAPES.includes(activeTool as ToolName) ? (activeTool as ToolName) : null;
 
@@ -440,24 +437,6 @@ export function CanvasToolbar({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const wantedMode: "tools" | "properties" = isTouchDevice && stylingTarget && selectionCount > 0
-    ? "properties"
-    : "tools";
-
-  useEffect(() => {
-    if (wantedMode === shownMode) {
-      return;
-    }
-    setLeaving(true);
-    const exit = window.setTimeout(() => {
-      setLeaving(false);
-      setShownMode(wantedMode);
-      setArriving(true);
-      window.setTimeout(() => setArriving(false), 200);
-    }, 120);
-    return () => window.clearTimeout(exit);
-  }, [wantedMode, shownMode]);
-
   // A mode change closes whatever was open for the previous one.
   useEffect(() => {
     setShapeMenuOpen(false);
@@ -600,10 +579,13 @@ export function CanvasToolbar({
    * properties of what is selected: one button per family, each painted with the value it holds.
    * Nothing selected, nothing to style: the tools come back.
    */
-  const propertiesMode = shownMode === "properties";
+  const propertiesMode = isTouchDevice && stylingTarget && selectionCount > 0;
   const families = familiesFor(style, capabilities);
-  const propertyButtons = propertiesMode
-    ? families.map((family) => createElement("button", {
+  /*
+   * Always mounted, never conditional: the properties layer has to keep its height while it is
+   * hidden, or the column would grow the moment something is selected.
+   */
+  const propertyButtons = families.map((family) => createElement("button", {
         key: family.key,
         type: "button",
         className: `jse-tool jse-tool--action clickable-icon${openFamily === family.key ? " is-open" : ""}`,
@@ -611,8 +593,7 @@ export function CanvasToolbar({
         "aria-expanded": openFamily === family.key,
         "aria-pressed": openFamily === family.key,
         onClick: toggleFamily(family.key)
-      }, family.content))
-    : [];
+      }, family.content));
 
   // Reversed, so the strip reads from the button outwards: the shape next to the
   // button is the first one, and the first to land.
@@ -656,6 +637,45 @@ export function CanvasToolbar({
     )
   );
 
+  const toolLayer = [
+    toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
+    toolButton(TOOL_DEFINITIONS.freedraw),
+    shapeButton,
+    toolButton(TOOL_DEFINITIONS.text),
+    toolButton(TOOL_DEFINITIONS.image, () => insertImage),
+    toolButton(TOOL_DEFINITIONS.eraser)
+  ];
+
+  const desktopLayer = DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool]));
+
+  const undoButton = actionButton("undo", "undo-2", t("undo"), (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!pressExcalidrawButton('[data-testid="button-undo"]')) {
+      replayShortcut(getCanvasElement, "z");
+    }
+  });
+
+  const redoButton = actionButton("redo", "redo-2", t("redo"), (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!pressExcalidrawButton('[data-testid="button-redo"]')) {
+      replayShortcut(getCanvasElement, "z", true);
+    }
+  }, false, false, `jse-tool--collapsible${entered ? " jse-anim" : ""}${canRedo ? "" : " is-collapsed"}`);
+
+  /*
+   * The frame must not move when the content changes, so its height cannot come from the content.
+   * Two invisible sizers hold every slot the column can ever show — the six tools plus the three
+   * contextual actions, and the five families plus the same three — and the pill is as tall as the
+   * taller of the two, in every state. The layers themselves are centred inside that box.
+   */
+  const sizerSlot = (prefix: string, index: number) => createElement("div", {
+    key: `${prefix}-${index}`,
+    className: "jse-tool clickable-icon",
+    "aria-hidden": true
+  });
+
   return createElement("div", {
     className: `jse-tools${contentUnder ? " has-content-under" : ""}`,
     // The stylesheet reads these; nothing here hardcodes a duration twice.
@@ -663,7 +683,7 @@ export function CanvasToolbar({
     onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => event.stopPropagation()
   },
   createElement("div", {
-    className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}${glideReady ? " has-glide" : ""}${leaving ? " is-leaving-set" : ""}${arriving ? " is-arriving-set" : ""}`,
+    className: `jse-tools__pill${dark ? " jse-pill--dark" : ""}${entered ? " jse-anim" : ""}${glideReady ? " has-glide" : ""}${propertiesMode ? " is-props" : ""}`,
     ref: pillRef
   },
     createElement("div", {
@@ -671,27 +691,23 @@ export function CanvasToolbar({
       ref: glideRef,
       "aria-hidden": true
     }),
-    isTouchDevice
-      ? (propertiesMode
-          ? [
-              ...propertyButtons,
-              ...contextButtons
-            ]
-          : [
-              toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
-              toolButton(TOOL_DEFINITIONS.freedraw),
-              shapeButton,
-              toolButton(TOOL_DEFINITIONS.text),
-              toolButton(TOOL_DEFINITIONS.image, () => insertImage),
-              toolButton(TOOL_DEFINITIONS.eraser),
-              ...contextButtons
-            ])
-      : (propertiesMode
-          ? [
-              ...propertyButtons,
-              ...contextButtons
-            ]
-          : DESKTOP_TOOLS.map((tool) => toolButton(TOOL_DEFINITIONS[tool]))),
+    createElement("div", { className: "jse-tools__sizer", "aria-hidden": true },
+      ...Array.from({ length: 9 }, (_, index) => sizerSlot("sizer-tool", index))),
+    createElement("div", { className: "jse-tools__sizer", "aria-hidden": true },
+      ...Array.from({ length: 8 }, (_, index) => sizerSlot("sizer-prop", index))),
+    createElement("div", {
+      className: `jse-tools__layer jse-tools__layer--tools${propertiesMode ? " is-out-left" : ""}`,
+      "aria-hidden": propertiesMode,
+      inert: propertiesMode ? "" : undefined
+    },
+      ...(isTouchDevice ? [...toolLayer, ...contextButtons] : [...desktopLayer, ...contextButtons])),
+    createElement("div", {
+      className: `jse-tools__layer jse-tools__layer--props${propertiesMode ? "" : " is-out-right"}`,
+      "aria-hidden": !propertiesMode,
+      inert: propertiesMode ? undefined : ""
+    },
+      ...propertyButtons,
+      ...contextButtons),
     openFamily
       ? createElement("div", {
           className: "jse-appearance-values",
@@ -705,20 +721,10 @@ export function CanvasToolbar({
           onPick: applyStyle
         }))
       : null,
-    isTouchDevice ? null : lockButton,
-    actionButton("undo", "undo-2", t("undo"), (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!pressExcalidrawButton('[data-testid="button-undo"]')) {
-        replayShortcut(getCanvasElement, "z");
-      }
-    }),
-    actionButton("redo", "redo-2", t("redo"), (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!pressExcalidrawButton('[data-testid="button-redo"]')) {
-        replayShortcut(getCanvasElement, "z", true);
-      }
-    }, false, false, `jse-tool--collapsible${entered ? " jse-anim" : ""}${canRedo ? "" : " is-collapsed"}`)
-  ));
+    createElement("div", { className: "jse-tools__history", role: "group", "aria-label": t("undo") },
+      undoButton,
+      redoButton)
+  ),
+  isTouchDevice ? null : lockButton
+  );
 }

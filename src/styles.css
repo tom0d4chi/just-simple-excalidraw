@@ -317,7 +317,8 @@
   .jse-tools__pill.jse-anim,
   .jse-root .jse-tool .jse-icon,
   .jse-shapes__menu.jse-anim,
-  .jse-root .jse-tools__pill > .jse-tool--collapsible.jse-anim {
+  .jse-root .jse-tools__layer > .jse-tool--collapsible.jse-anim,
+.jse-root .jse-tools__history > .jse-tool--collapsible.jse-anim {
     animation: none;
     transition: none;
   }
@@ -411,8 +412,8 @@
 }
 
 /* The disc sits behind the icons: every control it can underline paints above it. */
-.jse-tools__pill > .jse-tool,
-.jse-tools__pill > .jse-shapes {
+.jse-tools__layer > .jse-tool,
+.jse-tools__layer > .jse-shapes {
   position: relative;
   z-index: 1;
 }
@@ -422,8 +423,8 @@
  * its backing (a menu can be open on a tool that is not the active one), and the
  * popovers' items are out of scope: they are not tools of the column.
  */
-.jse-root .jse-tools__pill.has-glide > .jse-tool.clickable-icon.is-active:not(.is-open),
-.jse-root .jse-tools__pill.has-glide > .jse-shapes > .jse-tool.clickable-icon.is-active:not(.is-open) {
+.jse-root .jse-tools__pill.has-glide .jse-tools__layer > .jse-tool.clickable-icon.is-active:not(.is-open),
+.jse-root .jse-tools__pill.has-glide .jse-tools__layer > .jse-shapes > .jse-tool.clickable-icon.is-active:not(.is-open) {
   background-color: transparent;
 }
 
@@ -579,24 +580,27 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * Selection actions open and close the same way: the slot grows or shrinks, so
  * the rest of the column slides instead of jumping, in both directions.
  */
-.jse-root .jse-tools__pill > .jse-tool--collapsible {
+.jse-root .jse-tools__layer > .jse-tool--collapsible,
+.jse-root .jse-tools__history > .jse-tool--collapsible {
   overflow: hidden;
   height: var(--jse-tool-size, 42px);
   opacity: 1;
 }
 
-.jse-root .jse-tools__pill > .jse-tool--collapsible.is-collapsed {
+.jse-root .jse-tools__layer > .jse-tool--collapsible.is-collapsed,
+.jse-root .jse-tools__history > .jse-tool--collapsible.is-collapsed {
   height: 0;
   margin-bottom: 0;
   opacity: 0;
   pointer-events: none;
 }
 
-.jse-root .jse-tools__pill > .jse-tool--collapsible.jse-anim {
+.jse-root .jse-tools__layer > .jse-tool--collapsible.jse-anim {
   animation: jse-tool-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
-.jse-root .jse-tools__pill > .jse-tool--collapsible.jse-anim.is-collapsed {
+.jse-root .jse-tools__layer > .jse-tool--collapsible.jse-anim.is-collapsed,
+.jse-root .jse-tools__history > .jse-tool--collapsible.jse-anim.is-collapsed {
   animation: jse-tool-out 180ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
@@ -652,20 +656,20 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * The column's spacing lives on the children: a button that collapses takes its
  * 2px with it, so the idle column has no leftover seams.
  */
-.jse-root .jse-tools__pill > .jse-tool.clickable-icon {
+.jse-root .jse-tools__layer > .jse-tool.clickable-icon {
   margin-bottom: 2px;
 }
 
-.jse-root .jse-tools__pill > .jse-shapes {
+.jse-root .jse-tools__layer > .jse-shapes {
   margin-bottom: 2px;
 }
 
-.jse-root .jse-tools__pill > .jse-tool.clickable-icon:last-child,
-.jse-root .jse-tools__pill > .jse-shapes:last-child {
+.jse-root .jse-tools__layer > .jse-tool.clickable-icon:last-child,
+.jse-root .jse-tools__layer > .jse-shapes:last-child {
   margin-bottom: 0;
 }
 
-.jse-root .jse-tools__pill > .jse-tool--collapsible.is-collapsed {
+.jse-root .jse-tools__layer > .jse-tool--collapsible.is-collapsed {
   margin-bottom: 0;
 }
 
@@ -673,13 +677,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * Both ends of the column start and finish flush with the same inset: no margin
  * survives above the first button or below the last one.
  */
-.jse-root .jse-tools__pill > .jse-tool.clickable-icon:first-child,
-.jse-root .jse-tools__pill > .jse-shapes:first-child {
+.jse-root .jse-tools__layer > .jse-tool.clickable-icon:first-child,
+.jse-root .jse-tools__layer > .jse-shapes:first-child {
   margin-top: 0;
 }
 
-.jse-root .jse-tools__pill > .jse-tool.clickable-icon:last-child,
-.jse-root .jse-tools__pill > .jse-shapes:last-child {
+.jse-root .jse-tools__layer > .jse-tool.clickable-icon:last-child,
+.jse-root .jse-tools__layer > .jse-shapes:last-child {
   margin-bottom: 0;
 }
 
@@ -818,11 +822,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * with the actions it belongs to. The wrapper is the thing that collapses, since
  * the menu is anchored to it.
  */
-.jse-root .jse-tools__pill > .jse-shapes--collapsible {
+.jse-root .jse-tools__layer > .jse-shapes--collapsible {
   height: var(--jse-tool-size, 42px);
 }
 
-.jse-root .jse-tools__pill > .jse-shapes--collapsible.is-collapsed {
+.jse-root .jse-tools__layer > .jse-shapes--collapsible.is-collapsed {
   height: 0;
   margin-bottom: 0;
   opacity: 0;
@@ -830,11 +834,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   pointer-events: none;
 }
 
-.jse-root .jse-tools__pill > .jse-shapes--collapsible.jse-anim {
+.jse-root .jse-tools__layer > .jse-shapes--collapsible.jse-anim {
   animation: jse-tool-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
-.jse-root .jse-tools__pill > .jse-shapes--collapsible.jse-anim.is-collapsed {
+.jse-root .jse-tools__layer > .jse-shapes--collapsible.jse-anim.is-collapsed {
   animation: jse-tool-out 180ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
@@ -1203,46 +1207,108 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * corner. Both states are stated here, after the strip's generic rules, so they win.
  */
 
-
 /*
- * The two lives of the column: the set that goes leaves to the right and fades, the one that
- * arrives comes from the same side. Animations rather than transitions — the leaving items are
- * about to be unmounted, so there is nothing to transition from.
+ * Two layers, one cell. Both are always mounted, so the frame is the taller of the two and it
+ * does not move when the content changes: only opacity and a short slide do. The set that goes
+ * fades towards the left edge, the one that arrives comes in from the right, and the two cross
+ * in the middle without ever making the pill grow or shrink.
  */
-@keyframes jse-column-out {
-  to {
-    opacity: 0;
-    transform: translateX(28px);
-  }
+.jse-tools__layer {
+  grid-area: 1 / 1;
+  display: grid;
+  /* the box is the sizers' height; the icons sit centred in it, not flush with its top */
+  align-content: center;
+  grid-template-columns: var(--jse-tool-size);
+  justify-items: center;
+  transition:
+    opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-@keyframes jse-column-in {
-  from {
-    opacity: 0;
-    transform: translateX(28px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.jse-tools__pill.is-leaving-set > .jse-tool,
-.jse-tools__pill.is-leaving-set > .jse-shapes {
-  animation: jse-column-out 120ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+/* Invisible, but it owns the height: same slots, same spacing, no paint and no events. */
+.jse-tools__sizer {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: var(--jse-tool-size);
+  justify-items: center;
+  visibility: hidden;
   pointer-events: none;
 }
 
-.jse-tools__pill.is-arriving-set > .jse-tool,
-.jse-tools__pill.is-arriving-set > .jse-shapes {
-  animation: jse-column-in 160ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+.jse-tools__sizer > .jse-tool:last-child {
+  margin-bottom: 0;
+}
+
+.jse-tools__layer.is-out-left {
+  opacity: 0;
+  translate: -18px 0;
+  pointer-events: none;
+}
+
+.jse-tools__layer.is-out-right {
+  opacity: 0;
+  translate: 18px 0;
+  pointer-events: none;
+}
+
+/* The disc marks the active tool: with the tools gone, it has nothing to mark. */
+.jse-tools__pill.is-props .jse-tools__glide {
+  opacity: 0;
+}
+
+/*
+ * Undo and redo left the column: history is not a property of what is selected, and its place is
+ * not in the middle of the tools. They get their own bar, a little below the column.
+ */
+.jse-tools__history {
+  position: absolute;
+  top: calc(100% + var(--size-4-2, 8px));
+  left: 50%;
+  translate: -50% 0;
+  display: grid;
+  grid-template-columns: var(--jse-tool-size);
+  justify-items: center;
+  padding: var(--jse-pad, 4px);
+  border-radius: var(--touch-size-l, 52px);
+  background-color: transparent;
+  pointer-events: auto;
+  z-index: 6;
+}
+
+.jse-tools__history > .jse-tool--collapsible:first-child {
+  margin-bottom: 2px;
+}
+
+.jse-tools__history > .jse-tool--collapsible.is-collapsed:first-child {
+  margin-bottom: 0;
+}
+
+.jse-tools__history::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--size-4-1, 4px));
+  z-index: -1;
+  border-radius: 999px;
+  background-color: transparent;
+  box-shadow: 0 0 0 0 transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    backdrop-filter 160ms ease;
+  pointer-events: none;
+}
+
+.jse-tools.has-content-under .jse-tools__history::before {
+  background-color: color-mix(in srgb, var(--background-primary) 58%, transparent);
+  box-shadow: 0 0 0 1px var(--background-modifier-border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jse-tools__pill.is-leaving-set > .jse-tool,
-  .jse-tools__pill.is-leaving-set > .jse-shapes,
-  .jse-tools__pill.is-arriving-set > .jse-tool,
-  .jse-tools__pill.is-arriving-set > .jse-shapes {
-    animation: none;
+  .jse-tools__layer {
+    transition: none;
   }
 }
