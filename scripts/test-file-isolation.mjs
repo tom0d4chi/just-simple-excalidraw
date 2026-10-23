@@ -37,6 +37,10 @@ const mocks = {
       async loadData() { return globalThis.__testPluginData ?? null; }
       async saveData(data) { globalThis.__testPluginData = data; }
     }
+    export async function requestUrl(request) {
+      // The updater is the only caller; the harness never reaches the network.
+      return { status: 200, text: JSON.stringify({ version: "0.0.0" }), json: { version: "0.0.0" }, url: request.url };
+    }
     export class Notice {
       constructor() {}
     }

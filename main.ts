@@ -1,4 +1,4 @@
-import { FileView, Notice, Platform, Plugin, TFile, WorkspaceLeaf, normalizePath } from "obsidian";
+import { FileView, Notice, Platform, Plugin, TFile, WorkspaceLeaf, normalizePath, requestUrl } from "obsidian";
 import { createElement, useCallback, useEffect, useRef, useState, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -605,6 +605,52 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     });
     // A canvas, not a pencil: the icon should say what the file is, not which engine draws it.
     this.addRibbonIcon("lucide-layout-dashboard", "Create new drawing", () => void this.createDrawing());
+    /*
+     * Development loop: BRAT only updates at startup and cannot be pushed, so the plugin fetches
+     * its own build from the `build` branch and restarts itself — one command, two seconds, no
+     * app restart. The three files are written through the vault adapter, which works on mobile.
+     */
+    this.addCommand({
+      id: "update-from-build",
+      name: "Update from GitHub build",
+      callback: () => void this.updateFromBuild()
+    });
+  }
+
+  /**
+   * Pulls manifest.json, main.js and styles.css from the branch the build is published to, writes
+   * them into this plugin's own folder, then disables and re-enables the plugin — Obsidian reads
+   * main.js once at load, so a reload is the only way the new code runs.
+   */
+  private async updateFromBuild(): Promise<void> {
+    const base = "https://raw.githubusercontent.com/tom0d4chi/just-simple-excalidraw/build";
+    const stamp = `?t=${Date.now()}`;
+    const folder = this.manifest.dir;
+    if (!folder) {
+      new Notice("This plugin has no folder on disk; update from BRAT instead.");
+      return;
+    }
+    try {
+      const remote = JSON.parse((await requestUrl({ url: `${base}/manifest.json${stamp}` })).text) as { version?: string };
+      for (const name of ["main.js", "styles.css", "manifest.json"]) {
+        const body = (await requestUrl({ url: `${base}/${name}${stamp}` })).text;
+        await this.app.vault.adapter.write(`${folder}/${name}`, body);
+      }
+      new Notice(`Updated to ${remote.version ?? "the latest build"} — reloading…`);
+      const id = this.manifest.id;
+      // `app.plugins` is Obsidian's internal registry, not part of its public types.
+      const registry = (this.app as unknown as {
+        plugins: { disablePlugin(pluginId: string): void; enablePlugin(pluginId: string): void };
+      }).plugins;
+      // A tick, so the notice is painted before the plugin tears itself down.
+      window.setTimeout(() => {
+        registry.disablePlugin(id);
+        registry.enablePlugin(id);
+      }, 400);
+    } catch (error) {
+      console.error("update from build failed", error);
+      new Notice("Update failed: the build branch is unreachable.");
+    }
   }
 
   /** Live switch: the class is all the stylesheet needs. */
