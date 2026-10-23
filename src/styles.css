@@ -1340,7 +1340,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-tools__pen {
   position: absolute;
   left: 50%;
-  top: 0;
+  /*
+   * The second row, which is where the pen lives in the tools column. It is a fallback that matters:
+   * if the measured position never arrives, the pen must not land on the first button.
+   */
+  top: calc(var(--jse-pad, 4px) + var(--jse-tool-size, 36px) + 2px);
   translate: -50% 0;
   width: var(--jse-tool-size);
   height: var(--jse-tool-size);

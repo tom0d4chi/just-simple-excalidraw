@@ -604,6 +604,12 @@ export function CanvasToolbar({
    * and the layer's fade is the only thing that moves.
    */
   const hasSelection = selectionCount > 0;
+  /*
+   * The pen only travels to a page that is about the pen; another tool's page keeps it in the tools.
+   * Away means the pen is not part of the column at all (a selection, or another tool's page).
+   */
+  const penAtTop = !hasSelection && toolOptions && activeTool === "freedraw";
+  const penAway = hasSelection || (toolOptions && !penAtTop);
   const propertiesMode = isTouchDevice && ((stylingTarget && hasSelection) || toolOptions);
 
   /*
@@ -669,7 +675,7 @@ export function CanvasToolbar({
     if (!pill || !pen) {
       return;
     }
-    const scope = propertiesMode && !hasSelection ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
+    const scope = penAtTop ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
     const place = (): void => {
       const slot = pill.querySelector<HTMLElement>(`${scope} .jse-tools__pen-slot`);
       if (!slot) {
@@ -787,8 +793,6 @@ export function CanvasToolbar({
    * its page opens, and back down when it closes. Each layer keeps an empty slot the size of a
    * button where the pen belongs, so the rest of the column is laid out around it.
    */
-  const penAtTop = !hasSelection && toolOptions;
-  const penAway = hasSelection;
   const penElement = createElement("button", {
     key: "pen",
     type: "button",
