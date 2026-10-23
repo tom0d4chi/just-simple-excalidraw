@@ -69,6 +69,11 @@ export interface InteractionOptions {
   armed: () => boolean;
   /** Arms or disarms the cursor button. */
   setArmed: (armed: boolean) => void;
+  /**
+   * Something just joined the marquee. Called once per element, as the box catches it, so the hand
+   * counts what the eye sees being gathered.
+   */
+  onMarqueeTick?: (caught: number) => void;
   /** Lets the owner cancel a marquee in progress (used on a tool change). */
   onMarqueeCancel?: (cancel: (() => void) | null) => void;
   /**
@@ -438,6 +443,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   // as a preview of what the release will select. It is an overlay: the shapes
   // themselves are never touched, so no accent colour can end up in the file.
   const preview = new Map<string, HTMLElement>();
+  // What the marquee has already taken during this gesture: a tick is owed only for a new element.
+  let caught = new Set<string>();
   let previewLayer: HTMLDivElement | null = null;
   const layer = (): HTMLDivElement => {
     if (!previewLayer || !previewLayer.isConnected) {
@@ -497,6 +504,16 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     );
 
     const seen = new Set(live.map((element) => element.id));
+    let fresh = 0;
+    for (const id of seen) {
+      if (!caught.has(id)) {
+        fresh += 1;
+      }
+    }
+    if (fresh > 0) {
+      caught = seen;
+      options.onMarqueeTick?.(fresh);
+    }
     for (const [id, node] of preview) {
       if (!seen.has(id)) {
         node.remove();
@@ -531,6 +548,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   };
 
   const startBox = (event: PointerEvent): void => {
+    caught = new Set<string>();
     const state = api.getAppState();
     if (state.activeTool.type !== "selection" || !armed() || elementUnder(event)) {
       return;

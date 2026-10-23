@@ -242,6 +242,15 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       onMarqueeCancel: (cancel) => {
         cancelMarqueeRef.current = cancel;
       },
+      /*
+       * The marquee clicks like a ratchet: one tap per shape it takes, so a sweep reads as tac tac tac
+       * even with the eyes on the far edge of the box.
+       */
+      onMarqueeTick: (caught) => {
+        for (let index = 0; index < Math.min(caught, 3); index += 1) {
+          haptic("tick");
+        }
+      },
       snapping: () => ((shouldSnapToGrid?.() ?? snapToGrid) ? api.getAppState().gridSize || 20 : 0),
       /*
        * A pinch that closes the fingers brings the whole drawing back: Excalidraw measures the scene

@@ -7,9 +7,9 @@
  * handler.
  */
 
-export type HapticStyle = "light" | "medium" | "heavy";
+export type HapticStyle = "tick" | "light" | "medium" | "heavy";
 
-const DURATIONS: Record<HapticStyle, number> = { light: 8, medium: 14, heavy: 22 };
+const DURATIONS: Record<HapticStyle, number> = { tick: 5, light: 8, medium: 14, heavy: 22 };
 
 interface CapacitorHaptics {
   impact?: (options: { style: string }) => Promise<void>;
