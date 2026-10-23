@@ -160,8 +160,9 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     }
     return FONT_SIZES.findIndex((font) => font.value === style.fontSize);
   })();
-  // The thickness family wraps its presets in a stack that adds 2 px of its own.
-  const markerInset = category === "width" ? 2 : 0;
+  // The thickness family wraps its presets in a stack with its own 6 px gap; the grid inside it
+  // starts flush, so no extra inset is needed since the panel lost its inline padding.
+  const markerInset = 0;
   /*
    * The mark sits close to a colour and wears that colour: a coloured value is best announced by
    * itself, not by the app's accent. It is smaller than a cell, so the ring hugs the dot instead
@@ -172,11 +173,31 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     ? (category === "stroke" ? STROKE_COLORS[activeIndex] : FILL_COLORS[activeIndex])
     : null;
   const markSize = isColour ? 28 : 36;
+  /*
+   * The fills are three rows the arithmetic has to know about: "no fill" alone and centred on
+   * the first one, then the ten colours in two rows of five, 4 px under it. Every other family
+   * is a plain five-column grid.
+   */
+  const markerCell = (): { left: number; top: number } => {
+    const centre = (36 - markSize) / 2;
+    if (category !== "fill") {
+      return {
+        left: markerInset + (activeIndex % 5) * 40 + centre,
+        top: Math.floor(activeIndex / 5) * 40 + centre
+      };
+    }
+    if (activeIndex === 0) {
+      // Third of five columns: centred on its own row.
+      return { left: 2 * 40 + centre, top: centre };
+    }
+    const cell = activeIndex - 1;
+    // The colours start one row (36) and one gap (4) below the "no fill" row.
+    return { left: (cell % 5) * 40 + centre, top: 40 + Math.floor(cell / 5) * 40 + centre };
+  };
   const marker = activeIndex < 0
     ? null
     : {
-        left: markerInset + (activeIndex % 5) * 40 + (36 - markSize) / 2,
-        top: 2 + Math.floor(activeIndex / 5) * 40 + (36 - markSize) / 2,
+        ...markerCell(),
         size: markSize,
         round: isColour,
         // `null` means "no fill": there is no colour to wear, the accent stays.
@@ -336,18 +357,25 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       rowDelay(index, 5)
     )));
   } else if (which === "fill") {
-    panel = createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.map((color, index) => chip(
-      (color === null && noFill) || (color !== null && style.backgroundColor.toLowerCase() === color),
-      color === null ? t("noFill") : `${t("colourFill")} ${color}`,
-      pick(color === null
-        ? { backgroundColor: "transparent" }
-        : { backgroundColor: color, fillStyle: style.fillStyle === "hachure" ? "solid" : style.fillStyle }),
-      color === null
-        ? createElement("span", { className: "jse-appearance__none" })
-        : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
+    const emptyChip = chip(
+      noFill,
+      t("noFill"),
+      pick({ backgroundColor: "transparent" }),
+      createElement("span", { className: "jse-appearance__none" }),
       "jse-appearance__chip--color",
-      rowDelay(index, 5)
-    )));
+      rowDelay(0, 5)
+    );
+    panel = createElement("div", { className: "jse-appearance__fill" },
+      createElement("div", { className: "jse-appearance__grid jse-appearance__grid--single" },
+        createElement("span", { style: { gridColumn: "3" } }, emptyChip)),
+      createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.slice(1).map((color, index) => chip(
+        style.backgroundColor.toLowerCase() === color,
+        `${t("colourFill")} ${color}`,
+        pick({ backgroundColor: color as string, fillStyle: style.fillStyle === "hachure" ? "solid" : style.fillStyle }),
+        createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
+        "jse-appearance__chip--color",
+        rowDelay(index, 5)
+      ))));
   } else if (which === "width") {
     panel = createElement("div", { className: "jse-appearance__stack" },
       createElement("div", { className: "jse-appearance__choices" }, STROKE_WIDTHS.map((preset) => chip(

@@ -1125,7 +1125,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   display: flex;
   flex-direction: column;
   gap: var(--size-4-2, 8px);
-  padding: 2px 2px var(--size-4-2, 8px);
+  /* No inline padding: five cells of 36 px and four gaps of 4 px are exactly 196 px, which is
+     the box the popover already gives, and the mark's arithmetic is written against that. */
+  padding: 0 0 var(--size-4-2, 8px);
 }
 
 .jse-appearance__panel.is-open {
@@ -1137,6 +1139,17 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   grid-template-columns: repeat(5, 36px);
   justify-content: center;
   gap: var(--size-4-1, 4px);
+}
+
+/* The fills: "no fill" on a row of its own, then the ten colours in two rows. */
+.jse-appearance__fill {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1, 4px);
+}
+
+.jse-appearance__grid--single {
+  grid-template-rows: 36px;
 }
 
 .jse-appearance__stack {
