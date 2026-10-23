@@ -25,26 +25,6 @@ export const STROKE_COLORS: readonly string[] = [
   "#9c36b5", "#0c8599", "#e8590c", "#495057", "#5f3dc4"
 ];
 
-/*
- * The fills are pale by design: they sit under text and strokes. In a menu of 5 px dots a pale
- * tint reads as "transparent", so each fill shows the saturated colour of the same hue — by an
- * explicit table, because filling by index would pair pink with black. The value written to the
- * element is still the pale one: what you see and what you get are two different things here,
- * on purpose.
- */
-export const FILL_PREVIEW: Record<string, string> = {
-  "#ffc9c9": "#e03131",
-  "#b2f2bb": "#2f9e44",
-  "#a5d8ff": "#1971c2",
-  "#ffec99": "#f08c00",
-  "#eebefa": "#9c36b5",
-  "#d0bfff": "#5f3dc4",
-  "#c3fae8": "#0c8599",
-  "#ced4da": "#495057",
-  "#ffd8a8": "#e8590c",
-  "#868e96": "#868e96"
-};
-
 export const FILL_COLORS: readonly (string | null)[] = [
   null,
   "#ffc9c9", "#b2f2bb", "#a5d8ff", "#ffec99", "#eebefa",
@@ -189,10 +169,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
    */
   const isColour = category === "stroke" || category === "fill";
   const chosen = isColour && activeIndex >= 0
-    ? (category === "stroke"
-        ? STROKE_COLORS[activeIndex]
-        // Same colour as the dot it surrounds: a pale ring around a saturated dot reads wrong.
-        : FILL_PREVIEW[FILL_COLORS[activeIndex] ?? ""] ?? FILL_COLORS[activeIndex])
+    ? (category === "stroke" ? STROKE_COLORS[activeIndex] : FILL_COLORS[activeIndex])
     : null;
   const markSize = isColour ? 28 : 36;
   const marker = activeIndex < 0
@@ -359,13 +336,6 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       rowDelay(index, 5)
     )));
   } else if (which === "fill") {
-    /*
-     * The fills are pale by design — they sit under text and strokes. In a menu of 5 px dots a
-     * pale tint reads as "transparent", so the mark shown is the saturated colour of the same
-     * name; the value written to the element is still the pale one. Display and value are two
-     * different things here on purpose.
-     */
-    const previewOf = (color: string): string => FILL_PREVIEW[color] ?? color;
     panel = createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.map((color, index) => chip(
       (color === null && noFill) || (color !== null && style.backgroundColor.toLowerCase() === color),
       color === null ? t("noFill") : `${t("colourFill")} ${color}`,
@@ -374,7 +344,7 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
         : { backgroundColor: color, fillStyle: style.fillStyle === "hachure" ? "solid" : style.fillStyle }),
       color === null
         ? createElement("span", { className: "jse-appearance__none" })
-        : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: previewOf(color) } }),
+        : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color",
       rowDelay(index, 5)
     )));
