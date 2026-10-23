@@ -608,15 +608,8 @@ export function CanvasToolbar({
    * The pen only travels to a page that is about the pen; another tool's page keeps it in the tools.
    * Away means the pen is not part of the column at all (a selection, or another tool's page).
    */
-  /*
-   * Tools whose button is part of the column and can open a page of their own: those buttons travel
-   * to the head of the page instead of being re-created there. Shapes have their own strip and are
-   * left out.
-   */
-  const travellingTool: ToolName | null =
-    activeTool === "freedraw" || activeTool === "text" ? (activeTool as ToolName) : null;
-  const penAtTop = !hasSelection && toolOptions && travellingTool !== null;
-  const penAway = hasSelection || (toolOptions && !penAtTop) || travellingTool === null;
+  const penAtTop = !hasSelection && toolOptions && activeTool === "freedraw";
+  const penAway = hasSelection || (toolOptions && !penAtTop);
   const propertiesMode = isTouchDevice && ((stylingTarget && hasSelection) || toolOptions);
 
   /*
@@ -677,8 +670,6 @@ export function CanvasToolbar({
    * centred in it.
    */
   const applyHeightRef = useRef<() => void>(() => {});
-  /** Whether the travelling button was on screen in the previous render. */
-  const travelledRef = useRef(false);
 
   useLayoutEffect(() => {
     const pill = pillRef.current;
@@ -686,17 +677,6 @@ export function CanvasToolbar({
     if (!pill || !pen) {
       return;
     }
-    /*
-     * Appearing is not a fade: the button it replaces was solid a frame ago, so it must be solid
-     * again at once, then travel. A transition of zero on the opacity only, for that one frame.
-     */
-    if (!travelledRef.current && travellingTool) {
-      pen.classList.add("no-fade");
-      void pen.offsetHeight;
-      requestAnimationFrame(() => pen.classList.remove("no-fade"));
-    }
-    travelledRef.current = Boolean(travellingTool);
-
     // Leaving, it keeps the offset it had: updating it here would slide the pen vertically towards
     // the row of the other column while it fades, which is the drift this placement exists to avoid.
     if (penAway) {
@@ -704,7 +684,7 @@ export function CanvasToolbar({
     }
     const scope = penAtTop ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
     const layer = propertiesMode ? propsLayerRef.current : toolsLayerRef.current;
-    const slot = pill.querySelector<HTMLElement>(`${scope} .jse-tools__pen-slot[data-slot="${travellingTool}"]`);
+    const slot = pill.querySelector<HTMLElement>(`${scope} .jse-tools__pen-slot`);
     if (!slot || !layer) {
       return;
     }
@@ -740,7 +720,7 @@ export function CanvasToolbar({
      * its transition off for the length of the move, it is re-measured on every frame instead.
      */
     const glide = glideRef.current;
-    if (!glide || !travellingTool) {
+    if (!glide || activeTool !== "freedraw") {
       return;
     }
     glide.classList.add("is-placing");
@@ -857,9 +837,9 @@ export function CanvasToolbar({
     key: "pen",
     type: "button",
     ref: penRef,
-    className: `jse-tool jse-tool--action clickable-icon jse-tools__pen${travellingTool ? " is-active" : ""}${penAway ? " is-away" : ""}`,
-    "aria-label": TOOL_DEFINITIONS[travellingTool ?? "freedraw"].label,
-    "aria-pressed": Boolean(travellingTool),
+    className: `jse-tool jse-tool--action clickable-icon jse-tools__pen${activeTool === "freedraw" ? " is-active" : ""}${penAway ? " is-away" : ""}`,
+    "aria-label": TOOL_DEFINITIONS.freedraw.label,
+    "aria-pressed": activeTool === "freedraw",
     onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
@@ -872,21 +852,18 @@ export function CanvasToolbar({
         api.setActiveTool({ type: "hand", locked: false });
         return;
       }
-      if (travellingTool) {
-        selectTool(travellingTool)(event);
-      }
+      selectTool("freedraw")(event);
     }
-  }, createElement(Icon, { name: TOOL_DEFINITIONS[travellingTool ?? "freedraw"].icon }));
+  }, createElement(Icon, { name: "pencil" }));
 
-  const penSlot = (where: string, tool: ToolName | null = travellingTool) => createElement("div", {
+  const penSlot = (where: string) => createElement("div", {
     key: `pen-slot-${where}`,
     className: "jse-tools__pen-slot",
-    "data-slot": tool ?? "",
     "aria-hidden": true
   });
 
   // Other tools keep the plain row: only the pen is worth a button that travels.
-  const toolRow = !hasSelection && toolOptions && travellingTool === null
+  const toolRow = !hasSelection && toolOptions && activeTool !== "freedraw"
     ? createElement("button", {
         key: "tool-exit",
         type: "button",
@@ -955,9 +932,9 @@ export function CanvasToolbar({
 
   const toolLayer = [
     toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
-    travellingTool === "freedraw" ? penSlot("tools", "freedraw") : toolButton(TOOL_DEFINITIONS.freedraw),
+    penSlot("tools"),
     shapeButton,
-    travellingTool === "text" ? penSlot("tools", "text") : toolButton(TOOL_DEFINITIONS.text),
+    toolButton(TOOL_DEFINITIONS.text),
     toolButton(TOOL_DEFINITIONS.image, () => insertImage),
     toolButton(TOOL_DEFINITIONS.eraser)
   ];
@@ -1017,7 +994,7 @@ export function CanvasToolbar({
       inert: propertiesMode ? undefined : ""
     },
       ...(toolRow ? [toolRow] : []),
-      ...(penAtTop ? [penSlot("props", travellingTool)] : []),
+      ...(penAtTop ? [penSlot("props")] : []),
       ...propertyButtons,
       ...contextButtons)),
     openFamily

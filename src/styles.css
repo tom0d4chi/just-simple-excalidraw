@@ -1366,11 +1366,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * Properties of a selection, or another tool's page: the pen leaves the way everything else leaves,
  * fading towards the left edge, not fading upwards while the frame changes height.
  */
-/* Appearing: solid at once, and the travel still animates. */
-.jse-root .jse-tool.jse-tools__pen.no-fade {
-  transition: translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
 .jse-root .jse-tool.jse-tools__pen.is-away {
   opacity: 0;
   translate: calc(-50% - 18px) calc(-50% + var(--pen-offset, 0px));
