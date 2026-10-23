@@ -244,36 +244,35 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       },
       snapping: () => ((shouldSnapToGrid?.() ?? snapToGrid) ? api.getAppState().gridSize || 20 : 0),
       /*
-       * A light pinch puts the drawing back in front of the eyes: everything, centred, at the zoom
-       * that fits it. The gesture is Procreate's, and Excalidraw already knows how to do the work -
-       * scrollToContent measures the scene and the viewport for us.
+       * A pinch that closes the fingers brings the whole drawing back: Excalidraw measures the scene
+       * and the viewport for us, there is no camera arithmetic here.
        */
       onPinchSample: (sample) => {
-        new Notice(sample.light
-          ? `Pinch reconnu — cadrage.  ${sample.ms} ms · ${sample.travel} px · ${sample.drift} px`
-          : `Pinch ignoré — ${sample.ms} ms · ${sample.travel} px · ${sample.drift} px`);
+        /*
+         * What a hand actually does, measured on the phone: zoom gestures run 80-160 ms and move the
+         * fingers 100-300 px. So "light" cannot mean "small" - it would never fire. What it means
+         * here is "brief, and closing": the fingers came together, which is a zoom out, and a zoom
+         * out is how anyone asks to see the whole sheet. Zooming in is left alone.
+         */
         const stamp = new Date().toISOString().slice(11, 19);
+        const zoom = api ? Number(api.getAppState().zoom.value.toFixed(2)) : 0;
         pinchLogger?.(
-          `| ${stamp} | ${sample.ms} | ${sample.spread} | ${sample.travel} | ${sample.drift} | ${sample.moves} | ${sample.light ? "ok" : "non"} |`
+          `| ${stamp} | ${sample.ms} | ${sample.spread} | ${sample.ratio} | ${sample.travel} | ${sample.drift} | ${sample.moves} | ${zoom} |`
         );
-      },
-      onLightPinch: () => {
-        if (!api) {
-          return false;
+        if (!api || sample.ratio > 0.86 || sample.ms > 380) {
+          return;
         }
-        // Nothing drawn: fitting would only throw the view at the origin.
-        if (api.getSceneElements().length === 0) {
-          return false;
+        const elements = api.getSceneElements();
+        if (elements.length === 0) {
+          return;
         }
-        // A tap in the palm: the gesture is invisible, so the confirmation has to be felt.
         haptic("light");
-        api.scrollToContent(api.getSceneElements(), {
+        api.scrollToContent(elements, {
           fitToContent: true,
           animate: true,
           duration: 320,
           viewportZoomFactor: 0.9
         });
-        return true;
       },
       /*
        * Double tap on empty paper toggles the zoom around the point touched: in to 2x,
@@ -651,7 +650,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       const adapter = this.app.vault.adapter;
       void (async () => {
         const exists = await adapter.exists(PINCH_LOG);
-        const head = "| heure | ms | écart 0 | débattement | dérive | mouvements | reconnu |\n|---|---|---|---|---|---|---|\n";
+        const head = "| heure | ms | écart 0 | ratio | débattement | dérive | mouvements | zoom |\n|---|---|---|---|---|---|---|---|\n";
         await adapter.append(PINCH_LOG, exists ? line + "\n" : head + line + "\n");
       })();
     };

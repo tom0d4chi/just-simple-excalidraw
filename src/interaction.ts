@@ -84,22 +84,16 @@ export interface InteractionOptions {
    */
   onDoubleTap?: (scene: { x: number; y: number }) => boolean;
   /**
-   * Two fingers down, barely any spread, released quickly: a pinch that was not a zoom. The same
-   * gesture means "bring the canvas back to me" in Procreate, and it costs nothing to offer.
-   * Returning true accepts it as handled.
-   */
-  onLightPinch?: () => boolean;
-  /**
    * Every two-finger gesture, with what was measured: the only way to know why a hand does or does
    * not reach the gesture on a device we cannot see.
    */
   onPinchSample?: (sample: {
     ms: number;
     spread: number;
+    ratio: number;
     travel: number;
     drift: number;
     moves: number;
-    light: boolean;
   }) => void;
 }
 
@@ -328,32 +322,17 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     if (!pinch.active || pinchPoints.size >= 2) {
       return;
     }
-    /*
-     * Light, in three numbers: short, almost no spread, and the pair of fingers did not travel.
-     * A pinch meant as a zoom fails all three, and a two-finger pan fails the last one.
-     */
-    /*
-     * Fingers are not pixels. Two fingers land a couple of centimetres apart, so a 10 % change of
-     * that distance is a few millimetres of travel - a band nobody hits by accident, and the reason
-     * the first version never fired with a real hand. What makes a pinch light is how little the
-     * hand moved, so the test is on the distance travelled, not on the ratio.
-     */
-    const light = Date.now() - pinch.at <= 400
-      && pinch.travel <= 44
-      && pinch.drift <= 44;
-    pinch.active = false;
-    pinch.from = 0;
-    options.onPinchSample?.({
+    const sample = {
       ms: Date.now() - pinch.at,
       spread: Math.round(pinch.from),
+      ratio: Number(pinch.ratio.toFixed(3)),
       travel: Math.round(pinch.travel),
       drift: Math.round(pinch.drift),
-      moves: pinch.moves,
-      light
-    });
-    if (light) {
-      options.onLightPinch?.();
-    }
+      moves: pinch.moves
+    };
+    pinch.active = false;
+    pinch.from = 0;
+    options.onPinchSample?.(sample);
   };
 
   const onDown = (event: PointerEvent): void => {
