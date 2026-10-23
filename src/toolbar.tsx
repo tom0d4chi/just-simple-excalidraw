@@ -553,6 +553,10 @@ export function CanvasToolbar({
        * Every real control: the column's buttons, the shape strip, and anything the appearance bar
        * renders (chips, swatches, the shape grid) - all of them are <button> under that bar.
        */
+      if (target.closest(".jse-tools__pen, .jse-tools__text")) {
+        // handled by the button itself
+        return;
+      }
       if (target.closest(".jse-tool, .jse-shapes__item, .jse-appearance-values button")) {
         haptic("light");
       }
@@ -941,6 +945,12 @@ export function CanvasToolbar({
     className: `jse-tool jse-tool--action clickable-icon jse-tools__pen${activeTool === "freedraw" ? " is-active" : ""}${penAway ? " is-away" : ""}`,
     "aria-label": TOOL_DEFINITIONS.freedraw.label,
     "aria-pressed": activeTool === "freedraw",
+    /*
+     * These two answer through their own handler. They are the buttons that move when they are
+     * pressed, and the delegated listener never reached them on the device - so the confirmation is
+     * wired where the press is actually delivered.
+     */
+    onPointerDown: () => haptic("light"),
     onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
@@ -970,6 +980,7 @@ export function CanvasToolbar({
     className: `jse-tool jse-tool--action clickable-icon jse-tools__text${activeTool === "text" ? " is-active" : ""}${textAway ? " is-away" : ""}`,
     "aria-label": TOOL_DEFINITIONS.text.label,
     "aria-pressed": activeTool === "text",
+    onPointerDown: () => haptic("light"),
     onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
