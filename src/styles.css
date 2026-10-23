@@ -1274,6 +1274,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   /* centre the column track itself: justify-items would only centre the icon inside its own 36 px */
   justify-content: center;
   justify-items: center;
+  /* the pill's own padding, which the layer was covering: it left the buttons on the border and all
+     the air under them */
+  padding: var(--jse-pad, 4px);
   /*
    * Anchored to the top, not centred: the frame's height is animated, so centring the content meant
    * every button drifted vertically while the swap played - the outgoing column slid down-left
@@ -1379,12 +1382,12 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   position: absolute;
   left: 50%;
   /*
-   * Measured from the middle of the frame, not from its top: the frame's height is animated and its
-   * centre is what stays put, so a distance from the centre is a position that does not drift while
-   * the frame grows or shrinks. `--pen-offset` is written by the component.
+   * Measured from the top of the frame, which is a fixed edge: a percentage of the height (or a
+   * distance from its middle) turns every height animation into a vertical move, and the pen then
+   * drifts while it fades. `--pen-y` is written by the component, from its slot's own offset.
    */
-  top: 50%;
-  translate: -50% calc(-50% + var(--pen-offset, 0px));
+  top: 0;
+  translate: -50% var(--pen-y, 0px);
   width: var(--jse-tool-size);
   height: var(--jse-tool-size);
   z-index: 2;
@@ -1399,7 +1402,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  */
 .jse-root .jse-tool.jse-tools__pen.is-away {
   opacity: 0;
-  translate: calc(-50% - 18px) calc(-50% + var(--pen-offset, 0px));
+  translate: calc(-50% - 18px) var(--pen-y, 0px);
   pointer-events: none;
 }
 
@@ -1427,8 +1430,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-root .jse-tool.jse-tools__text {
   position: absolute;
   left: 50%;
-  top: 50%;
-  translate: -50% calc(-50% + var(--text-offset, 0px));
+  top: 0;
+  translate: -50% var(--text-y, 0px);
   width: var(--jse-tool-size);
   height: var(--jse-tool-size);
   z-index: 2;
@@ -1443,7 +1446,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-root .jse-tool.jse-tools__text.is-away {
   opacity: 0;
-  translate: calc(-50% - 18px) calc(-50% + var(--text-offset, 0px));
+  translate: calc(-50% - 18px) var(--text-y, 0px);
   pointer-events: none;
 }
 

@@ -732,24 +732,14 @@ export function CanvasToolbar({
      * resizing - which is exactly what removes the vertical drift: the middle of the frame does not
      * move, the top edge does.
      */
-    const styles = getComputedStyle(pill);
-    const pad = parseFloat(styles.paddingTop) || 0;
-    const border = parseFloat(styles.borderTopWidth) || 0;
-    const content = Array.prototype.slice.call(layer.children).reduce((sum: number, child: HTMLElement) => {
-      const childStyles = getComputedStyle(child);
-      const margins = (parseFloat(childStyles.marginTop) || 0) + (parseFloat(childStyles.marginBottom) || 0);
-      return sum + child.offsetHeight + margins;
-    }, 0);
-    let above = 0;
-    for (let row = slot.previousElementSibling as HTMLElement | null; row; row = row.previousElementSibling as HTMLElement | null) {
-      const rowStyles = getComputedStyle(row);
-      above += row.offsetHeight
-        + (parseFloat(rowStyles.marginTop) || 0)
-        + (parseFloat(rowStyles.marginBottom) || 0);
-    }
-    const frameHeight = content + (pad + border) * 2;
-    const rowCentre = pad + above + pen.offsetHeight / 2;
-    pen.style.setProperty("--pen-offset", `${rowCentre - frameHeight / 2}px`);
+    /*
+     * The slot's own offset, read from the layout: it does not move while the frame's height
+     * animates, and it does not depend on that height either. The old sum of rows was converted
+     * into a distance from the middle of the frame, which meant the button's position was a
+     * function of the frame's height - and drifted with it while it faded.
+     */
+    const y = slot.offsetTop + (slot.offsetHeight - pen.offsetHeight) / 2;
+    pen.style.setProperty("--pen-y", `${y}px`);
 
     /*
      * The disc under the pen has to travel with it. Measured once, it lands where the pen was and
@@ -776,7 +766,9 @@ export function CanvasToolbar({
       cancelAnimationFrame(frame);
       glide.classList.remove("is-placing");
     };
-  }, [propertiesMode, hasSelection, toolOptions, shownFamilies.length]);
+    // penAtTop is what decides which slot the pen belongs to: leaving it out left the pen on the
+    // tools row when the page opened from another tool's page, where nothing else had changed.
+  }, [propertiesMode, hasSelection, toolOptions, penAtTop, shownFamilies.length]);
 
   /*
    * The text button's own placement. Duplicated from the pen on purpose: the two must be able to
@@ -805,24 +797,8 @@ export function CanvasToolbar({
     if (!slot || !layer) {
       return;
     }
-    const styles = getComputedStyle(pill);
-    const pad = parseFloat(styles.paddingTop) || 0;
-    const border = parseFloat(styles.borderTopWidth) || 0;
-    const content = Array.prototype.slice.call(layer.children).reduce((sum: number, child: HTMLElement) => {
-      const childStyles = getComputedStyle(child);
-      const margins = (parseFloat(childStyles.marginTop) || 0) + (parseFloat(childStyles.marginBottom) || 0);
-      return sum + child.offsetHeight + margins;
-    }, 0);
-    let above = 0;
-    for (let row = slot.previousElementSibling as HTMLElement | null; row; row = row.previousElementSibling as HTMLElement | null) {
-      const rowStyles = getComputedStyle(row);
-      above += row.offsetHeight
-        + (parseFloat(rowStyles.marginTop) || 0)
-        + (parseFloat(rowStyles.marginBottom) || 0);
-    }
-    const frameHeight = content + (pad + border) * 2;
-    const rowCentre = pad + above + text.offsetHeight / 2;
-    text.style.setProperty("--text-offset", `${rowCentre - frameHeight / 2}px`);
+    const y = slot.offsetTop + (slot.offsetHeight - text.offsetHeight) / 2;
+    text.style.setProperty("--text-y", `${y}px`);
 
     const glide = glideRef.current;
     if (!glide || activeTool !== "text") {
