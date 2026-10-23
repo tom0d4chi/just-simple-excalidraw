@@ -1119,10 +1119,10 @@ export function CanvasToolbar({
       : null,
     penElement,
     textTraveller,
+  ),
     createElement("div", { className: "jse-tools__history", role: "group", "aria-label": t("undo") },
       undoButton,
-      redoButton)
-  ),
+      redoButton),
   isTouchDevice ? null : lockButton
   );
 }
