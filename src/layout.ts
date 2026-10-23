@@ -39,6 +39,14 @@ export function trackBottomUiInset(root: HTMLElement): () => void {
      * The icons are the platform's size, not a guess: the column reads the width of an icon in the
      * navbar and scales its own buttons from it, so the two bars look drawn by the same hand.
      */
+    /*
+     * The bar's own thickness, which is what the column has to match: same box, same presence.
+     */
+    if (rect) {
+      root.style.setProperty("--jse-nav-bar", `${Math.round(rect.height)}px`);
+    } else {
+      root.style.removeProperty("--jse-nav-bar");
+    }
     const icon = bar?.querySelector<SVGElement>(".svg-icon, svg");
     const iconWidth = icon?.getBoundingClientRect().width ?? 0;
     if (iconWidth > 0) {

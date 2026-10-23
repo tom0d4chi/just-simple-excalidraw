@@ -225,12 +225,12 @@
  */
 .jse-tools {
   /*
-   * The same icon size as Obsidian's own bar, and buttons scaled from it: 1.75 keeps the ratio the
-   * column had, and a 24 px icon gives a 42 px button — a 52 px column, the height of the platform
-   * bar itself.
+   * The column is as thick as the platform bar is tall: same box, same presence. The buttons take
+   * that width minus their own padding and border, and the icons follow at the ratio Obsidian uses
+   * itself (24 px in a 42 px button).
    */
-  --jse-icon-size: var(--jse-nav-icon, 24px);
-  --jse-tool-size: calc(var(--jse-icon-size) * 1.75);
+  --jse-tool-size: calc(var(--jse-nav-bar, 52px) - var(--jse-pad, 4px) * 2 - 2px);
+  --jse-icon-size: calc(var(--jse-tool-size) * 0.57);
   position: absolute;
   z-index: 6;
   display: flex;
