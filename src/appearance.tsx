@@ -105,16 +105,28 @@ export interface Family {
  * column. Built in reading order, then reversed: the column grows downwards, so the last
  * entries sit lowest — the two colours, nearest the thumb.
  */
-export function familiesFor(style: StyleState, capabilities: Capabilities): Family[] {
+export function familiesFor(
+  style: StyleState,
+  capabilities: Capabilities,
+  options: { filledStroke?: boolean } = {}
+): Family[] {
   const noFill = style.backgroundColor === "transparent";
   const families: Family[] = [];
   if (capabilities.stroke) {
     families.push({
       key: "stroke",
       label: t("stroke"),
+      /*
+       * On a tool's own page there is no fill next to it, so the colour can be the mark itself: a
+       * filled disc reads as "the colour you draw with". With a selection, the ring stays, because a
+       * filled disc beside a filled fill swatch would be two discs of colour and no way to tell which
+       * is which.
+       */
       content: createElement("span", {
-        className: "jse-appearance__swatch jse-appearance__swatch--ring",
-        style: { borderColor: style.strokeColor }
+        className: options.filledStroke
+          ? "jse-appearance__swatch jse-appearance__swatch--filled"
+          : "jse-appearance__swatch jse-appearance__swatch--ring",
+        style: options.filledStroke ? { backgroundColor: style.strokeColor } : { borderColor: style.strokeColor }
       })
     });
   }

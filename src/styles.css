@@ -1007,6 +1007,12 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   box-shadow: none;
 }
 
+/* The filled mark: the colour itself, no ring, no second colour to read. */
+.jse-appearance__swatch--filled {
+  background-color: currentColor;
+  box-shadow: inset 0 0 0 0 transparent;
+}
+
 .jse-appearance__swatch--ring {
   background-color: transparent;
   border: 3px solid var(--text-normal);

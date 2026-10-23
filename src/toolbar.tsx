@@ -623,7 +623,8 @@ export function CanvasToolbar({
     textSelected: boolean;
     hasSelection: boolean;
   }>(null);
-  const families = familiesFor(style, capabilities);
+  // The pen's and the text tool's pages have no fill family, so the stroke shows its colour directly.
+  const families = familiesFor(style, capabilities, { filledStroke: !hasSelection });
   if (propertiesMode) {
     shownRef.current = {
       families,
