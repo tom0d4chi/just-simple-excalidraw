@@ -694,10 +694,28 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       return;
     }
     const remote = JSON.parse((await requestUrl({ url: `${base}/manifest.json${stamp}` })).text) as { version?: string };
-    for (const name of ["main.js", "styles.css", "manifest.json"]) {
-      const body = (await requestUrl({ url: `${base}/${name}${stamp}` })).text;
+    /*
+     * The CDN behind raw.githubusercontent caches each path for five minutes, and it may well
+     * serve the new manifest while still serving the previous main.js. Installing that pair would
+     * write a new manifest over old code, and every later check would then think it is up to date.
+     * The build is stamped with its version on its first line, so a stale file is caught here and
+     * the next tick tries again.
+     */
+    const files: Record<string, string> = {};
+    for (const name of ["main.js", "styles.css"]) {
+      files[name] = (await requestUrl({ url: `${base}/${name}${stamp}` })).text;
+    }
+    // "/* jse-build 0.1.127 */" on the first line, written by the release script.
+    const head = files["main.js"].slice(0, 60);
+    const mark = head.startsWith("/* jse-build ") ? head.slice(13).split(" ")[0] : "";
+    if (mark && remote.version && mark !== remote.version) {
+      return;
+    }
+    for (const [name, body] of Object.entries(files)) {
       await this.app.vault.adapter.write(`${folder}/${name}`, body);
     }
+    // The manifest goes last: a half-written update must never look like a finished one.
+    await this.app.vault.adapter.write(`${folder}/manifest.json`, JSON.stringify(remote, null, 2));
     new Notice(`Updated to ${remote.version ?? "the latest build"} — reloading…`);
     const id = this.manifest.id;
     const registry = (this.app as unknown as {
