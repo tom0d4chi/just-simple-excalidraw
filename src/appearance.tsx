@@ -1,6 +1,7 @@
 import {
   createElement,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -95,8 +96,12 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
 }
 
 /* One grid for every family: no label, the icon that opened it says what it is. */
-function grid(children: ReactNode): ReactNode {
-  return createElement("div", { className: "jse-appearance__grid" }, children);
+function grid(children: ReactNode[], cols: number): ReactNode {
+  return createElement("div", {
+    className: "jse-appearance__grid",
+    // The panel is only as wide as its family: two corners do not hold five columns.
+    style: { gridTemplateColumns: `repeat(${cols}, 36px)` }
+  }, children);
 }
 
 /**
@@ -184,6 +189,8 @@ interface AppearanceValuesProps {
   style: StyleState;
   onPick: (patch: StylePatch) => void;
   onPreview: (patch: StylePatch) => void;
+  /** Called once the panel is in the DOM: the column re-measures what sits under it. */
+  onShown?: () => void;
 }
 
 /**
@@ -191,7 +198,7 @@ interface AppearanceValuesProps {
  * measured: the cells are a fixed 5-column grid (36 px + 4 px gap), so the mark of the chosen
  * value sits at a position that is known before it is painted.
  */
-export function AppearanceValues({ category, style, onPick, onPreview }: AppearanceValuesProps): ReactNode {
+export function AppearanceValues({ category, style, onPick, onPreview, onShown }: AppearanceValuesProps): ReactNode {
   // The slider has its own value while it is being dragged: the element is only
   // rewritten on release, so its style would otherwise lag a whole round trip.
   const [dragging, setDragging] = useState<number | null>(null);
@@ -200,15 +207,45 @@ export function AppearanceValues({ category, style, onPick, onPreview }: Appeara
   const noFill = style.backgroundColor === "transparent";
 
   const activeIndex = activeIndexFor(category, style);
-  // The thickness family wraps its presets in a stack that adds 2 px of its own.
-  const markerInset = category === "width" ? 2 : 0;
-  const marker = activeIndex < 0
+  // Columns follow the family, so each family is only as wide as its cells.
+  const counts: Record<Category, number> = {
+    stroke: STROKE_COLORS.length,
+    fill: FILL_COLORS.length,
+    width: STROKE_WIDTHS.length,
+    style: STROKE_STYLES.length,
+    corners: EDGES.length,
+    text: FONT_SIZES.length
+  };
+  const cols = Math.min(counts[category], 5);
+  /*
+   * The mark is placed from the cell it belongs to, measured after the DOM is written — the
+   * panel's width now follows its family, so no arithmetic could predict where a cell lands.
+   */
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  const [mark, setMark] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const inner = innerRef.current;
+    const active = inner && typeof inner.getBoundingClientRect === "function"
+      ? inner.querySelector<HTMLElement>(".jse-appearance__chip.is-active")
+      : null;
+    if (!inner || !active) {
+      setMark(null);
+      return;
+    }
+    const frame = inner.getBoundingClientRect();
+    const cell = active.getBoundingClientRect();
+    setMark({ left: Math.round(cell.left - frame.left), top: Math.round(cell.top - frame.top) });
+  }, [category, style.strokeColor, style.backgroundColor, style.strokeWidth, style.strokeStyle, style.roundness, style.fontSize, cols]);
+
+  const marker = activeIndex < 0 || !mark
     ? null
-    : {
-        left: markerInset + (activeIndex % 5) * 40,
-        top: 2 + Math.floor(activeIndex / 5) * 40,
-        round: category === "stroke" || category === "fill"
-      };
+    : { ...mark, round: category === "stroke" || category === "fill" };
+
+  // The panel is a menu the column had no way to measure before it existed: tell it now, so
+  // the backing appears if a shape sits under the values.
+  useEffect(() => {
+    onShown?.();
+  }, [category, onShown]);
 
   /*
    * The panel is centred on its button, and the lowest button sits near the bottom of the
@@ -239,15 +276,15 @@ export function AppearanceValues({ category, style, onPick, onPreview }: Appeara
 
   let content: ReactNode = null;
   if (category === "stroke") {
-    content = createElement("div", { className: "jse-appearance__grid" }, STROKE_COLORS.map((color) => chip(
+    content = grid(STROKE_COLORS.map((color) => chip(
       style.strokeColor.toLowerCase() === color,
       `${t("colourStroke")} ${color}`,
       pick({ strokeColor: color }),
       createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
-    )));
+    )), cols);
   } else if (category === "fill") {
-    content = createElement("div", { className: "jse-appearance__grid" }, FILL_COLORS.map((color) => chip(
+    content = grid(FILL_COLORS.map((color) => chip(
       (color === null && noFill) || (color !== null && style.backgroundColor.toLowerCase() === color),
       color === null ? t("noFill") : `${t("colourFill")} ${color}`,
       pick(color === null
@@ -257,10 +294,13 @@ export function AppearanceValues({ category, style, onPick, onPreview }: Appeara
         ? createElement("span", { className: "jse-appearance__none" })
         : createElement("span", { className: "jse-appearance__dot", style: { backgroundColor: color } }),
       "jse-appearance__chip--color"
-    )));
+    )), cols);
   } else if (category === "width") {
     content = createElement("div", { className: "jse-appearance__stack" },
-      createElement("div", { className: "jse-appearance__choices" }, STROKE_WIDTHS.map((preset) => chip(
+      createElement("div", {
+        className: "jse-appearance__choices",
+        style: { gridTemplateColumns: `repeat(${cols}, 36px)` }
+      }, STROKE_WIDTHS.map((preset) => chip(
         style.strokeWidth === preset.value,
         preset.label(),
         pick({ strokeWidth: preset.value }),
@@ -306,7 +346,7 @@ export function AppearanceValues({ category, style, onPick, onPreview }: Appeara
       pick({ strokeStyle: entry.value }),
       createElement("span", { className: `jse-appearance__line jse-appearance__line--${entry.value}` }),
       "jse-appearance__chip--line"
-    )));
+    )), cols);
   } else if (category === "corners") {
     content = grid(EDGES.map((edge) => chip(
       edge.value === null ? style.roundness === null : style.roundness !== null,
@@ -314,7 +354,7 @@ export function AppearanceValues({ category, style, onPick, onPreview }: Appeara
       pick({ roundness: edge.value }),
       createElement("span", { className: `jse-appearance__shape${edge.value ? " is-round" : ""}` }),
       "jse-appearance__chip--line"
-    )));
+    )), cols);
   } else {
     content = grid(FONT_SIZES.map((font) => chip(
       style.fontSize === font.value,
@@ -322,10 +362,14 @@ export function AppearanceValues({ category, style, onPick, onPreview }: Appeara
       pick({ fontSize: font.value }),
       createElement("span", { className: "jse-appearance__size" }, "A"),
       "jse-appearance__chip--font"
-    )));
+    )), cols);
   }
 
-  return createElement("div", { className: "jse-appearance__values-inner", ref: panelRef },
+  return createElement("div", { className: "jse-appearance__values-inner", ref: (node: HTMLDivElement | null) => {
+    panelRef.current = node;
+    innerRef.current = node;
+    return undefined as never;
+  } },
     marker
       ? createElement("div", {
           className: "jse-appearance__marker",

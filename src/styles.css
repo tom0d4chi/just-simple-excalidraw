@@ -705,7 +705,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-appearance__choices {
   display: grid;
-  grid-template-columns: repeat(5, 36px);
+  justify-content: start;
   gap: var(--size-4-1, 4px);
 }
 
@@ -1057,12 +1057,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   /* The shift is set by the component when the panel would hang off an edge. */
   translate: 0 calc(-50% + var(--jse-panel-shift, 0px));
   z-index: 8;
-  max-height: calc(100vh - 16px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
   width: max-content;
   padding: var(--size-4-1, 4px);
-  border-radius: var(--touch-size-l, 52px);
+  /* A panel is a menu, not a pill: two rows of colours under a capsule corner read as a
+     mistake. */
+  border-radius: var(--radius-l, 12px);
   background-color: transparent;
   border: 0;
   box-shadow: none;
@@ -1077,11 +1076,10 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   padding: 2px;
 }
 
-/* Five cells to a row, whatever the family: 10 colours wrap to two rows. */
+/* Columns are set per family by the component: the panel is only as wide as its cells. */
 .jse-appearance__grid {
   display: grid;
-  grid-template-columns: repeat(5, 36px);
-  justify-content: center;
+  justify-content: start;
   gap: var(--size-4-1, 4px);
 }
 
@@ -1091,9 +1089,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   gap: var(--size-4-1, 6px);
 }
 
-/* The values follow each other, one row after the other. */
+/* Exactly the entrance the shape strip uses, one row of cells after the other. */
 .jse-appearance-values .jse-appearance__chip {
-  animation: jse-appearance-in 140ms ease-out backwards;
+  animation: jse-shape-in 150ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
 .jse-appearance-values .jse-appearance__chip:nth-child(n + 6) {

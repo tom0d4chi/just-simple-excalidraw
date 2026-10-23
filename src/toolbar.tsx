@@ -671,7 +671,8 @@ export function CanvasToolbar({
           category: openFamily,
           style,
           onPick: applyStyle,
-          onPreview: previewStyle
+          onPreview: previewStyle,
+          onShown: onMenusToggled
         }))
       : null,
     isTouchDevice ? null : lockButton,
