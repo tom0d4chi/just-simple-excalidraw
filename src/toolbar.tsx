@@ -8,7 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import { anyCapability, type Capabilities } from "./capabilities";
+import { anyCapability, capabilitiesForTool, type Capabilities } from "./capabilities";
 import { Icon, type IconName } from "./icons";
 import { AppearanceValues, familiesFor, type Category, type Family, type StylePatch, type StyleState } from "./appearance";
 import { t } from "./i18n";
@@ -189,6 +189,12 @@ export function CanvasToolbar({
    */
   const [clipping, setClipping] = useState(false);
   /*
+   * Options for the tool that is about to draw, not for something selected. The pen has no
+   * selection to hang its colour on, so the column can also be opened by the tool itself: the first
+   * row of that column is the tool, lit, and touching it comes back to the tools.
+   */
+  const [toolOptions, setToolOptions] = useState(false);
+  /*
    * The column holds two layers at once — the tools and the properties of a selection — and
    * always both, so the frame is the taller of the two and never moves when the content swaps.
    * Only opacity and a short slide change, in opposite directions: the set that goes fades
@@ -221,8 +227,11 @@ export function CanvasToolbar({
 
     // The popovers live inside the pill too, and their items carry `is-active` as
     // well: only a button that is a tool of the column can own the disc.
+    // Only the layer that is showing can own the disc: the other one holds a copy of the same
+    // buttons, and the disc would land on one nobody can see.
+    const scope = propertiesMode ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
     const candidates = Array.prototype.slice.call(
-      pill.querySelectorAll(".jse-tool.is-active")
+      pill.querySelectorAll(`${scope} .jse-tool.is-active`)
     ) as HTMLElement[];
     const target = candidates.find((button) => button.closest(".jse-shapes__menu") === null) ?? null;
 
@@ -280,15 +289,27 @@ export function CanvasToolbar({
    * Every button that changes what a finger does is a switch, not a one-way trap:
    * pressing the tool that is already active gives the sheet back to the hand.
    */
-  const selectTool = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>): void => {
+  const selectTool = (tool: ToolName) => (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     if (!api) {
       return;
     }
     const current = api.getAppState().activeTool.type;
-    const next = current === tool ? "hand" : tool;
-    api.setActiveTool({ type: next, locked: next === "hand" ? false : keepToolRef.current });
+    if (current === tool) {
+      // First touch closes the options, the second puts the tool down, as it always did.
+      if (toolOptions) {
+        setToolOptions(false);
+        return;
+      }
+      api.setActiveTool({ type: "hand", locked: false });
+      return;
+    }
+    api.setActiveTool({ type: tool, locked: keepToolRef.current });
+    // A tool that can be styled opens its own page straight away.
+    if (isTouchDevice && familiesFor(style, capabilitiesForTool(tool)).length > 0) {
+      setToolOptions(true);
+    }
   };
 
   const insertImage = (event: ReactMouseEvent<HTMLButtonElement>): void => {
@@ -569,7 +590,8 @@ export function CanvasToolbar({
    * well would be a second animation in the same moment, so they are mounted at their final size
    * and the layer's fade is the only thing that moves.
    */
-  const propertiesMode = isTouchDevice && stylingTarget && selectionCount > 0;
+  const hasSelection = selectionCount > 0;
+  const propertiesMode = isTouchDevice && ((stylingTarget && hasSelection) || toolOptions);
 
   /*
    * What the properties layer last showed, kept while it leaves. Without this, deselecting empties
@@ -615,6 +637,27 @@ export function CanvasToolbar({
     const done = window.setTimeout(() => setClipping(false), 260);
     return () => window.clearTimeout(done);
   }, [propertiesMode, entered, contentUnder]);
+
+  // A selection has its own properties; the tool's page is not needed while it lasts.
+  useEffect(() => {
+    if (hasSelection) {
+      setToolOptions(false);
+    }
+  }, [hasSelection]);
+
+  // The first stroke is the end of the visit: the column goes back to the tools, the tool stays.
+  useEffect(() => {
+    if (!toolOptions) {
+      return;
+    }
+    const canvas = getCanvasElement?.();
+    if (!canvas) {
+      return;
+    }
+    const leave = (): void => setToolOptions(false);
+    canvas.addEventListener("pointerdown", leave);
+    return () => canvas.removeEventListener("pointerdown", leave);
+  }, [toolOptions, getCanvasElement]);
 
   const applyHeight = (): void => {
     const pill = pillRef.current;
@@ -700,6 +743,25 @@ export function CanvasToolbar({
    * properties of what is selected: one button per family, each painted with the value it holds.
    * Nothing selected, nothing to style: the tools come back.
    */
+  /*
+   * With no selection the column is about a tool, and the tool is the way out: it sits at the top,
+   * lit, exactly where the button was touched. Same shape as a family row, so nothing new to learn.
+   */
+  const toolRow = !hasSelection && toolOptions
+    ? createElement("button", {
+        key: "tool-exit",
+        type: "button",
+        className: "jse-tool jse-tool--action clickable-icon is-active",
+        "aria-label": TOOL_DEFINITIONS[activeTool as ToolName]?.label ?? t("freedraw"),
+        "aria-pressed": true,
+        onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setToolOptions(false);
+        }
+      }, createElement(Icon, { name: TOOL_DEFINITIONS[activeTool as ToolName]?.icon ?? "pencil" }))
+    : null;
+
   const propertyButtons = shownFamilies.map((family) => createElement("button", {
         key: family.key,
         type: "button",
@@ -815,6 +877,7 @@ export function CanvasToolbar({
       "aria-hidden": !propertiesMode,
       inert: propertiesMode ? undefined : ""
     },
+      ...(toolRow ? [toolRow] : []),
       ...propertyButtons,
       ...contextButtons)),
     openFamily

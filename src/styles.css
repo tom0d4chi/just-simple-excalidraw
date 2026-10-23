@@ -1275,11 +1275,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   pointer-events: none;
 }
 
-/* The disc marks the active tool: with the tools gone, it has nothing to mark. */
-.jse-tools__pill.is-props .jse-tools__glide {
-  opacity: 0;
-}
-
 /*
  * Undo and redo left the column: history is not a property of what is selected, and its place is
  * not in the middle of the tools. They get their own bar, a little below the column.
