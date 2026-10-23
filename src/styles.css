@@ -239,8 +239,9 @@
   /* Obsidian's floating navbar and its gap do not belong to the drawing area
      (the plugin measures them and publishes the footprint) */
   bottom: var(--jse-bottom-ui, 0px);
+  /* the bar's own margin, so the column sits exactly as far from the edge as the bar below it */
   right: calc(
-    var(--safe-area-inset-right, 0px) + var(--size-4-2, 8px)
+    var(--safe-area-inset-right, 0px) + var(--jse-nav-gap, var(--size-4-2, 8px))
   );
 }
 
@@ -1302,7 +1303,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
    */
   position: absolute;
   right: 0;
-  bottom: 0;
+  /* the same air between the column and this bar as the platform bar leaves under itself */
+  bottom: var(--jse-nav-gap, var(--size-4-2, 8px));
   box-sizing: border-box;
   /* the pill's own width and border, so the two boxes share one axis */
   border: 1px solid transparent;

@@ -23,8 +23,18 @@ export function trackBottomUiInset(root: HTMLElement): () => void {
 
   const update = (): void => {
     const bar = document.querySelector<HTMLElement>(".mobile-navbar");
-    const inset = bar ? Math.max(0, window.innerHeight - bar.getBoundingClientRect().top) : 0;
+    const rect = bar?.getBoundingClientRect();
+    const inset = rect ? Math.max(0, window.innerHeight - rect.top) : 0;
     root.style.setProperty("--jse-bottom-ui", `${Math.round(inset)}px`);
+    /*
+     * The space the bar leaves under itself is the app's own idea of a comfortable margin, so the
+     * column takes it as its inset on both axes: the same air below the bar as beside it.
+     */
+    if (rect) {
+      root.style.setProperty("--jse-nav-gap", `${Math.round(Math.max(0, window.innerHeight - rect.bottom))}px`);
+    } else {
+      root.style.removeProperty("--jse-nav-gap");
+    }
   };
 
   const watch = (): void => {
