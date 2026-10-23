@@ -14,7 +14,7 @@
 export type HapticStyle = "tick" | "light" | "medium" | "heavy";
 
 const DURATIONS: Record<HapticStyle, number> = {
-  tick: 13,   // the crackle of a sweep: short, but 10 ms was under the finger's threshold
+  tick: 11,   // the crackle of a sweep: short, but 10 ms was under the finger's threshold
   light: 15,  // a button answering a press
   medium: 22, // a middle ground, unused for now
   heavy: 32   // a shape taken: an event, not a beat

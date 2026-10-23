@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.178 - 2026-10-23
+
+- The sweep at 11 ms.
+
 ## 0.1.177 - 2026-10-23
 
 - The sweep at 13 ms.
