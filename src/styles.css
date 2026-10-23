@@ -458,12 +458,7 @@
   pointer-events: auto;
   position: absolute;
   opacity: 1;
-  /* A concrete zero, not `none`: a transition cannot interpolate from `none`. `translate`
-     still does the vertical centring, so the transform stays free for the entrance. */
-  transform: translateX(0);
-  transition:
-    opacity 140ms var(--jse-ease-out),
-    transform 140ms var(--jse-ease-out);
+  transform: none;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -486,22 +481,18 @@
   z-index: 7;
 }
 
-@starting-style {
-  .jse-shapes__menu {
-    opacity: 0;
-    transform: translateX(6px);
-  }
-}
-
 .jse-shapes__menu.is-closed {
   opacity: 0;
   transform: translateX(6px);
   pointer-events: none;
-  /* Leaving is quicker than arriving, and it is a transition, so a re-tap mid-exit turns the
-     strip around instead of replaying the entrance from nothing. */
-  transition:
-    opacity 100ms var(--jse-ease-out),
-    transform 100ms var(--jse-ease-out);
+}
+
+.jse-shapes__menu.jse-anim {
+  animation: jse-menu-in 140ms ease-out backwards;
+}
+
+.jse-shapes__menu.jse-anim.is-closed {
+  animation: jse-menu-out 120ms ease-in forwards;
 }
 
 .jse-shapes__separator {
@@ -604,7 +595,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   overflow: hidden;
   height: var(--jse-tool-size, 42px);
   opacity: 1;
-  transition: opacity 140ms var(--jse-ease-out);
 }
 
 .jse-root .jse-tools__pill > .jse-tool--collapsible.is-collapsed {
@@ -612,7 +602,62 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   margin-bottom: 0;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 100ms var(--jse-ease-out);
+}
+
+.jse-root .jse-tools__pill > .jse-tool--collapsible.jse-anim {
+  animation: jse-tool-in 200ms var(--jse-ease-out) backwards;
+}
+
+.jse-root .jse-tools__pill > .jse-tool--collapsible.jse-anim.is-collapsed {
+  animation: jse-tool-out 180ms var(--jse-ease-out) forwards;
+}
+
+@keyframes jse-menu-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes jse-menu-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+}
+
+@keyframes jse-tool-in {
+  from {
+    height: 0;
+    margin-bottom: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--jse-tool-size, 42px);
+    margin-bottom: 2px;
+    opacity: 1;
+  }
+}
+
+@keyframes jse-tool-out {
+  from {
+    height: var(--jse-tool-size, 42px);
+    margin-bottom: 2px;
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    margin-bottom: 0;
+    opacity: 0;
+  }
 }
 
 /*
@@ -805,7 +850,6 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  */
 .jse-root .jse-tools__pill > .jse-shapes--collapsible {
   height: var(--jse-tool-size, 42px);
-  transition: opacity 140ms var(--jse-ease-out);
 }
 
 .jse-root .jse-tools__pill > .jse-shapes--collapsible.is-collapsed {
@@ -814,7 +858,14 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
-  transition: opacity 100ms var(--jse-ease-out);
+}
+
+.jse-root .jse-tools__pill > .jse-shapes--collapsible.jse-anim {
+  animation: jse-tool-in 200ms var(--jse-ease-out) backwards;
+}
+
+.jse-root .jse-tools__pill > .jse-shapes--collapsible.jse-anim.is-collapsed {
+  animation: jse-tool-out 180ms var(--jse-ease-out) forwards;
 }
 
 /*
