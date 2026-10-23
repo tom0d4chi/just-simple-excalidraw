@@ -773,7 +773,10 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1px solid var(--background-modifier-border);
+  /* The colour is its own edge: a grey ring around a saturated dot only muddies it. The box is
+     border-box so dropping the ring does not change the dot's size. */
+  border: 0;
+  box-sizing: border-box;
 }
 
 .jse-appearance__none {
