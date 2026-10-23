@@ -183,6 +183,12 @@ export function CanvasToolbar({
 
   const [entered, setEntered] = useState(false);
   /*
+   * The two layers slide past each other, and a sliding layer leaves the frame while it moves.
+   * Clipping is only switched on for the length of the swap: the shape strip lives inside the same
+   * box and must never be cut, and it is always closed by the time a swap starts.
+   */
+  const [clipping, setClipping] = useState(false);
+  /*
    * The column holds two layers at once — the tools and the properties of a selection — and
    * always both, so the frame is the taller of the two and never moves when the content swaps.
    * Only opacity and a short slide change, in opposite directions: the set that goes fades
@@ -596,6 +602,15 @@ export function CanvasToolbar({
    * on the pill so the stylesheet can transition it: the column grows and shrinks like a menu
    * opening instead of snapping when the number of buttons changes.
    */
+  useEffect(() => {
+    if (!entered) {
+      return;
+    }
+    setClipping(true);
+    const done = window.setTimeout(() => setClipping(false), 260);
+    return () => window.clearTimeout(done);
+  }, [propertiesMode, entered]);
+
   const applyHeight = (): void => {
     const pill = pillRef.current;
     const layer = propertiesMode ? propsLayerRef.current : toolsLayerRef.current;
@@ -775,6 +790,9 @@ export function CanvasToolbar({
       "aria-hidden": true
     }),
     createElement("div", {
+      className: `jse-tools__clip${clipping ? " is-clipping" : ""}`
+    },
+    createElement("div", {
       className: `jse-tools__layer jse-tools__layer--tools${propertiesMode ? " is-out-left" : ""}`,
       ref: toolsLayerRef,
       "aria-hidden": propertiesMode,
@@ -793,7 +811,7 @@ export function CanvasToolbar({
       inert: propertiesMode ? undefined : ""
     },
       ...propertyButtons,
-      ...contextButtons),
+      ...contextButtons)),
     openFamily
       ? createElement("div", {
           className: "jse-appearance-values",

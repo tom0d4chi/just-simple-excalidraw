@@ -1223,6 +1223,25 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * fades towards the left edge, the one that arrives comes in from the right, and the two cross
  * in the middle without ever making the pill grow or shrink.
  */
+/*
+ * A box the size of the frame, so the layer that is sliding out is cut at the edge instead of
+ * spilling over it. No clipping at rest: the shape strip opens to the left and lives in this box.
+ */
+.jse-tools__clip {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.jse-tools__clip.is-clipping {
+  overflow: hidden;
+}
+
+.jse-tools__clip > .jse-tools__layer {
+  pointer-events: auto;
+}
+
 .jse-tools__layer {
   /*
    * Out of flow: only the layer that is showing decides the height of the frame, otherwise the
