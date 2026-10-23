@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.174 - 2026-10-23
+
+- Every tap is now a single full-amplitude pulse, and only its length changes: 10 ms for the marquee's
+  crackle, 15 ms for a button, 32 ms for a shape taken. The impact styles are gone - LIGHT is a 50 ms
+  pulse at 43 % amplitude, MEDIUM 43 ms at 71 %, HEAVY 60 ms at 100 %, which on a phone reads as "weak,
+  then two identical thumps".
+- Sent through vibrate({ duration }), which the plugin maps to a one-shot at DEFAULT_AMPLITUDE.
+
 ## 0.1.173 - 2026-10-23
 
 - Everything back to LIGHT - the column, the pen, the text, the cadrage, the marquee's ticking - and the

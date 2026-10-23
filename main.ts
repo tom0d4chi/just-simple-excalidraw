@@ -248,7 +248,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
        */
       onMarqueeTick: (ticks) => {
         for (let index = 0; index < Math.min(ticks, 3); index += 1) {
-          haptic("light");
+          haptic("tick");
         }
       },
       /* A shape joining the box is not more of the same: it is an event, and it lands heavier. */

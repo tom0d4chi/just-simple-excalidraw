@@ -1,29 +1,27 @@
 /**
  * Haptics.
  *
- * Obsidian's mobile shell is a Capacitor app, so the Haptics plugin is the only way to get a real
- * system tap rather than a timed buzz. It is not guaranteed to be exposed, so the function degrades:
- * Capacitor first, the vibration API second, silence third. Nothing here may ever throw into a click
- * handler.
+ * Obsidian's mobile shell is a Capacitor app, so its Haptics plugin is the way to reach the vibrator.
+ * Its impact styles are three fixed waveforms - LIGHT is a 50 ms pulse at 43 % amplitude, MEDIUM 43 ms
+ * at 71 %, HEAVY 60 ms at 100 % - and on a phone the top two are indistinguishable while the bottom one
+ * is half strength. So the styles are not used: every tap is a single pulse at full amplitude through
+ * vibrate({ duration }), and the nuance is carried by length, which a finger reads far more reliably
+ * than force.
+ *
+ * Nothing here may ever throw into a click handler.
  */
 
 export type HapticStyle = "tick" | "light" | "medium" | "heavy";
 
-/*
- * Durations are for the vibration API, which has no amplitude: on Android a pulse under ~10 ms is
- * barely perceptible whatever the phone, so the tick sits well above that. The Capacitor impact is the
- * only lever on strength, and LIGHT is a whisper on most phones.
- */
-const DURATIONS: Record<HapticStyle, number> = { tick: 16, light: 10, medium: 18, heavy: 26 };
-
-/*
- * Capacitor only knows three impacts. A tick is not a fourth kind - it is the lightest one - and
- * "TICK" would be rejected by the plugin, silently dropping every tap on a phone.
- */
-const IMPACTS: Record<HapticStyle, string> = { tick: "MEDIUM", light: "LIGHT", medium: "MEDIUM", heavy: "HEAVY" };
+const DURATIONS: Record<HapticStyle, number> = {
+  tick: 10,   // the crackle of a sweep: short enough to run as a rhythm
+  light: 15,  // a button answering a press
+  medium: 22, // a middle ground, unused for now
+  heavy: 32   // a shape taken: an event, not a beat
+};
 
 interface CapacitorHaptics {
-  impact?: (options: { style: string }) => Promise<void>;
+  vibrate?: (options: { duration: number }) => Promise<void>;
 }
 
 /** Where a call ended up: the plugin, the vibration API, or nowhere. */
@@ -40,15 +38,16 @@ export function describeHaptics(): string {
   const capacitor = (globalThis as { Capacitor?: { Plugins?: { Haptics?: CapacitorHaptics } } }).Capacitor;
   const plugin = capacitor?.Plugins?.Haptics;
   const vibrate = typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
-  return `capacitor ${capacitor ? "oui" : "non"} · haptics ${plugin?.impact ? "oui" : "non"} · vibrate ${vibrate ? "oui" : "non"}`;
+  return `capacitor ${capacitor ? "oui" : "non"} · haptics ${plugin?.vibrate ? "oui" : "non"} · vibrate ${vibrate ? "oui" : "non"}`;
 }
 
 export function haptic(style: HapticStyle = "light"): void {
+  const duration = DURATIONS[style];
   const capacitor = (globalThis as { Capacitor?: { Plugins?: { Haptics?: CapacitorHaptics } } }).Capacitor;
   const plugin = capacitor?.Plugins?.Haptics;
-  if (plugin?.impact) {
+  if (plugin?.vibrate) {
     try {
-      void plugin.impact({ style: IMPACTS[style] });
+      void plugin.vibrate({ duration });
       observer?.(style, "capacitor");
       return;
     } catch {
@@ -57,7 +56,7 @@ export function haptic(style: HapticStyle = "light"): void {
   }
   try {
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate(DURATIONS[style]);
+      navigator.vibrate(duration);
       observer?.(style, "vibrate");
       return;
     }
