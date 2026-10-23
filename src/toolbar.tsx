@@ -669,6 +669,8 @@ export function CanvasToolbar({
    * Measured, not computed from indices, because the frame changes height and its content is
    * centred in it.
    */
+  const applyHeightRef = useRef<() => void>(() => {});
+
   useLayoutEffect(() => {
     const pill = pillRef.current;
     const pen = penRef.current;
@@ -676,32 +678,25 @@ export function CanvasToolbar({
       return;
     }
     const scope = penAtTop ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
-    const place = (): void => {
-      const slot = pill.querySelector<HTMLElement>(`${scope} .jse-tools__pen-slot`);
-      if (!slot) {
-        return;
-      }
-      const pillRect = pill.getBoundingClientRect();
-      const slotRect = slot.getBoundingClientRect();
-      const border = parseFloat(getComputedStyle(pill).borderTopWidth) || 0;
-      pen.style.top = `${slotRect.top - pillRect.top - border}px`;
-    };
     /*
-     * The frame is changing height while the pen travels, and its content is centred in it, so the
-     * slot moves for the whole 220 ms. Following it frame by frame is what keeps the pen exactly on
-     * its place instead of heading for a position that was true one frame too early.
+     * Measured from the slot's *row*, never from its screen position: the frame's height is animated,
+     * so right after writing it the layout is still the old one and the slot reports where it used to
+     * be. Rows do not move with the frame's height, the centring does - and that is exactly the
+     * padding, which is known.
      */
-    place();
-    let frame = 0;
-    const started = Date.now();
-    const tick = (): void => {
-      place();
-      if (Date.now() - started < 320) {
-        frame = requestAnimationFrame(tick);
-      }
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    const slot = pill.querySelector<HTMLElement>(`${scope} .jse-tools__pen-slot`);
+    if (!slot) {
+      return;
+    }
+    const pad = parseFloat(getComputedStyle(pill).paddingTop) || 0;
+    let above = 0;
+    for (let row = slot.previousElementSibling as HTMLElement | null; row; row = row.previousElementSibling as HTMLElement | null) {
+      const rowStyles = getComputedStyle(row);
+      above += row.offsetHeight
+        + (parseFloat(rowStyles.marginTop) || 0)
+        + (parseFloat(rowStyles.marginBottom) || 0);
+    }
+    pen.style.top = `${pad + above}px`;
   }, [propertiesMode, hasSelection, toolOptions, shownFamilies.length]);
 
   const applyHeight = (): void => {
@@ -717,10 +712,13 @@ export function CanvasToolbar({
     const content = Array.prototype.slice.call(layer.children).reduce((sum: number, child: HTMLElement) => {
       const childStyles = getComputedStyle(child);
       const margins = (parseFloat(childStyles.marginTop) || 0) + (parseFloat(childStyles.marginBottom) || 0);
-      return sum + child.getBoundingClientRect().height + margins;
+      // offsetHeight, not the rect: the column is scaled while it animates in, and a rect would
+      // report the scaled size.
+      return sum + child.offsetHeight + margins;
     }, 0);
     pill.style.height = `${content + (pad + border) * 2}px`;
   };
+  applyHeightRef.current = applyHeight;
 
   useLayoutEffect(() => {
     applyHeight();
