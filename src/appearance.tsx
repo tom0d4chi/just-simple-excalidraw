@@ -203,7 +203,8 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
     const pitch = CELL + GAP;
     // A grid narrower than the panel is centred in it: the mark must start where its cells do.
     const columns = category ? Math.min(FAMILY_COLUMNS[category], 5) : 5;
-    const offset = (PANEL_WIDTH - (columns * pitch - GAP)) / 2;
+    // The grids are left-aligned now, so the mark starts at the panel's left edge.
+    const offset = 0;
     const top = LABEL_HEIGHT + centre;
 
     if (category !== "fill") {

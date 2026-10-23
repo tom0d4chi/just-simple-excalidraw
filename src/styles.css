@@ -1158,8 +1158,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-appearance__grid {
   display: grid;
+  /* Everything in level 2 starts at the left edge: one family, one reading axis. */
+  justify-content: start;
   grid-template-columns: repeat(5, 36px);
-  justify-content: center;
   gap: var(--size-4-1, 4px);
 }
 
@@ -1177,6 +1178,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   line-height: 20px;
   font-size: 11px;
   letter-spacing: 0.02em;
+  /* Half of a cell beyond its glyph: the text starts where the icons start, not where the
+     cells start. */
+  padding-left: 8px;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
