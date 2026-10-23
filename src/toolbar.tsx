@@ -533,8 +533,13 @@ export function CanvasToolbar({
     run();
   };
 
+  /*
+   * These actions live in the properties layer, which arrives as a fade. Growing their slot as
+   * well would be a second animation in the same moment, so they are mounted at their final size
+   * and the layer's fade is the only thing that moves.
+   */
   const contextClass = (available: boolean): string =>
-    `jse-tool--context jse-tool--collapsible${entered ? " jse-anim" : ""}${available ? "" : " is-collapsed"}`;
+    `jse-tool--context jse-tool--collapsible${available ? "" : " is-collapsed"}`;
   const contextButtons = [
     actionButton("edit-text", "square-pen", t("editText"), (event) =>
       stopAndRun(event, () => {
