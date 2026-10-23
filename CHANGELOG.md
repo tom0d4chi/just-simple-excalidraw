@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.176 - 2026-10-23
+
+- The sweep sits at 15 ms: 22 ms was too strong under the finger, and 10 ms was under its threshold. A
+  shape taken keeps its 32 ms, so the contrast is carried by that one being twice as long.
+
 ## 0.1.175 - 2026-10-23
 
 - The marquee's crackle goes to medium - 22 ms at full amplitude instead of 10 - so the sweep is clearly
