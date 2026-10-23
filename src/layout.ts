@@ -35,6 +35,17 @@ export function trackBottomUiInset(root: HTMLElement): () => void {
     } else {
       root.style.removeProperty("--jse-nav-gap");
     }
+    /*
+     * The icons are the platform's size, not a guess: the column reads the width of an icon in the
+     * navbar and scales its own buttons from it, so the two bars look drawn by the same hand.
+     */
+    const icon = bar?.querySelector<SVGElement>(".svg-icon, svg");
+    const iconWidth = icon?.getBoundingClientRect().width ?? 0;
+    if (iconWidth > 0) {
+      root.style.setProperty("--jse-nav-icon", `${Math.round(iconWidth)}px`);
+    } else {
+      root.style.removeProperty("--jse-nav-icon");
+    }
   };
 
   const watch = (): void => {

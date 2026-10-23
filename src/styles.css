@@ -224,6 +224,13 @@
  * whatever theme and font scale the user has chosen.
  */
 .jse-tools {
+  /*
+   * The same icon size as Obsidian's own bar, and buttons scaled from it: 1.75 keeps the ratio the
+   * column had, and a 24 px icon gives a 42 px button — a 52 px column, the height of the platform
+   * bar itself.
+   */
+  --jse-icon-size: var(--jse-nav-icon, 24px);
+  --jse-tool-size: calc(var(--jse-icon-size) * 1.75);
   position: absolute;
   z-index: 6;
   display: flex;
@@ -252,9 +259,7 @@
  * it scrolls rather than shrinking the touch targets.
  */
 .jse-tools__pill {
-  /* narrower than before: the same corner radius then reads as a true round end */
-  --jse-tool-size: 36px;
-  --jse-icon-size: 20px;
+  /* sizes come from the band, which reads them from the platform bar */
   --jse-tool-ink: #3d3d3d;
   pointer-events: auto;
   box-sizing: border-box;
@@ -1290,12 +1295,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * not in the middle of the tools. They get their own bar, a little below the column.
  */
 .jse-tools__history {
-  /*
-   * The same metrics as the column. It lives outside the pill now, so it no longer inherits them,
-   * and a 42 px fallback made the bar 6 px wider than the column it sits under.
-   */
-  --jse-tool-size: 36px;
-  --jse-icon-size: 20px;
+  /* the same metrics as the column, which now come from the band */
   --jse-tool-ink: #3d3d3d;
   /*
    * Pinned to the bottom of the band, not to the bottom of the column: the column's height is
