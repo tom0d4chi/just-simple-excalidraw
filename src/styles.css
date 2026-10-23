@@ -1169,6 +1169,42 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   grid-template-rows: 36px;
 }
 
+/* A labelled cell: the glyph on top, its name under it, still one tappable box. */
+.jse-appearance__chip--labelled {
+  width: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 48px;
+}
+
+.jse-appearance__glyph-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+}
+
+.jse-appearance__caption {
+  font-size: 8.5px;
+  line-height: 9.5px;
+  color: var(--text-muted);
+  /* Two short lines beat one truncated word: the names are the point of the label. */
+  max-width: 44px;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.jse-appearance__grid--labelled {
+  grid-auto-rows: 48px;
+  gap: var(--size-4-1, 4px);
+}
+
 .jse-appearance__stack {
   display: flex;
   flex-direction: column;

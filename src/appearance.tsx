@@ -87,10 +87,10 @@ interface AppearanceMenuProps {
   onExpand?: (expanded: boolean) => void;
 }
 
-function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = "", delay = "0ms"): ReactNode {
+function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void, content: ReactNode, extra = "", delay = "0ms", caption = ""): ReactNode {
   return createElement("button", {
     type: "button",
-    className: `jse-appearance__chip${extra ? ` ${extra}` : ""}${active ? " is-active" : ""}`,
+    className: `jse-appearance__chip${extra ? ` ${extra}` : ""}${caption ? " jse-appearance__chip--labelled" : ""}${active ? " is-active" : ""}`,
     "aria-label": label,
     "aria-pressed": active,
     title: label,
@@ -107,12 +107,17 @@ function chip(active: boolean, label: string, onClick: (event: ReactMouseEvent<H
       boxShadow: "none"
     },
     onClick
-  }, content);
+  },
+  caption ? createElement("span", { className: "jse-appearance__glyph-box" }, content) : content,
+  caption ? createElement("span", { className: "jse-appearance__caption" }, caption) : null);
 }
 
 /* One grid for every family: no label, the icon that opened it says what it is. */
-function grid(children: ReactNode): ReactNode {
-  return createElement("div", { className: "jse-appearance__grid" }, children);
+function grid(children: ReactNode[], cols = 5, cell = 36): ReactNode {
+  return createElement("div", {
+    className: `jse-appearance__grid${cell !== 36 ? " jse-appearance__grid--labelled" : ""}`,
+    style: { gridTemplateColumns: `repeat(${cols}, ${cell}px)` }
+  }, children);
 }
 
 export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, onExpand }: AppearanceMenuProps) {
@@ -180,6 +185,27 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
    */
   const markerCell = (): { left: number; top: number } => {
     const centre = (36 - markSize) / 2;
+    /*
+     * Labelled families are 46x48 cells, 50 px apart across and 52 down; the colours and the
+     * stroke palette stay 36 px cells, 40 apart.
+     */
+    const labelledCols: Partial<Record<Category, number>> = {
+      width: STROKE_WIDTHS.length,
+      style: STROKE_STYLES.length,
+      corners: EDGES.length,
+      text: FONT_SIZES.length
+    };
+    const cols = category ? labelledCols[category] : undefined;
+    if (cols) {
+      // A labelled grid is narrower than the panel and centred in it: 196 px is the panel's
+      // content width (five cells of 36 and four gaps of 4), the same arithmetic as the colours.
+      const rowWidth = cols * 46 + (cols - 1) * 4;
+      const inset = (196 - rowWidth) / 2;
+      return {
+        left: inset + (activeIndex % cols) * 50 + (46 - markSize) / 2,
+        top: Math.floor(activeIndex / cols) * 52 + (48 - markSize) / 2
+      };
+    }
     if (category !== "fill") {
       return {
         left: markerInset + (activeIndex % 5) * 40 + centre,
@@ -381,15 +407,15 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
         rowDelay(index, 5)
       ))));
   } else if (which === "width") {
-    panel = createElement("div", { className: "jse-appearance__stack" },
-      createElement("div", { className: "jse-appearance__choices" }, STROKE_WIDTHS.map((preset) => chip(
-        style.strokeWidth === preset.value,
-        preset.label(),
-        pick({ strokeWidth: preset.value }),
-        createElement("span", { className: "jse-appearance__line", style: { height: `${Math.min(6, preset.value)}px` } }),
-        "jse-appearance__chip--line"
-      ))),
-    );
+    panel = grid(STROKE_WIDTHS.map((preset, index) => chip(
+      style.strokeWidth === preset.value,
+      preset.label(),
+      pick({ strokeWidth: preset.value }),
+      createElement("span", { className: "jse-appearance__line", style: { height: `${Math.min(6, preset.value)}px` } }),
+      "jse-appearance__chip--line",
+      rowDelay(index, 5),
+      preset.label()
+    )), STROKE_WIDTHS.length, 46);
   } else if (which === "style") {
     panel = grid(STROKE_STYLES.map((entry, index) => chip(
       style.strokeStyle === entry.value,
@@ -397,8 +423,9 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       pick({ strokeStyle: entry.value }),
       createElement("span", { className: `jse-appearance__line jse-appearance__line--${entry.value}` }),
       "jse-appearance__chip--line",
-      rowDelay(index, 5)
-    )));
+      rowDelay(index, 5),
+      entry.label()
+    )), STROKE_STYLES.length, 46);
   } else if (which === "corners") {
     panel = grid(EDGES.map((edge, index) => chip(
       edge.value === null ? style.roundness === null : style.roundness !== null,
@@ -408,8 +435,9 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       // control: a square, and the same square with a rounded corner.
       createElement(Icon, { name: edge.value ? "square-round-corner" : "square" }),
       "jse-appearance__chip--line",
-      rowDelay(index, 5)
-    )));
+      rowDelay(index, 5),
+      edge.label()
+    )), EDGES.length, 46);
   } else if (which === "text") {
     panel = grid(FONT_SIZES.map((font, index) => chip(
       style.fontSize === font.value,
@@ -417,8 +445,9 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
       pick({ fontSize: font.value }),
       createElement("span", { className: "jse-appearance__size" }, "A"),
       "jse-appearance__chip--font",
-      rowDelay(index, 5)
-    )));
+      rowDelay(index, 5),
+      font.label()
+    )), FONT_SIZES.length, 46);
   }
 
   return panel;
