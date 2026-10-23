@@ -1042,7 +1042,9 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   height: 22px;
   border-radius: 50%;
   background-color: transparent;
-  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+  /* No grey ring: the fill colour is the whole mark, and a ring around it reads as a second
+     colour. The empty state keeps its slash, which is the only thing that needs an edge. */
+  box-shadow: none;
 }
 
 .jse-appearance__swatch--ring {
