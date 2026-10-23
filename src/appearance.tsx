@@ -210,7 +210,6 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   // Closing the menu ends any half-finished drag and forgets the open family.
   useEffect(() => {
     if (!open) {
-      setDragging(null);
       setCategory(null);
     }
   }, [open]);
@@ -389,37 +388,6 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
         createElement("span", { className: "jse-appearance__line", style: { height: `${Math.min(6, preset.value)}px` } }),
         "jse-appearance__chip--line"
       ))),
-      createElement("div", { className: "jse-appearance__slider-row" },
-        createElement("input", {
-          type: "range",
-          min: 0.5,
-          max: 10,
-          step: 0.5,
-          value: String(width),
-          className: "jse-appearance__slider",
-          "aria-label": t("thickness"),
-          // moving only shifts the default; releasing writes the elements, so the
-          // history keeps one step instead of one per pixel
-          onInput: (event: { target: EventTarget | null }) => {
-            const next = Number((event.target as HTMLInputElement).value);
-            setDragging(next);
-            onPreview({ strokeWidth: next });
-          },
-          onPointerUp: () => {
-            if (dragging !== null) {
-              onPick({ strokeWidth: dragging });
-              setDragging(null);
-            }
-          },
-          onKeyUp: () => {
-            if (dragging !== null) {
-              onPick({ strokeWidth: dragging });
-              setDragging(null);
-            }
-          }
-        }),
-        createElement("span", { className: "jse-appearance__value" }, width.toFixed(1))
-      )
     );
   } else if (which === "style") {
     panel = grid(STROKE_STYLES.map((entry, index) => chip(
