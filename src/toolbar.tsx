@@ -603,13 +603,18 @@ export function CanvasToolbar({
    * opening instead of snapping when the number of buttons changes.
    */
   useEffect(() => {
-    if (!entered) {
+    /*
+     * Only when the frame is drawn. Without a plate behind it the frame is invisible, and cutting
+     * the outgoing column on a boundary nobody can see is how that boundary becomes visible: the
+     * icons stop dead in mid-air. With the plate, the cut lands exactly on it.
+     */
+    if (!entered || !contentUnder) {
       return;
     }
     setClipping(true);
     const done = window.setTimeout(() => setClipping(false), 260);
     return () => window.clearTimeout(done);
-  }, [propertiesMode, entered]);
+  }, [propertiesMode, entered, contentUnder]);
 
   const applyHeight = (): void => {
     const pill = pillRef.current;
@@ -790,7 +795,7 @@ export function CanvasToolbar({
       "aria-hidden": true
     }),
     createElement("div", {
-      className: `jse-tools__clip${clipping ? " is-clipping" : ""}`
+      className: `jse-tools__clip${clipping && contentUnder ? " is-clipping" : ""}`
     },
     createElement("div", {
       className: `jse-tools__layer jse-tools__layer--tools${propertiesMode ? " is-out-left" : ""}`,
