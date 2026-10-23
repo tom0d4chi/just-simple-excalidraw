@@ -21,20 +21,44 @@ interface CapacitorHaptics {
   impact?: (options: { style: string }) => Promise<void>;
 }
 
+/** Where a call ended up: the plugin, the vibration API, or nowhere. */
+export type HapticPath = "capacitor" | "vibrate" | "none";
+
+let observer: ((style: HapticStyle, path: HapticPath) => void) | null = null;
+
+export function observeHaptics(next: ((style: HapticStyle, path: HapticPath) => void) | null): void {
+  observer = next;
+}
+
+/** What this device offers, in one line: the first thing to know when nothing is felt. */
+export function describeHaptics(): string {
+  const capacitor = (globalThis as { Capacitor?: { Plugins?: { Haptics?: CapacitorHaptics } } }).Capacitor;
+  const plugin = capacitor?.Plugins?.Haptics;
+  const vibrate = typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+  return `capacitor ${capacitor ? "oui" : "non"} · haptics ${plugin?.impact ? "oui" : "non"} · vibrate ${vibrate ? "oui" : "non"}`;
+}
+
 export function haptic(style: HapticStyle = "light"): void {
   const capacitor = (globalThis as { Capacitor?: { Plugins?: { Haptics?: CapacitorHaptics } } }).Capacitor;
   const plugin = capacitor?.Plugins?.Haptics;
   if (plugin?.impact) {
     try {
       void plugin.impact({ style: IMPACTS[style] });
+      observer?.(style, "capacitor");
       return;
     } catch {
       // fall through to the vibration API
     }
   }
   try {
-    navigator.vibrate?.(DURATIONS[style]);
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(DURATIONS[style]);
+      observer?.(style, "vibrate");
+      return;
+    }
+    observer?.(style, "none");
   } catch {
+    observer?.(style, "none");
     // no haptics available: the click still works, which is what matters
   }
 }

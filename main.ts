@@ -17,7 +17,7 @@ import { CanvasToolbar } from "./src/toolbar";
 import { trackBottomUiInset } from "./src/layout";
 import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
-import { haptic } from "./src/haptics";
+import { describeHaptics, haptic, observeHaptics } from "./src/haptics";
 import { attachInteraction } from "./src/interaction";
 import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
 import { capabilitiesForTool, capabilitiesForTypes, anyCapability } from "./src/capabilities";
@@ -669,6 +669,11 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
      * One line per gesture, appended to a note: a table this side can actually read. The header is
      * written when the file is empty, so the note is legible on its own.
      */
+    /*
+     * Every haptic call, and where it went. Nothing is felt on a phone that offers neither path, and
+     * this note is the only way to tell "the plugin never asked" from "the platform said no".
+     */
+    let hapticLines = 0;
     pinchLogger = (line: string): void => {
       const adapter = this.app.vault.adapter;
       void (async () => {
@@ -677,6 +682,20 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
         await adapter.append(PINCH_LOG, exists ? line + "\n" : head + line + "\n");
       })();
     };
+    observeHaptics((style, path) => {
+      if (hapticLines > 120) {
+        return;
+      }
+      hapticLines += 1;
+      const adapter = this.app.vault.adapter;
+      const stamp = new Date().toISOString().slice(11, 19);
+      const line = `| ${stamp} | ${style} | ${path} |\n`;
+      void (async () => {
+        const exists = await adapter.exists("haptic-log.md");
+        const head = `Appareil : ${describeHaptics()}\n\n| heure | style | voie |\n|---|---|---|\n`;
+        await adapter.append("haptic-log.md", exists ? line : head + line);
+      })();
+    });
     this.addCommand({
       id: "fit-drawing-to-view",
       name: "Fit drawing to view",
