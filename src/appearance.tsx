@@ -162,12 +162,25 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
   })();
   // The thickness family wraps its presets in a stack that adds 2 px of its own.
   const markerInset = category === "width" ? 2 : 0;
+  /*
+   * The mark sits close to a colour and wears that colour: a coloured value is best announced by
+   * itself, not by the app's accent. It is smaller than a cell, so the ring hugs the dot instead
+   * of floating around it, and it is centred on the cell it belongs to.
+   */
+  const isColour = category === "stroke" || category === "fill";
+  const chosen = isColour && activeIndex >= 0
+    ? (category === "stroke" ? STROKE_COLORS[activeIndex] : FILL_COLORS[activeIndex])
+    : null;
+  const markSize = isColour ? 28 : 36;
   const marker = activeIndex < 0
     ? null
     : {
-        left: markerInset + (activeIndex % 5) * 40,
-        top: 2 + Math.floor(activeIndex / 5) * 40,
-        round: category === "stroke" || category === "fill"
+        left: markerInset + (activeIndex % 5) * 40 + (36 - markSize) / 2,
+        top: 2 + Math.floor(activeIndex / 5) * 40 + (36 - markSize) / 2,
+        size: markSize,
+        round: isColour,
+        // `null` means "no fill": there is no colour to wear, the accent stays.
+        ring: chosen ?? undefined
       };
 
 
@@ -428,9 +441,10 @@ export function AppearanceMenu({ open, style, capabilities, onPick, onPreview, o
             style: {
               left: `${marker.left}px`,
               top: `${marker.top}px`,
-              width: "36px",
-              height: "36px",
-              borderRadius: marker.round ? "50%" : "var(--radius-s, 8px)"
+              width: `${marker.size}px`,
+              height: `${marker.size}px`,
+              borderRadius: marker.round ? "50%" : "var(--radius-s, 8px)",
+              ["--jse-marker-ring" as never]: marker.ring
             }
           })
         : null,

@@ -1,7 +1,7 @@
 {
   "id": "just-simple-excalidraw",
   "name": "Canvas Drawings",
-  "version": "0.1.105",
+  "version": "0.1.106",
   "minAppVersion": "1.13.7",
   "description": "A local-first canvas for native .excalidraw files.",
   "author": "David Hurtado",
