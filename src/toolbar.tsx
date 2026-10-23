@@ -700,7 +700,12 @@ export function CanvasToolbar({
       "aria-hidden": propertiesMode,
       inert: propertiesMode ? "" : undefined
     },
-      ...(isTouchDevice ? [...toolLayer, ...contextButtons] : [...desktopLayer, ...contextButtons])),
+      /*
+       * The contextual actions belong to the properties layer, not here: with something selected
+       * this layer is leaving, and seeing duplicate and delete fade away in it while the
+       * properties arrive reads as a copy of the same buttons.
+       */
+      ...(isTouchDevice ? toolLayer : desktopLayer)),
     createElement("div", {
       className: `jse-tools__layer jse-tools__layer--props${propertiesMode ? "" : " is-out-right"}`,
       "aria-hidden": !propertiesMode,
