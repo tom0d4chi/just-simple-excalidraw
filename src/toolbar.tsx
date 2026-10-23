@@ -213,6 +213,8 @@ export function CanvasToolbar({
   const pillRef = useRef<HTMLDivElement | null>(null);
   const toolsLayerRef = useRef<HTMLDivElement | null>(null);
   const penRef = useRef<HTMLButtonElement | null>(null);
+  const textRef = useRef<HTMLButtonElement | null>(null);
+  const travelledTextRef = useRef(false);
   const propsLayerRef = useRef<HTMLDivElement | null>(null);
   const glideRef = useRef<HTMLDivElement | null>(null);
   const glideReadyRef = useRef(false);
@@ -235,7 +237,8 @@ export function CanvasToolbar({
       pill.querySelectorAll(`${scope} .jse-tool.is-active`)
     ) as HTMLElement[];
     // The pen lives outside the layers (it travels between them), so it is looked up first.
-    const pen = pill.querySelector<HTMLElement>(".jse-tools__pen.is-active");
+    const pen = pill.querySelector<HTMLElement>(".jse-tools__pen.is-active")
+      ?? pill.querySelector<HTMLElement>(".jse-tools__text.is-active");
     const target = pen ?? candidates.find((button) => button.closest(".jse-shapes__menu") === null) ?? null;
 
     /*
@@ -608,6 +611,12 @@ export function CanvasToolbar({
    * The pen only travels to a page that is about the pen; another tool's page keeps it in the tools.
    * Away means the pen is not part of the column at all (a selection, or another tool's page).
    */
+  /*
+   * The text tool travels exactly like the pen, with its own button: the two are independent, so a
+   * change to one cannot alter the other's timing, slot or disc.
+   */
+  const textAtTop = !hasSelection && toolOptions && activeTool === "text";
+  const textAway = hasSelection || (toolOptions && !textAtTop);
   const penAtTop = !hasSelection && toolOptions && activeTool === "freedraw";
   const penAway = hasSelection || (toolOptions && !penAtTop);
   const propertiesMode = isTouchDevice && ((stylingTarget && hasSelection) || toolOptions);
@@ -742,6 +751,74 @@ export function CanvasToolbar({
     };
   }, [propertiesMode, hasSelection, toolOptions, shownFamilies.length]);
 
+  /*
+   * The text button's own placement. Duplicated from the pen on purpose: the two must be able to
+   * change without touching each other, and this is the part where a shared implementation would
+   * couple them.
+   */
+  useLayoutEffect(() => {
+    const pill = pillRef.current;
+    const text = textRef.current;
+    if (!pill || !text) {
+      return;
+    }
+    if (!travelledTextRef.current && activeTool === "text") {
+      text.classList.add("no-fade");
+      void text.offsetHeight;
+      requestAnimationFrame(() => text.classList.remove("no-fade"));
+    }
+    travelledTextRef.current = activeTool === "text";
+
+    if (textAway) {
+      return;
+    }
+    const scope = textAtTop ? ".jse-tools__layer--props" : ".jse-tools__layer--tools";
+    const layer = propertiesMode ? propsLayerRef.current : toolsLayerRef.current;
+    const slot = pill.querySelector<HTMLElement>(`${scope} .jse-tools__text-slot`);
+    if (!slot || !layer) {
+      return;
+    }
+    const styles = getComputedStyle(pill);
+    const pad = parseFloat(styles.paddingTop) || 0;
+    const border = parseFloat(styles.borderTopWidth) || 0;
+    const content = Array.prototype.slice.call(layer.children).reduce((sum: number, child: HTMLElement) => {
+      const childStyles = getComputedStyle(child);
+      const margins = (parseFloat(childStyles.marginTop) || 0) + (parseFloat(childStyles.marginBottom) || 0);
+      return sum + child.offsetHeight + margins;
+    }, 0);
+    let above = 0;
+    for (let row = slot.previousElementSibling as HTMLElement | null; row; row = row.previousElementSibling as HTMLElement | null) {
+      const rowStyles = getComputedStyle(row);
+      above += row.offsetHeight
+        + (parseFloat(rowStyles.marginTop) || 0)
+        + (parseFloat(rowStyles.marginBottom) || 0);
+    }
+    const frameHeight = content + (pad + border) * 2;
+    const rowCentre = pad + above + text.offsetHeight / 2;
+    text.style.setProperty("--text-offset", `${rowCentre - frameHeight / 2}px`);
+
+    const glide = glideRef.current;
+    if (!glide || activeTool !== "text") {
+      return;
+    }
+    glide.classList.add("is-placing");
+    let frame = 0;
+    const started = Date.now();
+    const follow = (): void => {
+      measureGlideRef.current();
+      if (Date.now() - started < 320) {
+        frame = requestAnimationFrame(follow);
+      } else {
+        glide.classList.remove("is-placing");
+      }
+    };
+    frame = requestAnimationFrame(follow);
+    return () => {
+      cancelAnimationFrame(frame);
+      glide.classList.remove("is-placing");
+    };
+  }, [propertiesMode, hasSelection, toolOptions, activeTool, textAtTop, shownFamilies.length]);
+
   const applyHeight = (): void => {
     const pill = pillRef.current;
     const layer = propertiesMode ? propsLayerRef.current : toolsLayerRef.current;
@@ -863,8 +940,36 @@ export function CanvasToolbar({
     "aria-hidden": true
   });
 
+  const textTraveller = createElement("button", {
+    key: "text-traveller",
+    type: "button",
+    ref: textRef,
+    className: `jse-tool jse-tool--action clickable-icon jse-tools__text${activeTool === "text" ? " is-active" : ""}${textAway ? " is-away" : ""}`,
+    "aria-label": TOOL_DEFINITIONS.text.label,
+    "aria-pressed": activeTool === "text",
+    onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!api) {
+        return;
+      }
+      if (textAtTop) {
+        setToolOptions(false);
+        api.setActiveTool({ type: "hand", locked: false });
+        return;
+      }
+      selectTool("text")(event);
+    }
+  }, createElement(Icon, { name: TOOL_DEFINITIONS.text.icon }));
+
+  const textSlot = (where: string) => createElement("div", {
+    key: `text-slot-${where}`,
+    className: "jse-tools__text-slot",
+    "aria-hidden": true
+  });
+
   // Other tools keep the plain row: only the pen is worth a button that travels.
-  const toolRow = !hasSelection && toolOptions && activeTool !== "freedraw"
+  const toolRow = !hasSelection && toolOptions && activeTool !== "freedraw" && activeTool !== "text"
     ? createElement("button", {
         key: "tool-exit",
         type: "button",
@@ -935,7 +1040,7 @@ export function CanvasToolbar({
     toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
     penSlot("tools"),
     shapeButton,
-    toolButton(TOOL_DEFINITIONS.text),
+    textSlot("tools"),
     toolButton(TOOL_DEFINITIONS.image, () => insertImage),
     toolButton(TOOL_DEFINITIONS.eraser)
   ];
@@ -996,6 +1101,7 @@ export function CanvasToolbar({
     },
       ...(toolRow ? [toolRow] : []),
       ...(penAtTop ? [penSlot("props")] : []),
+      ...(textAtTop ? [textSlot("props")] : []),
       ...propertyButtons,
       ...contextButtons)),
     openFamily
@@ -1012,6 +1118,7 @@ export function CanvasToolbar({
         }))
       : null,
     penElement,
+    textTraveller,
     createElement("div", { className: "jse-tools__history", role: "group", "aria-label": t("undo") },
       undoButton,
       redoButton)
