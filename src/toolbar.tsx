@@ -717,18 +717,6 @@ export function CanvasToolbar({
     }
   }, false, false, `jse-tool--collapsible${entered ? " jse-anim" : ""}${canRedo ? "" : " is-collapsed"}`);
 
-  /*
-   * The frame must not move when the content changes, so its height cannot come from the content.
-   * Two invisible sizers hold every slot the column can ever show — the six tools plus the three
-   * contextual actions, and the five families plus the same three — and the pill is as tall as the
-   * taller of the two, in every state. The layers themselves are centred inside that box.
-   */
-  const sizerSlot = (prefix: string, index: number) => createElement("div", {
-    key: `${prefix}-${index}`,
-    className: "jse-tool clickable-icon",
-    "aria-hidden": true
-  });
-
   return createElement("div", {
     className: `jse-tools${contentUnder ? " has-content-under" : ""}`,
     // The stylesheet reads these; nothing here hardcodes a duration twice.
@@ -744,10 +732,6 @@ export function CanvasToolbar({
       ref: glideRef,
       "aria-hidden": true
     }),
-    createElement("div", { className: "jse-tools__sizer", "aria-hidden": true },
-      ...Array.from({ length: 9 }, (_, index) => sizerSlot("sizer-tool", index))),
-    createElement("div", { className: "jse-tools__sizer", "aria-hidden": true },
-      ...Array.from({ length: 8 }, (_, index) => sizerSlot("sizer-prop", index))),
     createElement("div", {
       className: `jse-tools__layer jse-tools__layer--tools${propertiesMode ? " is-out-left" : ""}`,
       "aria-hidden": propertiesMode,

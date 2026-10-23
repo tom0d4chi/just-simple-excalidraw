@@ -1224,27 +1224,13 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-tools__layer {
   grid-area: 1 / 1;
   display: grid;
-  /* the box is the sizers' height; the icons sit centred in it, not flush with its top */
+  /* the pill hugs the taller layer; the shorter one sits centred in it */
   align-content: center;
   grid-template-columns: var(--jse-tool-size);
   justify-items: center;
   transition:
     opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
     translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-/* Invisible, but it owns the height: same slots, same spacing, no paint and no events. */
-.jse-tools__sizer {
-  grid-area: 1 / 1;
-  display: grid;
-  grid-template-columns: var(--jse-tool-size);
-  justify-items: center;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.jse-tools__sizer > .jse-tool:last-child {
-  margin-bottom: 0;
 }
 
 .jse-tools__layer.is-out-left {
