@@ -565,6 +565,8 @@ export interface JustSimpleExcalidrawSettings {
   drawingDateFormat: string;
   /** Poll the build branch and install a newer build by itself, when the editor is idle. */
   autoUpdate: boolean;
+  /** Last build installed by the updater; kept in data.json so a reload cannot forget it. */
+  lastInstalledBuild?: string;
   /** Round shapes onto the dot lattice when a gesture ends. */
   snapToGrid: boolean;
 }
@@ -574,6 +576,8 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
   private lastTouch = Date.now();
   /** One update at a time, whether it came from the timer or the command. */
   private updating = false;
+  /** Version this session has already installed, so a stale in-memory manifest cannot loop. */
+  private installed: string | null = null;
   private readonly fileOwners = new Map<TFile, ExcalidrawView>();
   settings: JustSimpleExcalidrawSettings = {
     dotGrid: true,
@@ -638,6 +642,25 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     this.registerInterval(setInterval(() => void this.checkBuildInBackground(), 60000) as unknown as number);
   }
 
+  /**
+   * The version actually on disk. Obsidian keeps the manifest it loaded at startup in memory, so
+   * after an update `this.manifest.version` still holds the previous one — comparing against it
+   * would install the same build again on every tick, which is a reload loop.
+   */
+  private async versionOnDisk(): Promise<string> {
+    const folder = this.manifest.dir;
+    const fallback = this.manifest.version;
+    if (!folder) {
+      return fallback;
+    }
+    try {
+      const parsed = JSON.parse(await this.app.vault.adapter.read(`${folder}/manifest.json`)) as { version?: string };
+      return parsed.version ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
   /** `1.2.10` is newer than `1.2.9`, which no string comparison knows. */
   private isNewer(remote: string, local: string): boolean {
     const a = remote.split(".").map((part) => Number.parseInt(part, 10) || 0);
@@ -671,7 +694,21 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       // Offline, or the branch is gone: silence, the next tick tries again.
       return;
     }
-    if (!remote.version || !this.isNewer(remote.version, this.manifest.version)) {
+    if (!remote.version || this.installed === remote.version) {
+      return;
+    }
+    // Three witnesses, because one of them can lie: the session's memory, the manifest on disk,
+    // and data.json. The highest of them is what is really installed.
+    let local = this.installed ?? this.manifest.version;
+    const disk = await this.versionOnDisk();
+    if (this.isNewer(disk, local)) {
+      local = disk;
+    }
+    const saved = this.settings.lastInstalledBuild;
+    if (saved && this.isNewer(saved, local)) {
+      local = saved;
+    }
+    if (!this.isNewer(remote.version, local)) {
       return;
     }
     this.updating = true;
@@ -717,6 +754,13 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     }
     // The manifest goes last: a half-written update must never look like a finished one.
     await this.app.vault.adapter.write(`${folder}/manifest.json`, JSON.stringify(remote, null, 2));
+    // Recorded before the reload: if the reload keeps the old manifest in memory, this session
+    // must still know it already installed this version.
+    this.installed = remote.version ?? null;
+    if (remote.version) {
+      this.settings.lastInstalledBuild = remote.version;
+      await this.saveSettings();
+    }
     new Notice(`Updated to ${remote.version ?? "the latest build"} — reloading…`);
     const id = this.manifest.id;
     const registry = (this.app as unknown as {
