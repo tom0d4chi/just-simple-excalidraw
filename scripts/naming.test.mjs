@@ -7,7 +7,7 @@ import { join } from "node:path";
 const out = join(mkdtempSync(join(tmpdir(), "jse-naming-")), "naming.mjs");
 execFileSync("npx", ["esbuild", "src/naming.ts", "--bundle", "--format=esm", "--platform=node",
   `--outfile=${out}`, "--log-level=error"], { stdio: "inherit" });
-const { drawingFolder, drawingName } = await import(out);
+const { drawingFolder, drawingName, formatStamp, safeName } = await import(out);
 
 let fails = 0;
 const eq = (name, got, want) => {
@@ -25,5 +25,16 @@ const date = new Date(2026, 9, 20, 22, 15, 3);
 eq("prefix and stamp", drawingName(date, { folder: "", prefix: "Drawing" }), "Drawing 2026-10-20 22.15.03");
 eq("stamp alone", drawingName(date, { folder: "", prefix: "" }), "2026-10-20 22.15.03");
 eq("prefix trimmed", drawingName(date, { folder: "", prefix: " Croquis " }), "Croquis 2026-10-20 22.15.03");
+// stamp patterns
+eq("tokens are filled", formatStamp(date, "YYYY/MM/DD HH:mm:ss"), "2026/10/20 22:15:03");
+// Only the documented tokens are replaced: "MMM" is "MM" followed by a literal M.
+eq("longer tokens are not guessed", formatStamp(date, "YYYY MMM"), "2026 10M");
+eq("compact pattern", drawingName(date, { folder: "", prefix: "", dateFormat: "YYYYMMDD-HHmm" }), "20261020-2215");
+eq("no stamp at all", drawingName(date, { folder: "", prefix: "Sketch", dateFormat: "" }), "Sketch");
+eq("suffix joins the name", drawingName(date, { folder: "", prefix: "Drawing", suffix: "Projet", dateFormat: "YYYY-MM-DD" }), "Drawing 2026-10-20 Projet");
+eq("forbidden characters are replaced", safeName('a/b:c*d?"e"<f>g|h'), "a-b-c-d-e-f-g-h");
+eq("names cannot end with a dot", safeName("Drawing."), "Drawing");
+eq("an empty result falls back to the stamp", drawingName(date, { folder: "", prefix: "/", suffix: "/", dateFormat: "" }), "2026-10-20 22.15.03");
+
 console.log(fails === 0 ? "ALL PASS" : `${fails} FAILURE(S)`);
 process.exit(fails === 0 ? 0 : 1);

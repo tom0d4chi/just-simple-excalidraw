@@ -559,6 +559,10 @@ export interface JustSimpleExcalidrawSettings {
   drawingFolder: string;
   /** Prefix for new file names; empty means the timestamp alone. */
   drawingPrefix: string;
+  /** Text after the stamp, e.g. a project tag. */
+  drawingSuffix: string;
+  /** Stamp pattern: YYYY MM DD HH mm ss. Empty leaves the stamp out. */
+  drawingDateFormat: string;
   /** Round shapes onto the dot lattice when a gesture ends. */
   snapToGrid: boolean;
 }
@@ -570,6 +574,8 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     drawingFolderMode: "note",
     drawingFolder: "",
     drawingPrefix: "Drawing",
+    drawingSuffix: "",
+    drawingDateFormat: "YYYY-MM-DD HH.mm.ss",
     snapToGrid: true
   };
 
@@ -582,6 +588,8 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       drawingFolderMode: saved?.drawingFolderMode ?? (saved?.drawingFolder ? "fixed" : "note"),
       drawingFolder: "",
       drawingPrefix: "Drawing",
+      drawingSuffix: "",
+      drawingDateFormat: "YYYY-MM-DD HH.mm.ss",
       snapToGrid: true,
       ...(saved ?? {})
     };
@@ -592,10 +600,11 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
 
     this.addCommand({
       id: "new-excalidraw-drawing",
-      name: "Create new Excalidraw drawing",
+      name: "Create new drawing",
       callback: () => void this.createDrawing()
     });
-    this.addRibbonIcon("pencil-ruler", "Create new Excalidraw drawing", () => void this.createDrawing());
+    // A canvas, not a pencil: the icon should say what the file is, not which engine draws it.
+    this.addRibbonIcon("lucide-layout-dashboard", "Create new drawing", () => void this.createDrawing());
   }
 
   /** Live switch: the class is all the stylesheet needs. */
@@ -617,7 +626,9 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     const naming = {
       mode: this.settings.drawingFolderMode,
       folder: this.settings.drawingFolder,
-      prefix: this.settings.drawingPrefix
+      prefix: this.settings.drawingPrefix,
+      suffix: this.settings.drawingSuffix,
+      dateFormat: this.settings.drawingDateFormat
     };
     const folder = drawingFolder(naming, parentPath);
     if (folder) {

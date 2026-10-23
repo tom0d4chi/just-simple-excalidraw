@@ -10,6 +10,7 @@ import {
 import type { DrawingFolderMode } from "./naming";
 import type JustSimpleExcalidrawPlugin from "../main";
 import { t } from "./i18n";
+import { drawingName } from "./naming";
 
 /** Suggests the vault's existing folders while the path is typed, like Obsidian does. */
 class FolderSuggest extends AbstractInputSuggest<TFolder> {
@@ -53,7 +54,7 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "Just Simple Excalidraw" });
+    containerEl.createEl("h2", { text: this.plugin.manifest.name });
 
     new Setting(containerEl)
       .setName(t("dotGrid"))
@@ -125,6 +126,47 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
           void this.plugin.saveSettings();
         });
       });
+
+    const previewEl = containerEl.createEl("p", { cls: "setting-item-description" });
+    const refreshPreview = (): void => {
+      const name = drawingName(new Date(), {
+        prefix: this.plugin.settings.drawingPrefix,
+        suffix: this.plugin.settings.drawingSuffix,
+        folder: this.plugin.settings.drawingFolder,
+        dateFormat: this.plugin.settings.drawingDateFormat
+      });
+      previewEl.setText(`${t("drawingNamePreview")}: ${name}.excalidraw`);
+    };
+
+    new Setting(containerEl)
+      .setName(t("drawingDateFormat"))
+      .setDesc(t("drawingDateFormatDesc"))
+      .addText((text: TextComponent) => {
+        text
+          .setPlaceholder("YYYY-MM-DD HH.mm.ss")
+          .setValue(this.plugin.settings.drawingDateFormat)
+          .onChange((value: string) => {
+            this.plugin.settings.drawingDateFormat = value;
+            void this.plugin.saveSettings();
+            refreshPreview();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName(t("drawingSuffix"))
+      .setDesc(t("drawingSuffixDesc"))
+      .addText((text: TextComponent) => {
+        text
+          .setPlaceholder(t("drawingSuffixPlaceholder"))
+          .setValue(this.plugin.settings.drawingSuffix)
+          .onChange((value: string) => {
+            this.plugin.settings.drawingSuffix = value;
+            void this.plugin.saveSettings();
+            refreshPreview();
+          });
+      });
+
+    refreshPreview();
 
     containerEl.createEl("p", { text: `${t("settingsVersion")}: ${this.plugin.manifest.version}` });
     containerEl.createEl("p", {
