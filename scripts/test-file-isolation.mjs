@@ -94,6 +94,8 @@ const mocks = {
       return { type, props: resolved };
     }
     export function useEffect(effect) { effect(); }
+    // Runs before paint in React; here it runs immediately, which is the same order for a test.
+    export function useLayoutEffect(effect) { effect(); }
     export function useCallback(fn) { return fn; }
     export function useRef(value) { return { current: value }; }
     export function useState(value) { return [value, () => {}]; }

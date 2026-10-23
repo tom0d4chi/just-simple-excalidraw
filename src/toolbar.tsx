@@ -1,6 +1,7 @@
 import {
   createElement,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -198,6 +199,8 @@ export function CanvasToolbar({
    * entrance would land a few pixels off.
    */
   const pillRef = useRef<HTMLDivElement | null>(null);
+  const toolsLayerRef = useRef<HTMLDivElement | null>(null);
+  const propsLayerRef = useRef<HTMLDivElement | null>(null);
   const glideRef = useRef<HTMLDivElement | null>(null);
   const glideReadyRef = useRef(false);
   const [glideReady, setGlideReady] = useState(false);
@@ -587,6 +590,23 @@ export function CanvasToolbar({
   const shownStyle = propertiesMode || !shown ? style : shown.style;
   const shownTextSelected = propertiesMode || !shown ? textSelected : shown.textSelected;
   const shownHasSelection = propertiesMode || !shown ? selectionCount > 0 : shown.hasSelection;
+
+  /*
+   * The frame is exactly as tall as the layer that is showing, and that height is a number written
+   * on the pill so the stylesheet can transition it: the column grows and shrinks like a menu
+   * opening instead of snapping when the number of buttons changes.
+   */
+  useLayoutEffect(() => {
+    const pill = pillRef.current;
+    const layer = propertiesMode ? propsLayerRef.current : toolsLayerRef.current;
+    if (!pill || !layer) {
+      return;
+    }
+    const styles = getComputedStyle(pill);
+    const pad = parseFloat(styles.paddingTop) || 0;
+    const border = parseFloat(styles.borderTopWidth) || 0;
+    pill.style.height = `${layer.offsetHeight + (pad + border) * 2}px`;
+  }, [propertiesMode, shownFamilies.length, shownHasSelection]);
   /*
    * Always mounted, never conditional: the properties layer has to keep its height while it is
    * hidden, or the column would grow the moment something is selected.
@@ -734,6 +754,7 @@ export function CanvasToolbar({
     }),
     createElement("div", {
       className: `jse-tools__layer jse-tools__layer--tools${propertiesMode ? " is-out-left" : ""}`,
+      ref: toolsLayerRef,
       "aria-hidden": propertiesMode,
       inert: propertiesMode ? "" : undefined
     },
@@ -745,6 +766,7 @@ export function CanvasToolbar({
       ...(isTouchDevice ? toolLayer : desktopLayer)),
     createElement("div", {
       className: `jse-tools__layer jse-tools__layer--props${propertiesMode ? "" : " is-out-right"}`,
+      ref: propsLayerRef,
       "aria-hidden": !propertiesMode,
       inert: propertiesMode ? undefined : ""
     },

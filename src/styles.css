@@ -269,6 +269,8 @@
   border: 1px solid transparent;
   border-radius: var(--touch-size-l, 52px);
   box-shadow: none;
+  /* the same movement as a menu opening: a measured height, animated, both ways */
+  transition: height 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
@@ -1222,10 +1224,15 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * in the middle without ever making the pill grow or shrink.
  */
 .jse-tools__layer {
-  grid-area: 1 / 1;
+  /*
+   * Out of flow: only the layer that is showing decides the height of the frame, otherwise the
+   * hidden one would keep the pill as tall as the longest of the two and the column would never
+   * shrink. The height itself is written by the component, and it is a value, so it can animate.
+   */
+  position: absolute;
+  top: var(--jse-pad, 4px);
+  left: var(--jse-pad, 4px);
   display: grid;
-  /* the pill hugs the taller layer; the shorter one sits centred in it */
-  align-content: center;
   grid-template-columns: var(--jse-tool-size);
   justify-items: center;
   transition:
@@ -1302,7 +1309,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jse-tools__layer {
+  .jse-tools__layer,
+  .jse-tools__pill {
     transition: none;
   }
 }
