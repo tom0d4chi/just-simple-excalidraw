@@ -1039,8 +1039,8 @@ export function CanvasToolbar({
   const toolLayer = [
     toolButton(TOOL_DEFINITIONS.selection, () => () => onToggleSelection(), selectionArmed),
     penSlot("tools"),
-    shapeButton,
     textSlot("tools"),
+    shapeButton,
     toolButton(TOOL_DEFINITIONS.image, () => insertImage),
     toolButton(TOOL_DEFINITIONS.eraser)
   ];
