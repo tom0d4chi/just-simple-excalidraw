@@ -309,14 +309,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       points.push({ x: frame.left - frame.out, y: frame.midY, name: "w", penalty: 0 });
       points.push({ x: frame.right + frame.out, y: frame.midY, name: "e", penalty: 0 });
     }
-    if (frame.canRotate) {
-      /*
-       * The rotation grip is drawn higher than the point Excalidraw answers to, and it is pushed
-       * back in the running: the grip right above the top edge is the resize one, and a finger
-       * coming from above must not take it away from the hand aiming at the edge.
-       */
-      points.push({ x: frame.midX, y: frame.top - frame.out - ROTATION_GAP, name: "rotation", penalty: 6 });
-    }
+    /*
+     * No rotation point here: the grip is a target of its own now, drawn above the frame and handled
+     * by `gripDown`. The only thing left is the resize edge, which must keep its air.
+     */
 
     let best: { x: number; y: number; name: string } | null = null;
     let bestScore = Infinity;
@@ -1054,11 +1050,12 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
      * moment it moves again.
      */
     const now = Date.now();
+    const previousMoveAt = rotating.lastMoveAt;
     if (Math.abs(angle - rotating.lastRaw) > 0.0035) {
       rotating.lastRaw = angle;
       rotating.lastMoveAt = now;
     }
-    if (!rotating.armed && now - rotating.lastMoveAt > 180) {
+    if (!rotating.armed && now - previousMoveAt > 180) {
       rotating.armed = true;
       rotating.held = false;
     }
@@ -1144,6 +1141,168 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   options.onMarqueeCancel?.(clearBox);
 
+  /*
+   * The grip turns, by itself.
+   *
+   * It has to: Excalidraw only turns shapes when its selection tool is the active one, and this sheet
+   * goes back to the hand the moment a marquee is released. Rather than fight that, the grip takes the
+   * press (the circle is the target, not the canvas under it) and rotates the selection here, with the
+   * same magnet on the base angles.
+   */
+  const gripTurn = {
+    active: false,
+    pointerId: 0,
+    cx: 0,
+    cy: 0,
+    startPointerAngle: 0,
+    startPointerX: 0,
+    startPointerY: 0,
+    reference: 0,
+    starts: [] as { id: string; x: number; y: number; width: number; height: number; angle: number }[],
+    armed: true,
+    held: false,
+    lastRaw: 0,
+    lastMoveAt: 0,
+    moved: false
+  };
+
+  const gripDown = (event: PointerEvent): void => {
+    const grip = host.querySelector(".jse-rotate-grip");
+    if (!grip || !(event.target instanceof Node) || !grip.contains(event.target)) {
+      return;
+    }
+    const frame = selectionFrame();
+    if (!frame) {
+      return;
+    }
+    const state = api.getAppState();
+    const bounds = host.getBoundingClientRect();
+    const zoom = state.zoom.value || 1;
+    const elements = api.getSceneElements().filter(
+      (element) => !element.isDeleted && Object.hasOwn(state.selectedElementIds ?? {}, element.id)
+    );
+    if (elements.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    gripTurn.active = true;
+    gripTurn.pointerId = event.pointerId;
+    gripTurn.cx = (frame.left + frame.right) / 2;
+    gripTurn.cy = (frame.top + frame.bottom) / 2;
+    gripTurn.startPointerAngle = Math.atan2(event.clientY - gripTurn.cy, event.clientX - gripTurn.cx);
+    gripTurn.startPointerX = event.clientX;
+    gripTurn.startPointerY = event.clientY;
+    gripTurn.reference = elements[0].angle ?? 0;
+    gripTurn.starts = elements.map((element) => ({
+      id: element.id,
+      x: element.x,
+      y: element.y,
+      width: element.width,
+      height: element.height,
+      angle: element.angle ?? 0
+    }));
+    gripTurn.armed = true;
+    gripTurn.held = false;
+    gripTurn.lastRaw = 0;
+    gripTurn.lastMoveAt = Date.now();
+    gripTurn.moved = false;
+    (grip as HTMLElement).setPointerCapture?.(event.pointerId);
+  };
+
+  const gripMove = (event: PointerEvent): void => {
+    if (!gripTurn.active || event.pointerId !== gripTurn.pointerId) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const state = api.getAppState();
+    const bounds = host.getBoundingClientRect();
+    const zoom = state.zoom.value || 1;
+    const pointerAngle = Math.atan2(event.clientY - gripTurn.cy, event.clientX - gripTurn.cx);
+    let delta = pointerAngle - gripTurn.startPointerAngle;
+    if (delta > Math.PI) {
+      delta -= 2 * Math.PI;
+    } else if (delta < -Math.PI) {
+      delta += 2 * Math.PI;
+    }
+
+    const now = Date.now();
+    /* Read before it is written: a pause is the time before this very move. */
+    const previousMoveAt = gripTurn.lastMoveAt;
+    if (Math.abs(delta - gripTurn.lastRaw) > 0.0035) {
+      gripTurn.lastRaw = delta;
+      gripTurn.lastMoveAt = now;
+    }
+    if (!gripTurn.armed && now - previousMoveAt > 180) {
+      gripTurn.armed = true;
+      gripTurn.held = false;
+    }
+    const step = Math.PI / 4;
+    const referenceAngle = gripTurn.reference + delta;
+    const targetAngle = Math.round(referenceAngle / step) * step;
+    const snapped = targetAngle - gripTurn.reference;
+    const inside = Math.abs(referenceAngle - targetAngle) <= 0.045;
+    if (gripTurn.held && !inside) {
+      gripTurn.held = false;
+      gripTurn.armed = false;
+    }
+    const applied = gripTurn.armed && inside ? snapped : delta;
+    if (gripTurn.armed && inside) {
+      gripTurn.held = true;
+    }
+    if (Math.abs(applied) > 0.0005) {
+      gripTurn.moved = true;
+    }
+
+    const cos = Math.cos(applied);
+    const sin = Math.sin(applied);
+    const elements = api.getSceneElements().map((element) => {
+      const start = gripTurn.starts.find((item) => item.id === element.id);
+      if (!start) {
+        return element;
+      }
+      /* The centre of the shape swings around the centre of the selection, and the shape turns. */
+      const centreX = bounds.left + (start.x + start.width / 2 + state.scrollX) * zoom;
+      const centreY = bounds.top + (start.y + start.height / 2 + state.scrollY) * zoom;
+      const offsetX = centreX - gripTurn.cx;
+      const offsetY = centreY - gripTurn.cy;
+      const nextX = gripTurn.cx + offsetX * cos - offsetY * sin;
+      const nextY = gripTurn.cy + offsetX * sin + offsetY * cos;
+      return {
+        ...element,
+        x: (nextX - bounds.left) / zoom - state.scrollX - start.width / 2,
+        y: (nextY - bounds.top) / zoom - state.scrollY - start.height / 2,
+        angle: start.angle + applied,
+        versionNonce: Math.floor(Math.random() * 2 ** 31)
+      };
+    });
+    api.updateScene({ elements: elements as never, captureUpdate: "NEVER" as never });
+  };
+
+  const gripUp = (event: PointerEvent): void => {
+    if (!gripTurn.active || event.pointerId !== gripTurn.pointerId) {
+      return;
+    }
+    gripTurn.active = false;
+    const grip = host.querySelector(".jse-rotate-grip") as HTMLElement | null;
+    grip?.releasePointerCapture?.(event.pointerId);
+    if (!gripTurn.moved) {
+      return;
+    }
+    /* One step in the history for the whole turn, not one per frame. */
+    api.updateScene({
+      elements: api.getSceneElements() as never,
+      captureUpdate: "IMMEDIATELY" as never
+    });
+  };
+
+  /* The grip speaks first: a press on it must never reach the selection or the marquee below. */
+  host.addEventListener("pointerdown", gripDown, true);
+  host.addEventListener("pointermove", gripMove, true);
+  host.addEventListener("pointerup", gripUp, true);
+  host.addEventListener("pointercancel", gripUp, true);
   host.addEventListener("pointerdown", onDownHandles, true);
   host.addEventListener("pointerdown", onDownSnap, true);
   host.addEventListener("pointermove", onMoveSnap, true);
@@ -1192,6 +1351,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       host.removeEventListener("pointerup", onUpDouble, true);
       host.removeEventListener("pointercancel", onUpDouble, true);
       window.clearInterval(gripTimer);
+      host.removeEventListener("pointerdown", gripDown, true);
+      host.removeEventListener("pointermove", gripMove, true);
+      host.removeEventListener("pointerup", gripUp, true);
+      host.removeEventListener("pointercancel", gripUp, true);
       clearBox();
       pointerSnap = null;
       options.onMarqueeCancel?.(null);
