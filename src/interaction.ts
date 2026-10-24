@@ -282,10 +282,214 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     ];
   };
 
+  /*
+   * The grip turns, by itself.
+   *
+   * It has to: Excalidraw only turns shapes when its selection tool is the active one, and this sheet
+   * goes back to the hand the moment a marquee is released. Rather than fight that, the grip takes the
+   * press (the circle is the target, not the canvas under it) and rotates the selection here, with the
+   * same magnet on the base angles.
+   */
+  const gripTurn = {
+    active: false,
+    pointerId: 0,
+    cx: 0,
+    cy: 0,
+    startPointerAngle: 0,
+    startPointerX: 0,
+    startPointerY: 0,
+    reference: 0,
+    starts: [] as { id: string; x: number; y: number; width: number; height: number; angle: number }[],
+    armed: true,
+    held: false,
+    lastRaw: 0,
+    lastMoveAt: 0,
+    moved: false
+  };
+
+  /*
+   * The grip is drawn, not touched: the press is caught on the canvas, like every other gesture. An
+   * overlay of our own would be a surface Obsidian has never seen, and its swipe handler reads every
+   * horizontal drag on it as "open the file drawer". The canvas is a surface it already leaves alone.
+   */
+  const gripDown = (event: PointerEvent, frame: NonNullable<ReturnType<typeof selectionFrame>>): void => {
+    const state = api.getAppState();
+    const bounds = host.getBoundingClientRect();
+    const zoom = state.zoom.value || 1;
+    const elements = api.getSceneElements().filter(
+      (element) => !element.isDeleted && Object.hasOwn(state.selectedElementIds ?? {}, element.id)
+    );
+    if (elements.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    /* Belt and braces: this gesture is ours, so its moves are cancelled whether or not they land on
+       the canvas, and never reach a workspace swipe. */
+    swallowSwipes = true;
+    gripTurn.active = true;
+    gripTurn.pointerId = event.pointerId;
+    gripTurn.cx = (frame.left + frame.right) / 2;
+    gripTurn.cy = (frame.top + frame.bottom) / 2;
+    gripTurn.startPointerAngle = Math.atan2(event.clientY - gripTurn.cy, event.clientX - gripTurn.cx);
+    gripTurn.startPointerX = event.clientX;
+    gripTurn.startPointerY = event.clientY;
+    gripTurn.reference = elements[0].angle ?? 0;
+    gripTurn.starts = elements.map((element) => ({
+      id: element.id,
+      x: element.x,
+      y: element.y,
+      width: element.width,
+      height: element.height,
+      angle: element.angle ?? 0
+    }));
+    gripTurn.armed = true;
+    gripTurn.held = false;
+    gripTurn.lastRaw = 0;
+    gripTurn.lastMoveAt = Date.now();
+    gripTurn.moved = false;
+  };
+
+  const gripMove = (event: PointerEvent): void => {
+    if (!gripTurn.active || event.pointerId !== gripTurn.pointerId) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const state = api.getAppState();
+    const bounds = host.getBoundingClientRect();
+    const zoom = state.zoom.value || 1;
+    const pointerAngle = Math.atan2(event.clientY - gripTurn.cy, event.clientX - gripTurn.cx);
+    let delta = pointerAngle - gripTurn.startPointerAngle;
+    if (delta > Math.PI) {
+      delta -= 2 * Math.PI;
+    } else if (delta < -Math.PI) {
+      delta += 2 * Math.PI;
+    }
+
+    const now = Date.now();
+    /* Read before it is written: a pause is the time before this very move. */
+    const previousMoveAt = gripTurn.lastMoveAt;
+    if (Math.abs(delta - gripTurn.lastRaw) > 0.0035) {
+      gripTurn.lastRaw = delta;
+      gripTurn.lastMoveAt = now;
+    }
+    if (!gripTurn.armed && now - previousMoveAt > 180) {
+      gripTurn.armed = true;
+      gripTurn.held = false;
+    }
+    const step = Math.PI / 4;
+    const referenceAngle = gripTurn.reference + delta;
+    const targetAngle = Math.round(referenceAngle / step) * step;
+    const snapped = targetAngle - gripTurn.reference;
+    const inside = Math.abs(referenceAngle - targetAngle) <= 0.045;
+    if (gripTurn.held && !inside) {
+      gripTurn.held = false;
+      gripTurn.armed = false;
+    }
+    const applied = gripTurn.armed && inside ? snapped : delta;
+    if (gripTurn.armed && inside) {
+      gripTurn.held = true;
+    }
+    if (Math.abs(applied) > 0.0005) {
+      gripTurn.moved = true;
+    }
+
+    const cos = Math.cos(applied);
+    const sin = Math.sin(applied);
+    const elements = api.getSceneElements().map((element) => {
+      const start = gripTurn.starts.find((item) => item.id === element.id);
+      if (!start) {
+        return element;
+      }
+      /* The centre of the shape swings around the centre of the selection, and the shape turns. */
+      const centreX = bounds.left + (start.x + start.width / 2 + state.scrollX) * zoom;
+      const centreY = bounds.top + (start.y + start.height / 2 + state.scrollY) * zoom;
+      const offsetX = centreX - gripTurn.cx;
+      const offsetY = centreY - gripTurn.cy;
+      const nextX = gripTurn.cx + offsetX * cos - offsetY * sin;
+      const nextY = gripTurn.cy + offsetX * sin + offsetY * cos;
+      return {
+        ...element,
+        x: (nextX - bounds.left) / zoom - state.scrollX - start.width / 2,
+        y: (nextY - bounds.top) / zoom - state.scrollY - start.height / 2,
+        angle: start.angle + applied,
+        versionNonce: Math.floor(Math.random() * 2 ** 31)
+      };
+    });
+    api.updateScene({ elements: elements as never, captureUpdate: "NEVER" as never });
+  };
+
+  const gripUp = (event: PointerEvent): void => {
+    if (!gripTurn.active || event.pointerId !== gripTurn.pointerId) {
+      return;
+    }
+    gripTurn.active = false;
+    swallowSwipes = false;
+    if (!gripTurn.moved) {
+      return;
+    }
+    /* One step in the history for the whole turn, not one per frame. */
+    api.updateScene({
+      elements: api.getSceneElements() as never,
+      captureUpdate: "IMMEDIATELY" as never
+    });
+  };
+
+  /*
+   * A drag inside the plugin is not a swipe of the workspace.
+   *
+   * Obsidian listens for horizontal swipes everywhere and opens the file drawer on one. Our controls
+   * are its ancestors' children, so a rotation or a slider drag also read as a swipe - the gesture
+   * turned a shape and switched pane at the same time. A touchmove that is cancelled never reaches
+   * those listeners, so any gesture starting on our own surfaces cancels its moves, unless it starts
+   * in something that actually scrolls.
+   */
+  let swallowSwipes = false;
+  const startsOnExcalidraw = (target: EventTarget | null): boolean => (
+    target instanceof Element && Boolean(target.closest(".excalidraw"))
+  );
+  const startsInScroller = (target: EventTarget | null): boolean => {
+    let element = target instanceof Element ? target : null;
+    /* Only what the plugin owns: a host theme with its own scroller above us is none of our business. */
+    while (element && element !== host) {
+      const style = window.getComputedStyle(element);
+      if (/(auto|scroll)/.test(style.overflowY) || /(auto|scroll)/.test(style.overflowX)) {
+        return true;
+      }
+      element = element.parentElement;
+    }
+    return false;
+  };
+  const onGuardDown = (event: PointerEvent): void => {
+    swallowSwipes = !startsOnExcalidraw(event.target) && !startsInScroller(event.target);
+  };
+  const onGuardUp = (): void => {
+    swallowSwipes = false;
+  };
+  const onGuardMove = (event: TouchEvent): void => {
+    if (swallowSwipes && event.cancelable) {
+      event.preventDefault();
+    }
+  };
+
+
+
   const onDownHandles = (event: PointerEvent): void => {
     resizeGrab = false;
     if (event.pointerType === "mouse") {
       return;
+    }
+    /* The rotation grip first: it hangs well above the frame, where no resize handle lives. */
+    const gripFrame = selectionFrame();
+    if (gripFrame && (gripFrame.canRotate || true)) {
+      const [gripX, gripY] = turnPoint(gripFrame, gripFrame.midX, gripFrame.top - gripFrame.out - ROTATION_LIFT);
+      if (Math.hypot(event.clientX - gripX, event.clientY - gripY) <= GRIP / 2 + 4) {
+        gripDown(event, gripFrame);
+        resizeGrab = gripTurn.active;
+        return;
+      }
     }
     const state = api.getAppState();
     if (Object.keys(state.selectedElementIds ?? {}).length === 0) {
@@ -1083,6 +1287,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   };
 
   const onMove = (event: PointerEvent): void => {
+    if (gripTurn.active) {
+      gripMove(event);
+      return;
+    }
     /*
      * A double-tap drag is ours from the moment it becomes a drag: the hand tool must not pan the
      * sheet under the box, or the shapes would slide out of it while it is being drawn.
@@ -1124,6 +1332,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   };
 
   const onUpBox = (event: PointerEvent): void => {
+    if (gripTurn.active) {
+      gripUp(event);
+      return;
+    }
     rotating = null;
     if (event.pointerType === "mouse") {
       return;
@@ -1142,206 +1354,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   options.onMarqueeCancel?.(clearBox);
 
   /*
-   * The grip turns, by itself.
-   *
-   * It has to: Excalidraw only turns shapes when its selection tool is the active one, and this sheet
-   * goes back to the hand the moment a marquee is released. Rather than fight that, the grip takes the
-   * press (the circle is the target, not the canvas under it) and rotates the selection here, with the
-   * same magnet on the base angles.
+   * The grip follows the scene, and the scene moves for a hundred reasons - a pan, a zoom, an undo,
+   * a shape dragged by Excalidraw itself. Watching it cheaply beats subscribing to each of them.
    */
-  const gripTurn = {
-    active: false,
-    pointerId: 0,
-    cx: 0,
-    cy: 0,
-    startPointerAngle: 0,
-    startPointerX: 0,
-    startPointerY: 0,
-    reference: 0,
-    starts: [] as { id: string; x: number; y: number; width: number; height: number; angle: number }[],
-    armed: true,
-    held: false,
-    lastRaw: 0,
-    lastMoveAt: 0,
-    moved: false
-  };
+  const gripTimer = window.setInterval(syncGrip, 150);
 
-  const gripDown = (event: PointerEvent): void => {
-    const grip = host.querySelector(".jse-rotate-grip");
-    if (!grip || !(event.target instanceof Node) || !grip.contains(event.target)) {
-      return;
-    }
-    const frame = selectionFrame();
-    if (!frame) {
-      return;
-    }
-    const state = api.getAppState();
-    const bounds = host.getBoundingClientRect();
-    const zoom = state.zoom.value || 1;
-    const elements = api.getSceneElements().filter(
-      (element) => !element.isDeleted && Object.hasOwn(state.selectedElementIds ?? {}, element.id)
-    );
-    if (elements.length === 0) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    /* This press stops here, so the guard below never sees it: it is ours, and it swallows swipes. */
-    swallowSwipes = true;
-    gripTurn.active = true;
-    gripTurn.pointerId = event.pointerId;
-    gripTurn.cx = (frame.left + frame.right) / 2;
-    gripTurn.cy = (frame.top + frame.bottom) / 2;
-    gripTurn.startPointerAngle = Math.atan2(event.clientY - gripTurn.cy, event.clientX - gripTurn.cx);
-    gripTurn.startPointerX = event.clientX;
-    gripTurn.startPointerY = event.clientY;
-    gripTurn.reference = elements[0].angle ?? 0;
-    gripTurn.starts = elements.map((element) => ({
-      id: element.id,
-      x: element.x,
-      y: element.y,
-      width: element.width,
-      height: element.height,
-      angle: element.angle ?? 0
-    }));
-    gripTurn.armed = true;
-    gripTurn.held = false;
-    gripTurn.lastRaw = 0;
-    gripTurn.lastMoveAt = Date.now();
-    gripTurn.moved = false;
-    (grip as HTMLElement).setPointerCapture?.(event.pointerId);
-  };
-
-  const gripMove = (event: PointerEvent): void => {
-    if (!gripTurn.active || event.pointerId !== gripTurn.pointerId) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    const state = api.getAppState();
-    const bounds = host.getBoundingClientRect();
-    const zoom = state.zoom.value || 1;
-    const pointerAngle = Math.atan2(event.clientY - gripTurn.cy, event.clientX - gripTurn.cx);
-    let delta = pointerAngle - gripTurn.startPointerAngle;
-    if (delta > Math.PI) {
-      delta -= 2 * Math.PI;
-    } else if (delta < -Math.PI) {
-      delta += 2 * Math.PI;
-    }
-
-    const now = Date.now();
-    /* Read before it is written: a pause is the time before this very move. */
-    const previousMoveAt = gripTurn.lastMoveAt;
-    if (Math.abs(delta - gripTurn.lastRaw) > 0.0035) {
-      gripTurn.lastRaw = delta;
-      gripTurn.lastMoveAt = now;
-    }
-    if (!gripTurn.armed && now - previousMoveAt > 180) {
-      gripTurn.armed = true;
-      gripTurn.held = false;
-    }
-    const step = Math.PI / 4;
-    const referenceAngle = gripTurn.reference + delta;
-    const targetAngle = Math.round(referenceAngle / step) * step;
-    const snapped = targetAngle - gripTurn.reference;
-    const inside = Math.abs(referenceAngle - targetAngle) <= 0.045;
-    if (gripTurn.held && !inside) {
-      gripTurn.held = false;
-      gripTurn.armed = false;
-    }
-    const applied = gripTurn.armed && inside ? snapped : delta;
-    if (gripTurn.armed && inside) {
-      gripTurn.held = true;
-    }
-    if (Math.abs(applied) > 0.0005) {
-      gripTurn.moved = true;
-    }
-
-    const cos = Math.cos(applied);
-    const sin = Math.sin(applied);
-    const elements = api.getSceneElements().map((element) => {
-      const start = gripTurn.starts.find((item) => item.id === element.id);
-      if (!start) {
-        return element;
-      }
-      /* The centre of the shape swings around the centre of the selection, and the shape turns. */
-      const centreX = bounds.left + (start.x + start.width / 2 + state.scrollX) * zoom;
-      const centreY = bounds.top + (start.y + start.height / 2 + state.scrollY) * zoom;
-      const offsetX = centreX - gripTurn.cx;
-      const offsetY = centreY - gripTurn.cy;
-      const nextX = gripTurn.cx + offsetX * cos - offsetY * sin;
-      const nextY = gripTurn.cy + offsetX * sin + offsetY * cos;
-      return {
-        ...element,
-        x: (nextX - bounds.left) / zoom - state.scrollX - start.width / 2,
-        y: (nextY - bounds.top) / zoom - state.scrollY - start.height / 2,
-        angle: start.angle + applied,
-        versionNonce: Math.floor(Math.random() * 2 ** 31)
-      };
-    });
-    api.updateScene({ elements: elements as never, captureUpdate: "NEVER" as never });
-  };
-
-  const gripUp = (event: PointerEvent): void => {
-    if (!gripTurn.active || event.pointerId !== gripTurn.pointerId) {
-      return;
-    }
-    gripTurn.active = false;
-    const grip = host.querySelector(".jse-rotate-grip") as HTMLElement | null;
-    grip?.releasePointerCapture?.(event.pointerId);
-    if (!gripTurn.moved) {
-      return;
-    }
-    /* One step in the history for the whole turn, not one per frame. */
-    api.updateScene({
-      elements: api.getSceneElements() as never,
-      captureUpdate: "IMMEDIATELY" as never
-    });
-  };
-
-  /*
-   * A drag inside the plugin is not a swipe of the workspace.
-   *
-   * Obsidian listens for horizontal swipes everywhere and opens the file drawer on one. Our controls
-   * are its ancestors' children, so a rotation or a slider drag also read as a swipe - the gesture
-   * turned a shape and switched pane at the same time. A touchmove that is cancelled never reaches
-   * those listeners, so any gesture starting on our own surfaces cancels its moves, unless it starts
-   * in something that actually scrolls.
-   */
-  let swallowSwipes = false;
-  const startsOnExcalidraw = (target: EventTarget | null): boolean => (
-    target instanceof Element && Boolean(target.closest(".excalidraw"))
-  );
-  const startsInScroller = (target: EventTarget | null): boolean => {
-    let element = target instanceof Element ? target : null;
-    /* Only what the plugin owns: a host theme with its own scroller above us is none of our business. */
-    while (element && element !== host) {
-      const style = window.getComputedStyle(element);
-      if (/(auto|scroll)/.test(style.overflowY) || /(auto|scroll)/.test(style.overflowX)) {
-        return true;
-      }
-      element = element.parentElement;
-    }
-    return false;
-  };
-  const onGuardDown = (event: PointerEvent): void => {
-    swallowSwipes = !startsOnExcalidraw(event.target) && !startsInScroller(event.target);
-  };
-  const onGuardUp = (): void => {
-    swallowSwipes = false;
-  };
-  const onGuardMove = (event: TouchEvent): void => {
-    if (swallowSwipes && event.cancelable) {
-      event.preventDefault();
-    }
-  };
-
-  /* The grip speaks first: a press on it must never reach the selection or the marquee below. */
-  host.addEventListener("pointerdown", gripDown, true);
-  host.addEventListener("pointermove", gripMove, true);
-  host.addEventListener("pointerup", gripUp, true);
-  host.addEventListener("pointercancel", gripUp, true);
   host.addEventListener("pointerdown", onGuardDown, true);
   host.addEventListener("pointerup", onGuardUp, true);
   host.addEventListener("pointercancel", onGuardUp, true);
@@ -1362,12 +1379,6 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   host.addEventListener("pointercancel", onPinchUp, true);
   host.addEventListener("pointerup", onUpDouble, true);
   host.addEventListener("pointercancel", onUpDouble, true);
-
-  /*
-   * The grip follows the scene, and the scene moves for a hundred reasons - a pan, a zoom, an undo,
-   * a shape dragged by Excalidraw itself. Watching it cheaply beats subscribing to each of them.
-   */
-  const gripTimer = window.setInterval(syncGrip, 150);
 
   return {
     syncGrip,
@@ -1394,10 +1405,6 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       host.removeEventListener("pointerup", onUpDouble, true);
       host.removeEventListener("pointercancel", onUpDouble, true);
       window.clearInterval(gripTimer);
-      host.removeEventListener("pointerdown", gripDown, true);
-      host.removeEventListener("pointermove", gripMove, true);
-      host.removeEventListener("pointerup", gripUp, true);
-      host.removeEventListener("pointercancel", gripUp, true);
       clearBox();
       pointerSnap = null;
       options.onMarqueeCancel?.(null);
