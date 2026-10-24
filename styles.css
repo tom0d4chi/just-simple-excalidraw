@@ -227,11 +227,20 @@
  * whatever theme and font scale the user has chosen.
  */
 .jse-tools {
+  /*
+   * The column is as thick as the platform bar is tall: same box, same presence. The buttons take
+   * that width minus their own padding and border, and the icons follow at the ratio Obsidian uses
+   * itself (24 px in a 42 px button).
+   */
+  --jse-tool-size: calc(var(--jse-nav-bar, 52px) - var(--jse-pad, 4px) * 2 - 2px);
+  --jse-icon-size: calc(var(--jse-tool-size) * 0.57);
   position: absolute;
   z-index: 6;
   display: flex;
-  align-items: center;
+  /* the column hangs from the top now, by the same margin it keeps on the right */
+  align-items: flex-start;
   justify-content: flex-end;
+  padding-top: var(--jse-nav-gap, var(--size-4-2, 8px));
   pointer-events: none;
   /*
    * The band is the canvas box itself, edge to edge: any inset (safe areas,
@@ -242,8 +251,9 @@
   /* Obsidian's floating navbar and its gap do not belong to the drawing area
      (the plugin measures them and publishes the footprint) */
   bottom: var(--jse-bottom-ui, 0px);
+  /* the bar's own margin, so the column sits exactly as far from the edge as the bar below it */
   right: calc(
-    var(--safe-area-inset-right, 0px) + var(--size-4-2, 8px)
+    var(--safe-area-inset-right, 0px) + var(--jse-nav-gap, var(--size-4-2, 8px))
   );
 }
 
@@ -254,9 +264,7 @@
  * it scrolls rather than shrinking the touch targets.
  */
 .jse-tools__pill {
-  /* narrower than before: the same corner radius then reads as a true round end */
-  --jse-tool-size: 36px;
-  --jse-icon-size: 20px;
+  /* sizes come from the band, which reads them from the platform bar */
   --jse-tool-ink: #3d3d3d;
   pointer-events: auto;
   box-sizing: border-box;
@@ -272,6 +280,8 @@
   border: 1px solid transparent;
   border-radius: var(--touch-size-l, 52px);
   box-shadow: none;
+  /* the same movement as a menu opening: a measured height, animated, both ways */
+  transition: height 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
@@ -407,6 +417,14 @@
   opacity: 0;
 }
 
+/*
+ * Placing is not travelling: one frame with the transition off, so an appearance lands on the
+ * button instead of gliding in from the last position, by specificity rather than force.
+ */
+.jse-tools__pill.has-glide .jse-tools__glide.is-placing {
+  transition: none;
+}
+
 /* Only once the disc has a measured position does the mark travel, never on the first placement. */
 .jse-tools__pill.has-glide .jse-tools__glide {
   transition:
@@ -427,7 +445,9 @@
  * popovers' items are out of scope: they are not tools of the column.
  */
 .jse-root .jse-tools__pill.has-glide .jse-tools__layer > .jse-tool.clickable-icon.is-active:not(.is-open),
-.jse-root .jse-tools__pill.has-glide .jse-tools__layer > .jse-shapes > .jse-tool.clickable-icon.is-active:not(.is-open) {
+.jse-root .jse-tools__pill.has-glide .jse-tools__layer > .jse-shapes > .jse-tool.clickable-icon.is-active:not(.is-open),
+/* The pen lives outside the layers, so it needs its own line here or it keeps its own disc. */
+.jse-root .jse-tools__pill.has-glide > .jse-tools__pen.is-active {
   background-color: transparent;
 }
 
@@ -598,7 +618,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   pointer-events: none;
 }
 
-.jse-root .jse-tools__layer > .jse-tool--collapsible.jse-anim {
+.jse-root .jse-tools__layer > .jse-tool--collapsible.jse-anim,
+.jse-root .jse-tools__history > .jse-tool--collapsible.jse-anim {
   animation: jse-tool-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
 }
 
@@ -998,6 +1019,12 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   box-shadow: none;
 }
 
+/* The filled mark: the colour itself, no ring, no second colour to read. */
+.jse-appearance__swatch--filled {
+  background-color: currentColor;
+  box-shadow: inset 0 0 0 0 transparent;
+}
+
 .jse-appearance__swatch--ring {
   background-color: transparent;
   border: 3px solid var(--text-normal);
@@ -1216,30 +1243,52 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * fades towards the left edge, the one that arrives comes in from the right, and the two cross
  * in the middle without ever making the pill grow or shrink.
  */
-.jse-tools__layer {
-  grid-area: 1 / 1;
-  display: grid;
-  /* the box is the sizers' height; the icons sit centred in it, not flush with its top */
-  align-content: center;
-  grid-template-columns: var(--jse-tool-size);
-  justify-items: center;
-  transition:
-    opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-/* Invisible, but it owns the height: same slots, same spacing, no paint and no events. */
-.jse-tools__sizer {
-  grid-area: 1 / 1;
-  display: grid;
-  grid-template-columns: var(--jse-tool-size);
-  justify-items: center;
-  visibility: hidden;
+/*
+ * A box the size of the frame, so the layer that is sliding out is cut at the edge instead of
+ * spilling over it. No clipping at rest: the shape strip opens to the left and lives in this box.
+ */
+.jse-tools__clip {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
 }
 
-.jse-tools__sizer > .jse-tool:last-child {
-  margin-bottom: 0;
+.jse-tools__clip.is-clipping {
+  overflow: hidden;
+}
+
+.jse-tools__clip > .jse-tools__layer {
+  pointer-events: auto;
+}
+
+.jse-tools__layer {
+  /*
+   * Out of flow: only the layer that is showing decides the height of the frame, otherwise the
+   * hidden one would keep the pill as tall as the longest of the two and the column would never
+   * shrink. The height itself is written by the component, and it is a value, so it can animate.
+   */
+  position: absolute;
+  /* the pill's padding box, not its corner: the icons are centred on the same axis as the tools,
+     and they stay on it while the frame grows or shrinks around them */
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--jse-tool-size);
+  /* centre the column track itself: justify-items would only centre the icon inside its own 36 px */
+  justify-content: center;
+  justify-items: center;
+  /* the pill's own padding, which the layer was covering: it left the buttons on the border and all
+     the air under them */
+  padding: var(--jse-pad, 4px);
+  /*
+   * Anchored to the top, not centred: the frame's height is animated, so centring the content meant
+   * every button drifted vertically while the swap played - the outgoing column slid down-left
+   * instead of just left. Anchored, they stay where they are and the frame closes under them.
+   */
+  align-content: start;
+  transition:
+    opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .jse-tools__layer.is-out-left {
@@ -1254,20 +1303,31 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   pointer-events: none;
 }
 
-/* The disc marks the active tool: with the tools gone, it has nothing to mark. */
-.jse-tools__pill.is-props .jse-tools__glide {
-  opacity: 0;
-}
-
 /*
  * Undo and redo left the column: history is not a property of what is selected, and its place is
  * not in the middle of the tools. They get their own bar, a little below the column.
  */
+/* Nothing in history: no bar at all, rather than an empty pill sitting under the column. */
+.jse-tools__history.is-empty {
+  display: none;
+}
+
 .jse-tools__history {
+  /* the same metrics as the column, which now come from the band */
+  --jse-tool-ink: #3d3d3d;
+  /*
+   * Pinned to the bottom of the band, not to the bottom of the column: the column's height is
+   * animated, so anything hung under it moves every time the content changes size. Here nothing
+   * moves.
+   */
   position: absolute;
-  top: calc(100% + var(--size-4-2, 8px));
-  left: 50%;
-  translate: -50% 0;
+  right: 0;
+  /* the same air between the column and this bar as the platform bar leaves under itself */
+  bottom: var(--jse-nav-gap, var(--size-4-2, 8px));
+  box-sizing: border-box;
+  /* the pill's own width and border, so the two boxes share one axis */
+  border: 1px solid transparent;
+  width: calc(var(--jse-tool-size) + var(--jse-pad, 4px) * 2 + 2px);
   display: grid;
   grid-template-columns: var(--jse-tool-size);
   justify-items: center;
@@ -1311,7 +1371,111 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .jse-tools__layer {
+  .jse-tools__layer,
+  .jse-tools__pill {
+    transition: none;
+  }
+}
+
+/*
+ * The pen is one button, not one per layer: it sits outside them and travels to the head of its own
+ * page when that page opens. The slot it leaves behind keeps the rest of the column in place.
+ */
+/*
+ * Same specificity as the base button rule above (`.jse-root .jse-tool.clickable-icon`), written
+ * after it: a plain `.jse-tools__pen` would lose to it and the pen would keep the press-feedback
+ * transition instead of its own.
+ */
+.jse-root .jse-tool.jse-tools__pen {
+  position: absolute;
+  left: 50%;
+  /*
+   * Measured from the top of the frame, which is a fixed edge: a percentage of the height (or a
+   * distance from its middle) turns every height animation into a vertical move, and the pen then
+   * drifts while it fades. `--pen-y` is written by the component, from its slot's own offset.
+   */
+  top: 0;
+  translate: -50% var(--pen-y, 0px);
+  width: var(--jse-tool-size);
+  height: var(--jse-tool-size);
+  z-index: 2;
+  transition:
+    translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/*
+ * Properties of a selection, or another tool's page: the pen leaves the way everything else leaves,
+ * fading towards the left edge, not fading upwards while the frame changes height.
+ */
+.jse-root .jse-tool.jse-tools__pen.is-away {
+  opacity: 0;
+  translate: calc(-50% - 18px) var(--pen-y, 0px);
+  pointer-events: none;
+}
+
+.jse-tools__pen-slot {
+  width: var(--jse-tool-size);
+  height: var(--jse-tool-size);
+  margin-bottom: 2px;
+  pointer-events: none;
+}
+
+.jse-tools__layer > .jse-tools__pen-slot:last-child {
+  margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-tools__pen {
+    transition: none;
+  }
+}
+
+/*
+ * The text tool's button, a copy of the pen's rules under its own class: the two mechanisms are
+ * deliberately separate, so tuning one never moves the other. Same geometry, same fading.
+ */
+.jse-root .jse-tool.jse-tools__text {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  translate: -50% var(--text-y, 0px);
+  width: var(--jse-tool-size);
+  height: var(--jse-tool-size);
+  z-index: 2;
+  transition:
+    translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.jse-root .jse-tool.jse-tools__text.no-fade {
+  transition: translate 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.jse-root .jse-tool.jse-tools__text.is-away {
+  opacity: 0;
+  translate: calc(-50% - 18px) var(--text-y, 0px);
+  pointer-events: none;
+}
+
+/* The disc carries the mark, so the button stops painting its own. */
+.jse-root .jse-tools__pill.has-glide > .jse-tools__text.is-active {
+  background-color: transparent;
+}
+
+.jse-tools__text-slot {
+  width: var(--jse-tool-size);
+  height: var(--jse-tool-size);
+  margin-bottom: 2px;
+  pointer-events: none;
+}
+
+.jse-tools__layer > .jse-tools__text-slot:last-child {
+  margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jse-root .jse-tool.jse-tools__text {
     transition: none;
   }
 }

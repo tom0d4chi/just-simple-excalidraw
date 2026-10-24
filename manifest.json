@@ -1,9 +1,9 @@
 {
   "id": "just-simple-excalidraw",
-  "name": "Canvas Drawings",
-  "version": "0.1.127",
+  "name": "Boards",
+  "version": "0.2.0",
   "minAppVersion": "1.13.7",
-  "description": "A local-first canvas for native .excalidraw files.",
+  "description": "A local-first board for drawing, saved as native .board files.",
   "author": "David Hurtado",
   "authorUrl": "https://github.com/DavidHurtadoAI",
   "isDesktopOnly": false
