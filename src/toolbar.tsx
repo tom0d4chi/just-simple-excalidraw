@@ -99,7 +99,7 @@ function readImageFile(file: File): Promise<{ dataURL: string; width: number; he
  * hides). Clicking them is exact — it runs the same handler, with the same
  * history entry — where a synthesized key press has to guess at modifiers.
  */
-function pressExcalidrawButton(selector: string): boolean {
+export function pressExcalidrawButton(selector: string): boolean {
   if (typeof document?.querySelector !== "function") {
     return false;
   }
@@ -124,7 +124,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * Excalidraw exposes `history.clear()` but no undo/redo in its public API, so
  * reuse its own keyboard shortcuts by replaying the key press on its container.
  */
-function replayShortcut(
+export function replayShortcut(
   getCanvasElement: () => HTMLElement | null,
   key: string,
   shiftKey = false,

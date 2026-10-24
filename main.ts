@@ -18,6 +18,7 @@ import { trackBottomUiInset } from "./src/layout";
 import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
 import { describeHaptics, haptic, observeHaptics } from "./src/haptics";
+import { openElementMenu } from "./src/element-menu";
 import { attachInteraction } from "./src/interaction";
 import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
 import { capabilitiesForTool, capabilitiesForTypes, anyCapability } from "./src/capabilities";
@@ -241,6 +242,55 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
     const root = rootRef.current;
     return root ? trackBottomUiInset(root) : undefined;
   }, []);
+
+  /*
+   * A long press on a shape opens Obsidian's own menu - the sheet that rises from the bottom on a
+   * phone - instead of Excalidraw's desktop panel, which lands under the finger and reads like a
+   * list of rows. The event is taken before Excalidraw sees it, and the shape under the finger is
+   * selected first, so every item in the sheet has something to act on.
+   */
+  useEffect(() => {
+    if (!api || !Platform.isMobile || typeof document === "undefined") {
+      return undefined;
+    }
+    const onContextMenu = (event: MouseEvent): void => {
+      const host = canvasHostRef.current;
+      if (!host || !(event.target instanceof Node) || !host.contains(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      const state = api.getAppState();
+      const canvas = getCanvasElement();
+      const rect = (canvas ?? host).getBoundingClientRect();
+      const zoom = state.zoom.value || 1;
+      const x = (event.clientX - rect.left) / zoom - state.scrollX;
+      const y = (event.clientY - rect.top) / zoom - state.scrollY;
+      const hit = [...api.getSceneElements()].reverse().find((element) => (
+        !element.isDeleted
+        && x >= element.x && x <= element.x + Math.abs(element.width)
+        && y >= element.y && y <= element.y + Math.abs(element.height)
+      ));
+      if (!hit) {
+        return;
+      }
+      api.updateScene({
+        appState: { selectedElementIds: { [hit.id]: true } as never },
+        captureUpdate: "NEVER" as never
+      });
+      haptic("light");
+      openElementMenu({
+        api,
+        id: hit.id,
+        getCanvasElement,
+        haptic: (style) => haptic(style === "heavy" ? "heavy" : "light")
+      });
+    };
+    document.addEventListener("contextmenu", onContextMenu, true);
+    return () => document.removeEventListener("contextmenu", onContextMenu, true);
+  }, [api, getCanvasElement]);
 
   /*
    * One finger, one decision per gesture. The hand ignores taps, so the gesture is

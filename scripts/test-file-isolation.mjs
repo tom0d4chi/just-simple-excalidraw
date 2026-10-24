@@ -51,6 +51,12 @@ const mocks = {
       // The updater is the only caller; the harness never reaches the network.
       return { status: 200, text: JSON.stringify({ version: "0.0.0" }), json: { version: "0.0.0" }, url: request.url };
     }
+    export class Menu {
+      constructor() { this.items = []; }
+      addItem(callback) { const item = { setTitle() { return item; }, setIcon() { return item; }, setSection() { return item; }, onClick(handler) { item.handler = handler; return item; } }; callback(item); this.items.push(item); return this; }
+      showAtPosition() { return this; }
+      showAtMouseEvent() { return this; }
+    }
     export class Notice {
       constructor() {}
     }
