@@ -525,6 +525,14 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   }, []);
 
   const handleChange = useCallback((elements: readonly OrderedExcalidrawElement[], appState: AppState, files: BinaryFiles): void => {
+    /*
+     * A marquee preview is writing accent colours into the scene. Those elements are not the drawing:
+     * reading them would put the accent in the appearance panel and paint the board with a colour
+     * nobody chose. The preview speaks for itself; the rest of the app waits for the gesture to end.
+     */
+    if (previewingRef.current) {
+      return;
+    }
     const nextTool = appState?.activeTool;
     const previousTool = activeToolRef.current;
     if (nextTool && (nextTool.type !== previousTool.type || nextTool.locked !== previousTool.locked)) {
