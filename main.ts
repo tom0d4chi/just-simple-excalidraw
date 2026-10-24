@@ -716,7 +716,11 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     this.applyDotGrid();
     this.addSettingTab(new JustSimpleExcalidrawSettingTab(this.app, this));
     this.registerView(VIEW_TYPE_EXCALIDRAW, (leaf) => new ExcalidrawView(leaf, this));
-    this.registerExtensions(["excalidraw"], VIEW_TYPE_EXCALIDRAW);
+    /*
+     * Boards are .board files. The old extension stays registered so every drawing made before the
+     * rename still opens, in the same view, without a migration step.
+     */
+    this.registerExtensions(["board", "excalidraw"], VIEW_TYPE_EXCALIDRAW);
 
     /*
      * One line per gesture, appended to a note: a table this side can actually read. The header is
@@ -751,10 +755,10 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     });
     this.addCommand({
       id: "fit-drawing-to-view",
-      name: "Fit drawing to view",
+      name: "Fit board to view",
       callback: () => {
         if (!currentApi) {
-          new Notice("Open a drawing first.");
+          new Notice("Open a board first.");
           return;
         }
         const elements = currentApi.getSceneElements();
@@ -773,11 +777,11 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     });
     this.addCommand({
       id: "new-excalidraw-drawing",
-      name: "Create new drawing",
+      name: "Create new board",
       callback: () => void this.createDrawing()
     });
     // A canvas, not a pencil: the icon should say what the file is, not which engine draws it.
-    this.addRibbonIcon("lucide-layout-dashboard", "Create new drawing", () => void this.createDrawing());
+    this.addRibbonIcon("lucide-layout-dashboard", "Create new board", () => void this.createDrawing());
   }
 
   /** Live switch: the class is all the stylesheet needs. */
@@ -809,17 +813,17 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     }
     const baseName = drawingName(new Date(), naming);
     let sequence = 1;
-    let path = normalizePath(`${folder ? `${folder}/` : ""}${baseName}.excalidraw`);
+    let path = normalizePath(`${folder ? `${folder}/` : ""}${baseName}.board`);
 
     while (this.app.vault.getAbstractFileByPath(path)) {
       sequence += 1;
-      path = normalizePath(`${folder ? `${folder}/` : ""}${baseName} ${sequence}.excalidraw`);
+      path = normalizePath(`${folder ? `${folder}/` : ""}${baseName} ${sequence}.board`);
     }
 
     const file = await this.app.vault.create(path, JSON.stringify({
       type: "excalidraw",
       version: 2,
-      source: "just-simple-excalidraw",
+      source: "boards",
       ...emptyScene()
     }, null, 2));
     await this.app.workspace.getLeaf("tab").openFile(file);

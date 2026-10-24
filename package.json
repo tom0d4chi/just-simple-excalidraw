@@ -1,8 +1,8 @@
 {
-  "name": "just-simple-excalidraw",
-  "version": "0.1.187",
+  "name": "obsidian-boards",
+  "version": "0.2.0",
   "private": true,
-  "description": "A fully local Excalidraw editor for Obsidian.",
+  "description": "Boards: a local-first drawing board for Obsidian, forked from Just Simple Excalidraw.",
   "author": "David Hurtado",
   "license": "MIT",
   "engines": {

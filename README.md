@@ -1,245 +1,134 @@
-> **Fixed in v0.1.7:** earlier versions could overwrite a drawing when switching
-> files in the same tab. Update to this version, and back up your `.excalidraw`
-> files before upgrading as a precaution.
+# Boards
 
-> **Changed in v0.1.8:** reopening an already open drawing focuses its existing
-> tab instead of creating a second editor. Obsidian's **Split right** and
-> **Split down** commands are native pane actions; when used on a drawing, the
-> temporary duplicate pane closes again to keep a single editor for the file.
+A local-first drawing board for Obsidian: open a board, think with your hands, close it. The file is
+yours, the editor works offline, and nothing leaves the vault.
 
-> **New in v0.1.9:** Just Simple Excalidraw is available on Obsidian mobile,
-> with the same local-first drawing files and autosave behavior as desktop.
+Boards is a fork of [Just Simple Excalidraw](https://github.com/DavidHurtadoAI/just-simple-excalidraw)
+by David Hurtado, which itself stands on the open-source [Excalidraw](https://excalidraw.com/) editor.
+The drawing engine is theirs; the name, the mobile toolbar and the file extension are this fork's.
 
-# Just Simple Excalidraw
+## Why this fork exists
 
-> **Fixed in v0.1.10:** removed an unused upstream Firebase configuration and
-> Google API key from the bundled editor to avoid secret-scanner alerts.
+Just Simple Excalidraw did the hard part well: a small, honest wrapper around the real Excalidraw
+editor, storing portable JSON files in the vault, with no account, no cloud, no feature race. It works,
+and it stayed small on purpose.
 
-An intentionally small, local-first [Excalidraw](https://excalidraw.com/) editor
-for Obsidian that preserves the original's brilliant simplicity. It edits
-portable `.excalidraw` JSON files directly in the vault.
+But it was built for a desk. Its toolbar is Excalidraw's own, and that toolbar carries a desk's
+assumptions: a burger menu, a "more tools" arrow, panels that open off-screen, hit areas sized for a
+mouse. On a phone — which is where a drawing starts when an idea arrives — using it means aiming at a
+pixel twice per stroke.
 
-![Just Simple Excalidraw running in Obsidian](assets/just-simple-excalidraw-screenshot.png)
+Boards is that same engine with the toolbar rebuilt for a hand: a single vertical column pinned to the
+right edge, sized from Obsidian's own mobile chrome so the icons are the ones the eye already knows.
+Everything that is not a drawing tool left the column, and every control answers with a tap you can
+feel.
 
-## Why this plugin exists
+Two changes go further than the toolbar:
 
-Excalidraw is brilliant because it makes drawing feel immediate. Open a canvas,
-think with your hands, and get out of the way. Just Simple Excalidraw brings
-that essential experience to an offline Obsidian vault without turning it into
-another complex workspace.
+- **Files are `.board`**, because a drawing in this vault is a board, not a file format. Existing
+  `.excalidraw` files still open, in the same view, untouched — no migration, no renaming.
+- **The view frames itself on open**, so a file made on another device never lands on blank paper.
 
-The excellent [Obsidian Excalidraw plugin by zsviczian](https://github.com/zsviczian/obsidian-excalidraw-plugin)
-offers extensive integrations and a large feature set for people who need them.
-This plugin has a deliberately different goal: no feature race, no extra
-workflow layer, and no attempt to reproduce hundreds of options. It is for
-people who want the original, focused Excalidraw canvas inside Obsidian.
-
-If Excalidraw is an important part of your work, please consider supporting the
-upstream team with [Excalidraw+](https://plus.excalidraw.com/). This plugin uses
-the open-source editor locally; Excalidraw+ helps sustain the product and adds
-online services for users who need them. If you need the advanced features this
-plugin intentionally leaves out, Excalidraw+ is the better fit—and directly
-supports the people building Excalidraw.
+Nothing else was added on purpose. There is no embedding syntax, no OCR, no AI, no collaboration and no
+export pipeline — not because they are bad ideas, but because they are other projects, and this one is
+about the first thirty seconds of an idea.
 
 ## What it does
 
-- Creates and opens native `.excalidraw` drawings from the command palette or
-  the ribbon.
-- Runs on Obsidian desktop, phones, and tablets.
+- Creates and opens native `.board` boards from the command palette or the ribbon.
+- Opens `.excalidraw` files made before the rename, without converting them.
+- Runs on Obsidian desktop, phones and tablets, with the same local-first behaviour everywhere.
 - Uses the official Excalidraw editor with its standard drawing tools.
-- Saves automatically after a short pause and writes images into the drawing as
-  embedded data, so a drawing stays self-contained.
-- Stops autosave if its file changes outside the open editor, avoiding silent
-  overwrites.
-- Reports malformed drawings without changing the original file.
+- Saves automatically after a short pause, and writes images into the board as embedded data so a
+  board stays self-contained.
+- Stops autosave if the file changes outside the open editor, instead of overwriting silently.
+- Reports malformed files without touching the original.
 - Follows Obsidian's light and dark theme.
-- Starts on the hand tool, so dragging pans the canvas; a double tap and drag
-  selects, and a tap on the selection tool switches to selecting.
-- Replaces Excalidraw's toolbar with one styled like Obsidian's mobile chrome,
-  fixed along the right edge as a vertical column.
-
-It deliberately does **not** add Markdown embedding, OCR, AI, collaboration,
-cloud sync, a drawing library, an account, or an export workflow. Those are
-valuable features in other tools; they are outside this plugin's purpose. The
-lean build also excludes Mermaid-to-Excalidraw conversion, web embeds, and the
-related heavy dependency tree.
+- Frames the drawing when a board opens (setting, on by default).
+- Replaces Excalidraw's toolbar with a vertical column styled after Obsidian's mobile chrome: icons
+  24 px, buttons 42 px, and the column as thick as the platform bar is tall.
+- Reads Excalidraw's own undo and redo buttons, so the history bar only shows what actually exists.
 
 ## Drawing controls
 
-**On touch, one finger acts and two fingers pan and pinch-zoom** — the gesture
-every drawing app on a phone uses, and the one Excalidraw implements for
-multi-touch. The selection tool is therefore the base tool: a drag on empty
-canvas draws a selection marquee, a drag on a shape moves it, and moving the
-canvas never requires switching tool. On desktop the hand tool stays the default,
-since a mouse has no second finger.
+**On touch, one finger acts and two fingers pan and pinch-zoom.** A tap on empty paper drops the
+selection and gives the sheet back to the hand; a tap on a shape selects it and lets the finger drag
+it. The multi-select button arms a marquee that clicks as it sweeps — a tap every 32 px of travel, and
+a heavier one each time a shape is caught.
 
-The floating bar is the core of the app: a single vertical column on the right
-edge holding selection, pen, rectangle, arrow, text, eraser, the colour sheet,
-undo and redo. Line, ellipse, diamond, image and the tool lock sit behind a
-**Más herramientas** button that opens above the core set and collapses as soon
-as a tool is picked — so the column stays short under the thumb. All of it is
-drawn with Obsidian's tokens and Lucide glyphs, with a short spring when the bar
-appears, a bounce on the newly selected tool, and pop-in for revealed tools.
-
-The column is centred on the right edge, nine buttons tall: selection, pen, one
-**Formas** button, text, image, eraser, colour and width, undo and redo. The
-shape button opens a vertical list aligned with its icon — rectangle, diamond,
-ellipse, arrow, line — plus a lock to keep the chosen shape between drawings; it
-wears the icon of the last shape you picked. The image button opens the system
-picker and drops the picture in the middle of the view, selected. The palette
-button opens the appearance menu — stroke, fill, thickness, line style, corners,
-and text size — showing the selected element's own values and applying a pick to
-it and to the next thing you draw.
-
-Excalidraw's own bar is gone. What it held now lives in the column, and appears
-only when the app has something to act on: duplicate and delete for any
-selection, plus edit text for a single text element. They grow into place and collapse
-away again, so the column slides rather than jumping, in both directions — as does
-the shape list on the way out. Every state is also correct with motion turned off,
-since the resting look is a class and the animation only fills in the frames.
+**A closing pinch frames the whole board**, the way Procreate brings the canvas back: bring the fingers
+together and, once everything already fits on screen, the view settles on the fit. Zooming in is never
+touched.
 
 ## Theme
 
-The editor does not carry its own palette. Excalidraw's design variables
-(`--island-bg-color`, `--color-primary`, `--button-*`, `--input-*`,
-`--shadow-island`, `--ui-font`, …) are re-pointed at Obsidian's tokens, so the
-canvas chrome follows whatever the vault uses: light or dark, a community theme,
-the accent colour chosen in Appearance, the interface font and the theme radii.
-
-That includes Excalidraw's own surfaces — its menu, its colour sheet, popovers
-and the canvas context menu — and the canvas background itself, which is the
-theme background rather than Excalidraw's fixed white or near-black.
-
-Because everything is expressed as CSS variables, changing the theme or the
-accent in Obsidian updates the editor live: nothing is captured at load time and
-no colour is hard-coded.
-
-## Canvas coordinates follow the view
-
-Pointer positions are converted with the canvas offset Excalidraw caches when it
-mounts. On mobile a *translation* of the view (the sidebar drawer, the slide-in
-animation of a newly opened leaf) changes neither the canvas size nor the window
-size, so that cached offset was never refreshed: every tap and drag stayed
-shifted by the distance the view had moved, and the selection rectangle was
-drawn away from the finger.
-
-The plugin now watches the canvas position and calls `refresh()` whenever it
-drifts, so coordinates stay aligned after drawer animations, orientation
-changes, keyboard show/hide and Obsidian window resizes.
-
-## Lean build and Obsidian Sync
-
-Community Plugins installs `main.js`, `manifest.json`, and `styles.css` from a
-GitHub release. Since Obsidian Sync Standard cannot sync a plugin file larger
-than 5 MB, this plugin keeps its release `main.js` below that limit.
-
-That constraint is intentional: Just Simple Excalidraw ships a focused editor,
-not every optional Excalidraw subsystem. It includes one embedded Excalifont
-subset covering Latin characters, including Spanish accents. Other scripts and
-the optional Excalidraw font variants fall back to fonts available on the local
-system. No font or code is downloaded at runtime.
-
-### What this trade-off means
-
-To remain small, local, and Sync-friendly, the plugin does not include
-Mermaid-to-Excalidraw conversion, online collaboration, cloud services, an
-account, a library, advanced integrations, or the full set of optional fonts.
-It is intended for focused, offline drawing inside a vault. If those advanced
-capabilities matter to your workflow, use
-[Excalidraw+](https://plus.excalidraw.com/): it provides the online service
-layer and helps fund ongoing Excalidraw development.
-
-## Privacy and permissions
-
-Just Simple Excalidraw is local-first by design.
-
-- **Network:** it makes no runtime network requests. Its one bundled Latin font
-  subset and all editor code are included in the release.
-- **Vault files:** it reads and writes only the `.excalidraw` file you open or
-  create in the vault.
-- **Clipboard:** standard copy and paste actions, including pasting an image,
-  run only after you invoke them. The plugin does not read the clipboard in the
-  background.
-- **Files outside the vault:** only an image explicitly chosen or pasted by you
-  can be read; it is embedded into the active drawing. Images over 10 MiB are
-  rejected.
-- **Browser storage:** the plugin itself does not persist vault data in
-  `localStorage` or `sessionStorage`; the drawing file in your vault is the
-  source of truth. The bundled upstream Excalidraw runtime contains browser
-  storage support for its own optional editor state.
-- **Telemetry, ads, accounts and payments:** none.
+The editor does not carry its own palette. Excalidraw's design variables (`--island-bg-color`,
+`--color-primary`, `--button-*`, `--input-*`, `--shadow-island`, `--ui-font`, …) are re-pointed at
+Obsidian's tokens, so the chrome follows whatever the vault uses: light or dark, a community theme,
+the accent colour chosen in Appearance, the interface font and the theme radii. Because everything is
+expressed as CSS variables, changing the theme updates the editor live.
 
 ## Installation
 
-### Community Plugins
+### Manual
 
-Once accepted into the Obsidian Community directory, install it from
-**Settings → Community plugins** and enable it.
+1. Download `main.js`, `manifest.json` and `styles.css` from the latest release.
+2. Put them in `<vault>/.obsidian/plugins/boards/`.
+3. Reload Obsidian and enable **Boards** in Settings → Community plugins.
 
-### Manual installation
+### BRAT
 
-Download `main.js`, `manifest.json`, and `styles.css` from the matching GitHub
-release. Put those three files in:
+Add `tom0d4chi/obsidian-boards` as a beta plugin in
+[BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
-```text
-<vault>/.obsidian/plugins/just-simple-excalidraw/
-```
+## One board, one editor
 
-Then enable **Just Simple Excalidraw** in Obsidian.
+Each board file is editable in one Obsidian tab at a time; opening one that is already open activates
+its existing tab. This prevents two editors from saving competing versions of the same file.
 
-## Use
+Obsidian's pane menu also shows **Split right** and **Split down** for every tab. Those commands
+belong to Obsidian, not to this plugin, so they cannot be hidden only for boards through the supported
+plugin API. If you use either command on a board, Obsidian may briefly create a new pane; the plugin
+then returns focus to the original board and closes the duplicate pane.
 
-Run **Create new Excalidraw drawing** from the command palette, or use the
-pencil ruler icon in the ribbon. The new file is created in the vault root
-using a timestamped `Drawing YYYY-MM-DD HH.MM.SS.excalidraw` name.
+## Lean build and Obsidian Sync
 
-### One drawing, one editor
+Community Plugins installs `main.js`, `manifest.json` and `styles.css` from a GitHub release. Since
+Obsidian Sync Standard cannot sync a plugin file larger than 5 MB, the release `main.js` stays below
+that limit: one embedded Excalifont subset covering Latin characters, including Spanish accents. Other
+scripts and the optional font variants fall back to fonts available on the local system. No font and
+no code is downloaded at runtime.
 
-Each `.excalidraw` file is editable in one Obsidian tab at a time. Opening a
-drawing that is already open activates its existing tab. This prevents two
-editors from saving competing versions of the same file.
+## Privacy and permissions
 
-Obsidian's pane menu also shows **Split right** and **Split down** for every
-tab. Those commands belong to Obsidian, not to this plugin, so they cannot be
-hidden only for drawings through the supported plugin API. If you use either
-command on a drawing, Obsidian may briefly create a new pane; the plugin then
-returns focus to the original drawing and closes the duplicate pane.
+- **Network:** no runtime requests. The one bundled Latin font subset and all editor code ship in the
+  release.
+- **Vault files:** only the board you open or create, plus the folders you point the plugin at.
+- **Clipboard:** standard copy and paste, including pasting an image, run only when you invoke them.
+- **Files outside the vault:** only an image you explicitly choose or paste; it is embedded into the
+  active board, and images over 10 MiB are rejected.
+- **Browser storage:** the plugin itself keeps no vault data in `localStorage` or `sessionStorage`; the
+  file in your vault is the source of truth.
+- **Telemetry, ads, accounts and payments:** none.
 
 ## Development
 
 Requires Node.js 22.13 or later and npm.
 
-> **Development note**
-> Just Simple Excalidraw was unapologetically vibe-coded: built iteratively
-> with AI assistance, then tested and refined inside a real Obsidian vault.
-
 ```bash
 npm ci
-npm run check
+npm run check   # tests, type-check, production build, release audit
+npm run dev     # watch build
 ```
 
-`npm run check` type-checks the plugin, makes a production bundle without
-Mermaid, embeds the Latin font subset, installs the built plugin into the local
-development vault, and verifies both offline operation and the 5 MB Sync
-Standard file limit.
-
-For an editable development build:
-
-```bash
-npm run dev
-```
-
-## Release
-
-Create a Git tag that exactly matches `manifest.json`'s version (for example,
-`0.1.0`). The release workflow builds and attaches exactly `main.js`,
-`manifest.json`, and `styles.css` to the GitHub release.
+Releases are cut from `main`; `scripts/publish-build.mjs` pushes `main.js`, `manifest.json` and
+`styles.css` to the `build` branch.
 
 ## License and acknowledgements
 
-This project is licensed under the [MIT License](LICENSE). It bundles
-Excalidraw, React, and their production dependencies under their respective
-licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-Excalidraw is an independent open-source project. This plugin is not affiliated
-with or endorsed by Excalidraw.
+MIT, as the upstream project. The drawing engine is [Excalidraw](https://github.com/excalidraw/excalidraw)
+(MIT), the toolbar icons are [Lucide](https://lucide.dev) (ISC), and the fork descends from
+[Just Simple Excalidraw](https://github.com/DavidHurtadoAI/just-simple-excalidraw) by David Hurtado,
+whose restraint made this possible. Boards is not affiliated with or endorsed by Excalidraw; if
+Excalidraw matters to your work, consider supporting the upstream team with
+[Excalidraw+](https://plus.excalidraw.com/).

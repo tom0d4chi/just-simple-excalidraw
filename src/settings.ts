@@ -146,7 +146,7 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
         folder: this.plugin.settings.drawingFolder,
         dateFormat: this.plugin.settings.drawingDateFormat
       });
-      previewEl.setText(`${t("drawingNamePreview")}: ${name}.excalidraw`);
+      previewEl.setText(`${t("drawingNamePreview")}: ${name}.board`);
     };
 
     new Setting(containerEl)
