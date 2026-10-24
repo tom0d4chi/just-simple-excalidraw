@@ -177,6 +177,14 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   let doubleArmed = false;
   let pointerSnap: SnapGesture | null = null;
   let resizeGrab = false;
+  /*
+   * A rotation in progress, so the angle can be caught on its base values. Excalidraw turns an element
+   * by the angle the finger travels around the centre: snapping the angle it would compute means
+   * handing it a finger position that lies exactly on the base, at the same radius.
+   */
+  let rotating: {
+    pointerId: number; cx: number; cy: number; startPointerAngle: number; startAngle: number;
+  } | null = null;
   /* Touch fingers are fat; Excalidraw's touch handles are 28 px. Reach for the nearest one from
      further away by moving the pointer onto its centre, and show which one was taken. */
   const HANDLE_REACH = 22;
@@ -325,6 +333,25 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     Object.defineProperty(event, "clientX", { value: best.x, configurable: true });
     Object.defineProperty(event, "clientY", { value: best.y, configurable: true });
     resizeGrab = true;
+    rotating = null;
+    if (best.name === "rotation") {
+      const state = api.getAppState();
+      const selected = api.getSceneElements().filter(
+        (element) => !element.isDeleted && Object.hasOwn(state.selectedElementIds ?? {}, element.id)
+      );
+      const cx = (frame.left + frame.right) / 2;
+      const cy = (frame.top + frame.bottom) / 2;
+      /* A group turns around its box: the arithmetic below only holds for one element, so it waits. */
+      if (selected.length === 1) {
+        rotating = {
+          pointerId: event.pointerId,
+          cx,
+          cy,
+          startPointerAngle: Math.atan2(best.y - cy, best.x - cx),
+          startAngle: selected[0].angle ?? 0
+        };
+      }
+    }
   };
 
   /*
@@ -994,6 +1021,35 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
   };
 
+  /** Catches an angle on its base values, then hands Excalidraw the finger that would produce it. */
+  const snapRotation = (event: PointerEvent): boolean => {
+    if (!rotating || event.pointerId !== rotating.pointerId) {
+      return false;
+    }
+    const { cx, cy, startAngle, startPointerAngle } = rotating;
+    const dx = event.clientX - cx;
+    const dy = event.clientY - cy;
+    const radius = Math.hypot(dx, dy);
+    if (radius < 8) {
+      return false;
+    }
+    const pointerAngle = Math.atan2(dy, dx);
+    const angle = startAngle + (pointerAngle - startPointerAngle);
+    const step = Math.PI / 4;
+    const target = Math.round(angle / step) * step;
+    /*
+     * A narrow window, 2.6 degrees wide, and nothing else: an angle of 3 degrees is a deliberate angle
+     * and must stay reachable, so the magnet lets go the moment the finger is past it.
+     */
+    if (Math.abs(angle - target) > 0.045) {
+      return false;
+    }
+    const needed = startPointerAngle + (target - startAngle);
+    Object.defineProperty(event, "clientX", { value: cx + Math.cos(needed) * radius, configurable: true });
+    Object.defineProperty(event, "clientY", { value: cy + Math.sin(needed) * radius, configurable: true });
+    return true;
+  };
+
   const onMove = (event: PointerEvent): void => {
     /*
      * A double-tap drag is ours from the moment it becomes a drag: the hand tool must not pan the
@@ -1001,6 +1057,9 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
      */
     if (doubleArmed) {
       event.stopPropagation();
+    }
+    if (snapRotation(event)) {
+      return;
     }
     if (pendingDouble && event.pointerId === pendingDouble.pointerId) {
       const moved = Math.hypot(event.clientX - pendingDouble.x, event.clientY - pendingDouble.y);
@@ -1033,6 +1092,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   };
 
   const onUpBox = (event: PointerEvent): void => {
+    rotating = null;
     if (event.pointerType === "mouse") {
       return;
     }
