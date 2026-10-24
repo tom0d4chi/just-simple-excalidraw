@@ -199,7 +199,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    * Where the grip is drawn, measured from the selection's own box: Excalidraw paints the dashed frame
    * about ten pixels outside that box, so the gap below the circle is what is left of this number.
    */
-  const ROTATION_LIFT = 36;
+  const ROTATION_LIFT = 22;
   const LINEAR_OR_FREE = new Set(["line", "arrow", "freedraw"]);
   const DRAFTING = new Set(["rectangle", "diamond", "ellipse", "line", "arrow", "text", "frame"]);
 
@@ -520,7 +520,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     const gripFrame = selectionFrame();
     if (gripFrame && (gripFrame.canRotate || true)) {
       const [gripX, gripY] = turnPoint(gripFrame, gripFrame.midX, gripFrame.top - gripFrame.out - ROTATION_LIFT);
-      if (Math.hypot(event.clientX - gripX, event.clientY - gripY) <= GRIP / 2 + 4) {
+      /* A tight zone: the resize handle sits a few pixels under it and must keep its own presses. */
+      if (Math.hypot(event.clientX - gripX, event.clientY - gripY) <= 13) {
         gripDown(event, gripFrame);
         resizeGrab = gripTurn.active;
         return;
@@ -599,7 +600,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    * The rotation grip, drawn: a real button-sized circle with an arrow in it, hanging clear of the
    * resize handle below it. The press still goes to the canvas - the circle is never in the way.
    */
-  const GRIP = 30;
+  /*
+   * Wide enough to swallow the grip Excalidraw draws for itself - a 10 px circle about 20 px above the
+   * frame - and shallow enough to stay clear of the dashed line below it.
+   */
+  const GRIP = 32;
   /*
    * The accent, resolved to a colour rather than passed along as a variable: a custom property
    * written as `var(--interactive-accent)` only works if that variable reaches the element, and the
