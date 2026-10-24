@@ -232,7 +232,9 @@
    * that width minus their own padding and border, and the icons follow at the ratio Obsidian uses
    * itself (24 px in a 42 px button).
    */
-  --jse-tool-size: calc(var(--jse-nav-bar, 52px) - var(--jse-pad, 4px) * 2 - 2px);
+  /* Never below the smallest target a finger can be asked to hit: 44 px is the floor, whatever
+     height the platform bar happens to have. */
+  --jse-tool-size: max(44px, calc(var(--jse-nav-bar, 52px) - var(--jse-pad, 4px) * 2 - 2px));
   --jse-icon-size: calc(var(--jse-tool-size) * 0.57);
   position: absolute;
   z-index: 6;
@@ -290,6 +292,15 @@
 
 .jse-tools__pill::-webkit-scrollbar {
   display: none;
+}
+
+/* A column taller than the screen scrolls, it does not shrink: see applyHeight. */
+.jse-tools__pill.is-scroll {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: none;
 }
 
 /*
@@ -484,8 +495,14 @@
   translate: 0 -50%;
   box-sizing: border-box;
   width: max-content;
-  gap: 2px;
+  gap: 8px;
   padding: var(--size-4-1, 4px);
+  /* The strip is as wide as it needs, but never wider than the sheet it floats on: on a narrow
+     phone it scrolls sideways rather than losing its last buttons to the clip. */
+  max-width: calc(100vw - var(--jse-tool-size) - 56px);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
   background-color: transparent;
   border: 0;
   border-radius: var(--touch-size-l, 52px);
@@ -658,7 +675,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   }
   to {
     height: var(--jse-tool-size, 42px);
-    margin-bottom: 2px;
+    margin-bottom: 8px;
     opacity: 1;
   }
 }
@@ -666,7 +683,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 @keyframes jse-tool-out {
   from {
     height: var(--jse-tool-size, 42px);
-    margin-bottom: 2px;
+    margin-bottom: 8px;
     opacity: 1;
   }
   to {
@@ -681,11 +698,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * 2px with it, so the idle column has no leftover seams.
  */
 .jse-root .jse-tools__layer > .jse-tool.clickable-icon {
-  margin-bottom: 2px;
+  margin-bottom: 8px;
 }
 
 .jse-root .jse-tools__layer > .jse-shapes {
-  margin-bottom: 2px;
+  margin-bottom: 8px;
 }
 
 .jse-root .jse-tools__layer > .jse-tool.clickable-icon:last-child,
@@ -732,8 +749,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 
 .jse-appearance__choices {
   display: grid;
-  grid-template-columns: repeat(5, 36px);
-  gap: var(--size-4-1, 4px);
+  grid-template-columns: repeat(5, 44px);
+  gap: var(--size-4-2, 8px);
 }
 
 /*
@@ -746,8 +763,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   border-radius: var(--radius-s, 8px);
@@ -1107,8 +1124,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   display: grid;
   /* Everything in level 2 starts at the left edge: one family, one reading axis. */
   justify-content: start;
-  grid-template-columns: repeat(5, 36px);
-  gap: var(--size-4-1, 4px);
+  grid-template-columns: repeat(5, 44px);
+  gap: var(--size-4-2, 8px);
 }
 
 /*
@@ -1159,7 +1176,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-appearance__grid--single {
-  grid-template-rows: 36px;
+  grid-template-rows: 44px;
 }
 
 /* A labelled cell: the glyph on top, its name under it, still one tappable box. */
@@ -1312,6 +1329,29 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   display: none;
 }
 
+/*
+ * The ring that answers a press on a resize or rotation handle: those targets are 28 px wide and
+ * invisible until the finger is on them, so the press itself says which one it took.
+ */
+.jse-handle-hint {
+  position: absolute;
+  z-index: 5;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 1.5px solid var(--color-primary, var(--interactive-accent, #6965db));
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--color-primary, #6965db) 16%, transparent);
+  box-sizing: border-box;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.jse-handle-hint.is-on {
+  opacity: 1;
+}
+
 .jse-tools__history {
   /* the same metrics as the column, which now come from the band */
   --jse-tool-ink: #3d3d3d;
@@ -1339,7 +1379,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 .jse-tools__history > .jse-tool--collapsible:first-child {
-  margin-bottom: 2px;
+  margin-bottom: 8px;
 }
 
 .jse-tools__history > .jse-tool--collapsible.is-collapsed:first-child {
@@ -1417,7 +1457,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-tools__pen-slot {
   width: var(--jse-tool-size);
   height: var(--jse-tool-size);
-  margin-bottom: 2px;
+  margin-bottom: 8px;
   pointer-events: none;
 }
 
@@ -1466,7 +1506,7 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 .jse-tools__text-slot {
   width: var(--jse-tool-size);
   height: var(--jse-tool-size);
-  margin-bottom: 2px;
+  margin-bottom: 8px;
   pointer-events: none;
 }
 
