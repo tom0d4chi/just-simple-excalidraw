@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.181 - 2026-10-23
+
+- A shape taken lands as HEAVY: full amplitude for 60 ms instead of 32, against a sweep that alternates
+  43 % and 71 %. It was already at full amplitude, so the extra weight comes from lasting twice as long.
+
 ## 0.1.180 - 2026-10-23
 
 - The sweep alternates one tap at 43 % (LIGHT, 50 ms) and one at 71 % (MEDIUM, 43 ms), so a single

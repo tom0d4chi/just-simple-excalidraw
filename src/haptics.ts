@@ -27,7 +27,7 @@ const SPECS: Record<HapticStyle, HapticSpec> = {
   tick: { impact: "LIGHT", duration: 16 },  // soft by amplitude, not by length
   light: { duration: 15 },                  // a button answering a press
   medium: { impact: "MEDIUM", duration: 22 }, // a middle ground, unused for now
-  heavy: { duration: 32 }                   // a shape taken: an event, not a beat
+  heavy: { impact: "HEAVY", duration: 55 }  // a shape taken: full amplitude, and it lasts
 };
 
 interface CapacitorHaptics {
