@@ -144,6 +144,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   // Declared before any hook that could run immediately (the test harness calls effects
   // eagerly), so nothing reaches a ref that has not been initialised yet.
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  /* The interaction handle, so a scene change can put the rotation grip where it belongs. */
+  const interactionRef = useRef<{ syncGrip: () => void } | null>(null);
   const contentUnderScheduled = useRef(false);
   // The popovers are measured, and their box changes long after they open (a family panel
   // animates its height in): one observer keeps the backing in step with the geometry
@@ -518,7 +520,10 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         }
       }
     });
+    interactionRef.current = interaction;
+    interaction.syncGrip();
     return () => {
+      interactionRef.current = null;
       interaction.detach();
       cancelMarqueeRef.current = null;
       if (zoomFrameRef.current !== null) {
@@ -714,6 +719,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
 
     syncHistoryState();
     scheduleContentUnder();
+    interactionRef.current?.syncGrip();
     /*
      * A marquee preview is writing to the scene every time its box grows. The file must not learn
      * about it: the values are put back before the gesture ends, and saving them mid-drag would mean

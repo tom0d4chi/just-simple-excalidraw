@@ -116,6 +116,8 @@ export interface InteractionOptions {
 }
 
 export interface InteractionHandle {
+  /** Puts the rotation grip where the selection is; call it whenever the scene or the view moves. */
+  syncGrip: () => void;
   detach: () => void;
 }
 
@@ -179,30 +181,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
      further away by moving the pointer onto its centre, and show which one was taken. */
   const HANDLE_REACH = 22;
   const TOUCH_HANDLE = 28;
+  /* Where Excalidraw answers for the rotation grip, then where ours is drawn: further up. */
   const ROTATION_GAP = 16;
+  const ROTATION_LIFT = 26;
   const LINEAR_OR_FREE = new Set(["line", "arrow", "freedraw"]);
   const DRAFTING = new Set(["rectangle", "diamond", "ellipse", "line", "arrow", "text", "frame"]);
-
-  /*
-   * A ring where the handle was taken. The target is 28 px wide and invisible until the finger is
-   * already on it; this says which one answered, and fades as soon as the gesture is under way.
-   */
-  let hintTimer = 0;
-  const showHandleHint = (clientX: number, clientY: number, pointerId: number): void => {
-    void pointerId;
-    const box = host.getBoundingClientRect();
-    let ring = host.querySelector<HTMLElement>(".jse-handle-hint");
-    if (!ring) {
-      ring = document.createElement("div");
-      ring.className = "jse-handle-hint";
-      host.appendChild(ring);
-    }
-    ring.style.left = `${clientX - box.left}px`;
-    ring.style.top = `${clientY - box.top}px`;
-    ring.classList.add("is-on");
-    window.clearTimeout(hintTimer);
-    hintTimer = window.setTimeout(() => ring?.classList.remove("is-on"), 280);
-  };
 
   /* Rewrites the coordinates Excalidraw is about to read, so the snap is live. */
   const applySnap = (event: PointerEvent, gesture: SnapGesture): void => {
@@ -222,41 +205,37 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     };
   };
 
-  const onDownHandles = (event: PointerEvent): void => {
-    resizeGrab = false;
-    if (event.pointerType === "mouse") {
-      return;
-    }
+  /*
+   * The frame a selection is grabbed by: the same handles Excalidraw draws, at the same places, in
+   * screen coordinates.
+   *
+   * A touch handle is 28 px whatever the zoom (Excalidraw divides its size by the zoom in scene
+   * units), and it sits a hair outside the box: the margin, then the spacing. All of this is that
+   * arithmetic with the constants folded in, so a point we hand back is the exact centre of the box
+   * Excalidraw will hit-test against.
+   */
+  const selectionFrame = (): {
+    left: number; top: number; right: number; bottom: number;
+    midX: number; midY: number; angle: number; out: number;
+    wide: boolean; tall: boolean; canRotate: boolean;
+  } | null => {
     const state = api.getAppState();
-    const ids = Object.keys(state.selectedElementIds ?? {});
-    if (ids.length === 0 || DRAFTING.has(state.activeTool.type)) {
-      return;
+    if (DRAFTING.has(state.activeTool.type)) {
+      return null;
     }
     const selection = api.getSceneElements().filter((element) => (
       !element.isDeleted && Object.hasOwn(state.selectedElementIds ?? {}, element.id)
     ));
     if (selection.length === 0) {
-      return;
+      return null;
     }
     const bounds = host.getBoundingClientRect();
     const zoom = state.zoom.value || 1;
     const single = selection.length === 1 ? selection[0] : null;
-    const angle = single?.angle ?? 0;
     const left = bounds.left + (Math.min(...selection.map((e) => e.x)) + state.scrollX) * zoom;
     const top = bounds.top + (Math.min(...selection.map((e) => e.y)) + state.scrollY) * zoom;
     const right = bounds.left + (Math.max(...selection.map((e) => e.x + e.width)) + state.scrollX) * zoom;
     const bottom = bounds.top + (Math.max(...selection.map((e) => e.y + e.height)) + state.scrollY) * zoom;
-    const midX = (left + right) / 2;
-    const midY = (top + bottom) / 2;
-
-    /*
-     * The same handles Excalidraw draws, at the same places, in screen coordinates.
-     *
-     * A touch handle is 28 px whatever the zoom (Excalidraw divides its size by the zoom in scene
-     * units), and it sits a hair outside the box: the margin, then the spacing. Everything below is
-     * that arithmetic with the constants folded in, so the point we move the finger to is the exact
-     * centre of the box Excalidraw will hit-test against.
-     */
     const spacing = single && single.type === "image" ? 0 : 2;
     const margin = single
       ? single.type === "image"
@@ -265,64 +244,117 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
           ? 10
           : 2
       : 2;
-    const out = spacing + margin;
-    const width = right - left;
-    const height = bottom - top;
-    /* Excalidraw only offers the four side handles above a certain size (5 mouse handles). */
-    const wide = width > 40;
-    const tall = height > 40;
-    /* No rotation for what cannot turn, and none at all for a multiple selection. */
-    const canRotate = single !== null
-      && !single.locked
-      && single.type !== "frame"
-      && single.type !== "magicframe";
+    return {
+      left, top, right, bottom,
+      midX: (left + right) / 2,
+      midY: (top + bottom) / 2,
+      angle: single?.angle ?? 0,
+      out: spacing + margin,
+      wide: right - left > 40,
+      tall: bottom - top > 40,
+      canRotate: single !== null
+        && !single.locked
+        && single.type !== "frame"
+        && single.type !== "magicframe"
+    };
+  };
 
-    const points: { x: number; y: number; name: string }[] = [
-      { x: left - out, y: top - out, name: "nw" },
-      { x: right + out, y: top - out, name: "ne" },
-      { x: left - out, y: bottom + out, name: "sw" },
-      { x: right + out, y: bottom + out, name: "se" }
+  /* Turns a point of the frame around the frame's centre, so a tilted shape keeps its own grips. */
+  const turnPoint = (frame: NonNullable<ReturnType<typeof selectionFrame>>, x: number, y: number): [number, number] => {
+    if (frame.angle === 0) {
+      return [x, y];
+    }
+    const cx = (frame.left + frame.right) / 2;
+    const cy = (frame.top + frame.bottom) / 2;
+    const cos = Math.cos(frame.angle);
+    const sin = Math.sin(frame.angle);
+    return [
+      cx + (x - cx) * cos - (y - cy) * sin,
+      cy + (x - cx) * sin + (y - cy) * cos
     ];
-    if (wide) {
-      points.push({ x: midX, y: top - out, name: "n" });
-      points.push({ x: midX, y: bottom + out, name: "s" });
-    }
-    if (tall) {
-      points.push({ x: left - out, y: midY, name: "w" });
-      points.push({ x: right + out, y: midY, name: "e" });
-    }
-    if (canRotate) {
-      /* The rotation grip hangs 16 px above the top edge, past the handle itself. */
-      points.push({ x: midX, y: top - out - ROTATION_GAP, name: "rotation" });
-    }
+  };
 
-    /* A turned element keeps its handles on its own frame, not on the upright box. */
-    const cx = (left + right) / 2;
-    const cy = (top + bottom) / 2;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const turned = points.map((point) => ({
-      name: point.name,
-      x: angle === 0 ? point.x : cx + (point.x - cx) * cos - (point.y - cy) * sin,
-      y: angle === 0 ? point.y : cy + (point.x - cx) * sin + (point.y - cy) * cos
-    }));
+  const onDownHandles = (event: PointerEvent): void => {
+    resizeGrab = false;
+    if (event.pointerType === "mouse") {
+      return;
+    }
+    const state = api.getAppState();
+    if (Object.keys(state.selectedElementIds ?? {}).length === 0) {
+      return;
+    }
+    const frame = selectionFrame();
+    if (!frame) {
+      return;
+    }
+    const points: { x: number; y: number; name: string; penalty: number }[] = [
+      { x: frame.left - frame.out, y: frame.top - frame.out, name: "nw", penalty: 0 },
+      { x: frame.right + frame.out, y: frame.top - frame.out, name: "ne", penalty: 0 },
+      { x: frame.left - frame.out, y: frame.bottom + frame.out, name: "sw", penalty: 0 },
+      { x: frame.right + frame.out, y: frame.bottom + frame.out, name: "se", penalty: 0 }
+    ];
+    if (frame.wide) {
+      points.push({ x: frame.midX, y: frame.top - frame.out, name: "n", penalty: 0 });
+      points.push({ x: frame.midX, y: frame.bottom + frame.out, name: "s", penalty: 0 });
+    }
+    if (frame.tall) {
+      points.push({ x: frame.left - frame.out, y: frame.midY, name: "w", penalty: 0 });
+      points.push({ x: frame.right + frame.out, y: frame.midY, name: "e", penalty: 0 });
+    }
+    if (frame.canRotate) {
+      /*
+       * The rotation grip is drawn higher than the point Excalidraw answers to, and it is pushed
+       * back in the running: the grip right above the top edge is the resize one, and a finger
+       * coming from above must not take it away from the hand aiming at the edge.
+       */
+      points.push({ x: frame.midX, y: frame.top - frame.out - ROTATION_GAP, name: "rotation", penalty: 6 });
+    }
 
     let best: { x: number; y: number; name: string } | null = null;
-    let bestDistance = Infinity;
-    for (const point of turned) {
-      const distance = Math.hypot(event.clientX - point.x, event.clientY - point.y);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = point;
+    let bestScore = Infinity;
+    for (const point of points) {
+      const [x, y] = turnPoint(frame, point.x, point.y);
+      const distance = Math.hypot(event.clientX - x, event.clientY - y);
+      const score = distance + point.penalty;
+      if (score < bestScore) {
+        bestScore = score;
+        best = { x, y, name: point.name };
       }
     }
-    if (!best || bestDistance > HANDLE_REACH) {
+    if (!best || bestScore > HANDLE_REACH + 6) {
       return;
     }
     Object.defineProperty(event, "clientX", { value: best.x, configurable: true });
     Object.defineProperty(event, "clientY", { value: best.y, configurable: true });
     resizeGrab = true;
-    showHandleHint(best.x, best.y, event.pointerId);
+  };
+
+  /*
+   * The rotation grip, drawn: a real button-sized circle with an arrow in it, hanging clear of the
+   * resize handle below it. The press still goes to the canvas - the circle is never in the way.
+   */
+  const GRIP = 30;
+  const syncGrip = (): void => {
+    const frame = selectionFrame();
+    let grip = host.querySelector<HTMLElement>(".jse-rotate-grip");
+    if (!frame || !frame.canRotate) {
+      grip?.remove();
+      return;
+    }
+    const [x, y] = turnPoint(frame, frame.midX, frame.top - frame.out - ROTATION_LIFT);
+    const box = host.getBoundingClientRect();
+    if (!grip) {
+      grip = document.createElement("div");
+      grip.className = "jse-rotate-grip";
+      grip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+        + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
+      host.appendChild(grip);
+    }
+    grip.style.left = `${x - box.left}px`;
+    grip.style.top = `${y - box.top}px`;
+    grip.style.width = `${GRIP}px`;
+    grip.style.height = `${GRIP}px`;
   };
 
   /* Called first in the capture phase, before the gesture handlers below. */
@@ -1012,8 +1044,16 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   host.addEventListener("pointerup", onUpDouble, true);
   host.addEventListener("pointercancel", onUpDouble, true);
 
+  /*
+   * The grip follows the scene, and the scene moves for a hundred reasons - a pan, a zoom, an undo,
+   * a shape dragged by Excalidraw itself. Watching it cheaply beats subscribing to each of them.
+   */
+  const gripTimer = window.setInterval(syncGrip, 150);
+
   return {
+    syncGrip,
     detach: () => {
+      host.querySelector(".jse-rotate-grip")?.remove();
       host.removeEventListener("pointerdown", onDownHandles, true);
       host.removeEventListener("pointerdown", onDownSnap, true);
       host.removeEventListener("pointermove", onMoveSnap, true);
@@ -1034,6 +1074,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       host.removeEventListener("pointercancel", onPinchUp, true);
       host.removeEventListener("pointerup", onUpDouble, true);
       host.removeEventListener("pointercancel", onUpDouble, true);
+      window.clearInterval(gripTimer);
       clearBox();
       pointerSnap = null;
       options.onMarqueeCancel?.(null);

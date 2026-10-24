@@ -1338,26 +1338,37 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
 }
 
 /*
- * The ring that answers a press on a resize or rotation handle: those targets are 28 px wide and
- * invisible until the finger is on them, so the press itself says which one it took.
+ * The rotation grip: a real circle with an arrow in it, hanging above the selection, clear of the
+ * resize handle right below it. It never takes the press - the finger goes through to the canvas,
+ * where the handle itself lives.
  */
-.jse-handle-hint {
-  position: absolute;
-  z-index: 5;
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
-  border: 1.5px solid var(--color-primary, var(--interactive-accent, #6965db));
-  border-radius: 50%;
-  background-color: color-mix(in srgb, var(--color-primary, #6965db) 16%, transparent);
-  box-sizing: border-box;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 120ms ease;
+/*
+ * Excalidraw paints the frame around a selected shape with the `--color-selection` it reads off its
+ * own container, and its own purple is not this theme's accent: the frame is the accent here.
+ */
+.jse-root .excalidraw {
+  --color-selection: var(--interactive-accent);
 }
 
-.jse-handle-hint.is-on {
-  opacity: 1;
+.jse-rotate-grip {
+  position: absolute;
+  z-index: 6;
+  translate: -50% -50%;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1.5px solid var(--interactive-accent, var(--color-primary, #6965db));
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--interactive-accent, #6965db) 18%, transparent);
+  color: var(--interactive-accent, var(--color-primary, #6965db));
+  box-shadow: 0 1px 4px rgb(0 0 0 / 14%);
+  pointer-events: none;
+}
+
+.jse-rotate-grip svg {
+  display: block;
+  width: 15px;
+  height: 15px;
 }
 
 .jse-tools__history {
