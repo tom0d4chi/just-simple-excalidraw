@@ -252,10 +252,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       out: spacing + margin,
       wide: right - left > 40,
       tall: bottom - top > 40,
-      canRotate: single !== null
-        && !single.locked
-        && single.type !== "frame"
-        && single.type !== "magicframe"
+      /* A group turns as a whole, around the centre of its box: one more reason to keep the grip. */
+      canRotate: (single === null || (!single.locked && single.type !== "frame" && single.type !== "magicframe"))
     };
   };
 
@@ -335,6 +333,15 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    */
   const GRIP = 30;
   const syncGrip = (): void => {
+    /*
+     * The frame around a selected shape: Excalidraw reads `--color-selection` off its own container,
+     * set inline because a stylesheet rule loses to whatever the host theme declares further up.
+     */
+    for (const container of host.querySelectorAll<HTMLElement>(".excalidraw")) {
+      if (container.style.getPropertyValue("--color-selection") === "") {
+        container.style.setProperty("--color-selection", "var(--interactive-accent)");
+      }
+    }
     const frame = selectionFrame();
     let grip = host.querySelector<HTMLElement>(".jse-rotate-grip");
     if (!frame || !frame.canRotate) {

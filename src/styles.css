@@ -1357,11 +1357,15 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  border: 1.5px solid var(--interactive-accent, var(--color-primary, #6965db));
+  /*
+   * Opaque white, no border: the circle also covers the grip Excalidraw draws for itself, which
+   * cannot be removed - only hidden. A soft shadow keeps it legible on a white sheet.
+   */
+  border: 0;
   border-radius: 50%;
-  background-color: color-mix(in srgb, var(--interactive-accent, #6965db) 18%, transparent);
+  background-color: var(--background-primary, #fff);
   color: var(--interactive-accent, var(--color-primary, #6965db));
-  box-shadow: 0 1px 4px rgb(0 0 0 / 14%);
+  box-shadow: 0 1px 5px rgb(0 0 0 / 18%);
   pointer-events: none;
 }
 
