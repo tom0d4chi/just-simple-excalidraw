@@ -82,6 +82,11 @@ export interface InteractionOptions {
   onMarqueeTick?: (ticks: number) => void;
   /** How many shapes the box just took: an arrival, heavier than the ticking of the sweep. */
   onMarqueeCatch?: (caught: number) => void;
+  /**
+   * A preview is writing to the scene: the owner must not save those writes. They are undone before
+   * the gesture ends, and the file is only ever written with the values it already had.
+   */
+  onPreviewChange?: (active: boolean) => void;
   /** Lets the owner cancel a marquee in progress (used on a tool change). */
   onMarqueeCancel?: (cancel: (() => void) | null) => void;
   /**
@@ -456,10 +461,23 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   let interactiveCanvas: HTMLElement | null = null;
   let boxStart: { x: number; y: number; pointerId: number } | null = null;
   let box: HTMLDivElement | null = null;
-  // Elements already caught by the growing marquee are tinted in the accent colour,
-  // as a preview of what the release will select. It is an overlay: the shapes
-  // themselves are never touched, so no accent colour can end up in the file.
-  const preview = new Map<string, HTMLElement>();
+  /*
+   * What the marquee has caught is shown by tinting the shapes themselves, not by drawing boxes over
+   * them: an added box says "look at this rectangle", a changed shape says "this one is being taken".
+   * Every element touched keeps its original values here, and they are put back the moment the
+   * gesture ends - whatever ends it - so no accent colour can ever reach the file.
+   */
+  const tinted = new Map<string, { strokeColor: string; backgroundColor: string; opacity: number; version: number; versionNonce: number }>();
+  const accent = (): string => {
+    const value = typeof getComputedStyle === "function"
+      ? getComputedStyle(document.body).getPropertyValue("--interactive-accent").trim()
+      : "";
+    return /^#[0-9a-f]{3,8}$/i.test(value) ? value : "#6965db";
+  };
+  const tintable = (type: string): boolean => (
+    type === "rectangle" || type === "diamond" || type === "ellipse" || type === "line"
+    || type === "arrow" || type === "freedraw" || type === "text"
+  );
   /*
    * The tick is owed for distance, not for content: what the hand feels is how fast the box is
    * travelling, and a fixed step makes the tempo exactly proportional to that speed.
@@ -470,16 +488,6 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   let lastTickAt = 0;
   // What the gesture has already taken from the drawing: an arrival is announced once.
   let caught = new Set<string>();
-  let previewLayer: HTMLDivElement | null = null;
-  const layer = (): HTMLDivElement => {
-    if (!previewLayer || !previewLayer.isConnected) {
-      previewLayer = document.createElement("div");
-      previewLayer.className = "jse-preselect-layer";
-      host.appendChild(previewLayer);
-    }
-    return previewLayer;
-  };
-
   const drawBox = (event: PointerEvent): void => {
     if (!boxStart || event.pointerId !== boxStart.pointerId || !box) {
       return;
@@ -569,37 +577,94 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     if (arrived > 0) {
       options.onMarqueeCatch?.(arrived);
     }
-    for (const [id, node] of preview) {
-      if (!seen.has(id)) {
-        node.remove();
-        preview.delete(id);
+    /* Only when the set of caught shapes changed: the tint is a scene write, not a paint. */
+    let changed = false;
+    for (const id of seen) {
+      if (!tinted.has(id)) {
+        changed = true;
+        break;
       }
     }
-    for (const rect of live) {
-      let node = preview.get(rect.id);
-      if (!node) {
-        node = document.createElement("div");
-        node.className = "jse-preselect";
-        // In a clipping layer of the container, never inside the marquee: nested
-        // there, the box's own position would be added to every ghost and they
-        // would follow the finger. The layer cannot grow the page either.
-        layer().appendChild(node);
-        preview.set(rect.id, node);
+    if (!changed) {
+      for (const id of tinted.keys()) {
+        if (!seen.has(id)) {
+          changed = true;
+          break;
+        }
       }
-      node.style.left = `${rect.left}px`;
-      node.style.top = `${rect.top}px`;
-      node.style.width = `${rect.width}px`;
-      node.style.height = `${rect.height}px`;
+    }
+    if (changed) {
+      applyTint(seen);
     }
   };
 
-  const clearPreview = (): void => {
-    for (const node of preview.values()) {
-      node.remove();
+  /*
+   * The tint, and the way back. Both go through updateScene marked "never", so the file's history
+   * never learns about a gesture that changed nothing in the end.
+   */
+  const applyTint = (caughtIds: Set<string>): void => {
+    const elements = api.getSceneElements();
+    const colour = accent();
+    const next = elements.map((element) => {
+      const isCaught = caughtIds.has(element.id);
+      const saved = tinted.get(element.id);
+      if (isCaught) {
+        if (!saved) {
+          tinted.set(element.id, {
+            strokeColor: element.strokeColor,
+            backgroundColor: element.backgroundColor,
+            opacity: element.opacity,
+            version: element.version,
+            versionNonce: element.versionNonce
+          });
+        }
+        const stamp = Date.now() % 100000;
+        return tintable(element.type)
+          ? { ...element, strokeColor: colour, version: element.version + 1, versionNonce: stamp }
+          : { ...element, opacity: 45, version: element.version + 1, versionNonce: stamp };
+      }
+      if (!saved) {
+        return element;
+      }
+      tinted.delete(element.id);
+      return {
+        ...element,
+        strokeColor: saved.strokeColor,
+        backgroundColor: saved.backgroundColor,
+        opacity: saved.opacity,
+        version: saved.version,
+        versionNonce: saved.versionNonce
+      };
+    });
+    options.onPreviewChange?.(tinted.size > 0);
+    api.updateScene({ elements: next as never, captureUpdate: "NEVER" as never });
+  };
+
+  const restoreTint = (): void => {
+    if (tinted.size === 0) {
+      return;
     }
-    preview.clear();
-    previewLayer?.remove();
-    previewLayer = null;
+    const elements = api.getSceneElements().map((element) => {
+      const saved = tinted.get(element.id);
+      if (!saved) {
+        return element;
+      }
+      return {
+        ...element,
+        strokeColor: saved.strokeColor,
+        backgroundColor: saved.backgroundColor,
+        opacity: saved.opacity,
+        version: saved.version,
+        versionNonce: saved.versionNonce
+      };
+    });
+    tinted.clear();
+    api.updateScene({ elements: elements as never, captureUpdate: "NEVER" as never });
+    options.onPreviewChange?.(false);
+  };
+
+  const clearPreview = (): void => {
+    restoreTint();
   };
 
   const startBox = (event: PointerEvent): void => {

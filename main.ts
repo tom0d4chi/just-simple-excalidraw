@@ -182,6 +182,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   const [canUndo, setCanUndo] = useState(false);
   const canUndoRef = useRef(false);
   const manualSelectionRef = useRef(false);
+  /* True while a marquee is tinting shapes: those writes are a preview and must not be saved. */
+  const previewingRef = useRef(false);
   const selectionArmedRef = useRef(false);
   const cancelMarqueeRef = useRef<(() => void) | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
@@ -277,6 +279,9 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         }
       },
       /* A shape joining the box is not more of the same: it is an event, and it lands heavier. */
+      onPreviewChange: (active) => {
+        previewingRef.current = active;
+      },
       onMarqueeCatch: (caught) => {
         for (let index = 0; index < Math.min(caught, 3); index += 1) {
           haptic("heavy");
@@ -592,7 +597,14 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
 
     syncHistoryState();
     scheduleContentUnder();
-    props.onChange?.(elements, appState, files);
+    /*
+     * A marquee preview is writing to the scene every time its box grows. The file must not learn
+     * about it: the values are put back before the gesture ends, and saving them mid-drag would mean
+     * writing, then rewriting, a board the user never changed.
+     */
+    if (!previewingRef.current) {
+      props.onChange?.(elements, appState, files);
+    }
   }, [props.onChange, syncHistoryState]);
 
   useEffect(() => {
