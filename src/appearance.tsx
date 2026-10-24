@@ -11,10 +11,10 @@ import { rowDelay } from "./motion";
 /** Excalidraw stores rounded corners as `roundness: { type: 3 }` on shapes. */
 const ROUND = 3;
 
-/* The values panel is a grid of 36 px cells, 4 px apart. Everything the mark needs to place
+/* The values panel is a grid of 44 px cells, 8 px apart. Everything the mark needs to place
    itself is derived from those two numbers and the height of the label above it. */
-const CELL = 36;
-const GAP = 4;
+const CELL = 44;
+const GAP = 8;
 /** Every panel carries its property name on a row this tall, above the values. */
 const LABEL_HEIGHT = 20;
 
