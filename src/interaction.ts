@@ -199,7 +199,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    * Where the grip is drawn, measured from the selection's own box: Excalidraw paints the dashed frame
    * about ten pixels outside that box, so the gap below the circle is what is left of this number.
    */
-  const ROTATION_LIFT = 22;
+  const ROTATION_LIFT = 26;
   const LINEAR_OR_FREE = new Set(["line", "arrow", "freedraw"]);
   const DRAFTING = new Set(["rectangle", "diamond", "ellipse", "line", "arrow", "text", "frame"]);
 
