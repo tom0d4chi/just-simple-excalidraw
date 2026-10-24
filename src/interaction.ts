@@ -342,11 +342,23 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   const accentColor = (): string => {
     if (!accentProbe || !accentProbe.isConnected) {
       accentProbe = document.createElement("span");
-      accentProbe.style.cssText = "position:absolute;left:-9999px;top:0;pointer-events:none;"
-        + "color:var(--interactive-accent, var(--color-accent, var(--text-accent, #6965db)));";
-      document.body.appendChild(accentProbe);
+      /*
+       * Inside the plugin's own root, not on the document: the accent Obsidian defines lives there,
+       * and `--jse-accent` is the one chain the stylesheet already resolved for this theme.
+       */
+      accentProbe.style.cssText = "position:absolute;left:-9999px;top:0;width:0;height:0;pointer-events:none;"
+        + "color:var(--jse-accent, var(--interactive-accent, var(--color-accent, var(--text-accent, #6965db))));";
+      host.appendChild(accentProbe);
     }
-    return window.getComputedStyle(accentProbe).color || "#6965db";
+    const value = window.getComputedStyle(accentProbe).color;
+    /*
+     * Black is what a browser reports when the chain never reached a colour. It is never the right
+     * answer here, so the plugin's own violet takes over instead of painting the frame in ink.
+     */
+    if (!value || value === "rgb(0, 0, 0)" || value === "transparent") {
+      return "#6965db";
+    }
+    return value;
   };
 
   const syncGrip = (): void => {
