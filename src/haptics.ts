@@ -15,9 +15,14 @@
 
 export type HapticStyle = "tick" | "light" | "medium" | "heavy";
 
-type HapticSpec =
-  | { impact: "LIGHT" | "MEDIUM" | "HEAVY"; duration: number }
-  | { duration: number };
+type HapticSpec = {
+  impact?: "LIGHT" | "MEDIUM" | "HEAVY";
+  duration: number;
+  /** Pulses played in sequence: at equal amplitude, two beats read heavier than one long one. */
+  pulses?: number;
+  /** Silence between two pulses, long enough that they are felt as two. */
+  gap?: number;
+};
 
 /*
  * `duration` is what the vibration API receives when the impact styles are not available: the same
@@ -27,7 +32,11 @@ const SPECS: Record<HapticStyle, HapticSpec> = {
   tick: { impact: "LIGHT", duration: 16 },  // soft by amplitude, not by length
   light: { duration: 15 },                  // a button answering a press
   medium: { impact: "MEDIUM", duration: 22 }, // a middle ground, unused for now
-  heavy: { impact: "HEAVY", duration: 55 }  // a shape taken: full amplitude, and it lasts
+  /*
+   * A shape taken is two beats, not one long one: length at full amplitude turns into a hum, and the
+   * finger reads a hum as softer than a knock. Two 30 ms pulses, 38 ms apart, read as weight.
+   */
+  heavy: { duration: 30, pulses: 2, gap: 38 }
 };
 
 interface CapacitorHaptics {
@@ -54,9 +63,17 @@ export function describeHaptics(): string {
 
 export function haptic(style: HapticStyle = "light"): void {
   const spec = SPECS[style];
+  const pulses = Math.max(1, spec.pulses ?? 1);
+  for (let index = 1; index < pulses; index += 1) {
+    window.setTimeout(() => pulse(style, spec), (spec.gap ?? 40) * index);
+  }
+  pulse(style, spec);
+}
+
+function pulse(style: HapticStyle, spec: HapticSpec): void {
   const capacitor = (globalThis as { Capacitor?: { Plugins?: { Haptics?: CapacitorHaptics } } }).Capacitor;
   const plugin = capacitor?.Plugins?.Haptics;
-  if (plugin && "impact" in spec && spec.impact && plugin.impact) {
+  if (plugin && spec.impact && plugin.impact) {
     try {
       void plugin.impact({ style: spec.impact });
       observer?.(style, "capacitor");

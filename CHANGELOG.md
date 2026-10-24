@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.182 - 2026-10-23
+
+- A shape taken is two beats now - 30 ms at full amplitude, 38 ms of silence, 30 ms again - instead of
+  one 60 ms pulse. Lengthening a pulse at maximum amplitude turns it into a hum, and a hum reads as
+  softer than a knock: the finger judges the onset, and a long tail only blurs it.
+
 ## 0.1.181 - 2026-10-23
 
 - A shape taken lands as HEAVY: full amplitude for 60 ms instead of 32, against a sweep that alternates
