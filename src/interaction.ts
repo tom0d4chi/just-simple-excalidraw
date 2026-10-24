@@ -193,7 +193,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   const TOUCH_HANDLE = 28;
   /* Where Excalidraw answers for the rotation grip, then where ours is drawn: further up. */
   const ROTATION_GAP = 16;
-  const ROTATION_LIFT = 26;
+  /*
+   * Where the grip is drawn, measured from the selection's own box: Excalidraw paints the dashed frame
+   * about ten pixels outside that box, so the gap below the circle is what is left of this number.
+   */
+  const ROTATION_LIFT = 36;
   const LINEAR_OR_FREE = new Set(["line", "arrow", "freedraw"]);
   const DRAFTING = new Set(["rectangle", "diamond", "ellipse", "line", "arrow", "text", "frame"]);
 
@@ -242,10 +246,25 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     const bounds = host.getBoundingClientRect();
     const zoom = state.zoom.value || 1;
     const single = selection.length === 1 ? selection[0] : null;
-    const left = bounds.left + (Math.min(...selection.map((e) => e.x)) + state.scrollX) * zoom;
-    const top = bounds.top + (Math.min(...selection.map((e) => e.y)) + state.scrollY) * zoom;
-    const right = bounds.left + (Math.max(...selection.map((e) => e.x + e.width)) + state.scrollX) * zoom;
-    const bottom = bounds.top + (Math.max(...selection.map((e) => e.y + e.height)) + state.scrollY) * zoom;
+    /*
+     * The box the selection is drawn in, for shapes that may be turned: the corners of a turned shape
+     * reach past the box it was drawn in, and a grip placed on the upright box then lands inside the
+     * frame the user sees. Each shape contributes its turned footprint, and the frame is the union.
+     */
+    const footprint = selection.map((element) => {
+      const angle = element.angle ?? 0;
+      const halfWidth = Math.abs(element.width) / 2;
+      const halfHeight = Math.abs(element.height) / 2;
+      const centreX = element.x + element.width / 2;
+      const centreY = element.y + element.height / 2;
+      const reachX = Math.abs(halfWidth * Math.cos(angle)) + Math.abs(halfHeight * Math.sin(angle));
+      const reachY = Math.abs(halfWidth * Math.sin(angle)) + Math.abs(halfHeight * Math.cos(angle));
+      return { left: centreX - reachX, top: centreY - reachY, right: centreX + reachX, bottom: centreY + reachY };
+    });
+    const left = bounds.left + (Math.min(...footprint.map((box) => box.left)) + state.scrollX) * zoom;
+    const top = bounds.top + (Math.min(...footprint.map((box) => box.top)) + state.scrollY) * zoom;
+    const right = bounds.left + (Math.max(...footprint.map((box) => box.right)) + state.scrollX) * zoom;
+    const bottom = bounds.top + (Math.max(...footprint.map((box) => box.bottom)) + state.scrollY) * zoom;
     const spacing = single && single.type === "image" ? 0 : 2;
     const margin = single
       ? single.type === "image"
