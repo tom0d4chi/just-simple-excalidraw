@@ -1369,10 +1369,8 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   background-color: var(--background-primary, #fff);
   color: var(--jse-accent, var(--interactive-accent, #6965db));
   box-shadow: 0 1px 5px rgb(0 0 0 / 18%);
-  /* It is the target now: the press lands on the circle, not on the canvas under it. */
-  pointer-events: auto;
-  touch-action: none;
-  cursor: grab;
+  /* Drawn, never touched: the press is caught on the canvas, where Obsidian does not look for swipes. */
+  pointer-events: none;
 }
 
 .jse-rotate-grip svg {
