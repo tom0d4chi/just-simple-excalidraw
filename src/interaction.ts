@@ -251,7 +251,14 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
      * reach past the box it was drawn in, and a grip placed on the upright box then lands inside the
      * frame the user sees. Each shape contributes its turned footprint, and the frame is the union.
      */
-    const footprint = selection.map((element) => {
+    /*
+     * One shape keeps its own box, so the grip turns with it and the distance to the resize handles
+     * never changes. Several shapes have no common frame of their own: their frame is the upright box
+     * that holds every turned footprint, which is what Excalidraw draws.
+     */
+    const footprint = selection.length === 1
+      ? [{ left: selection[0].x, top: selection[0].y, right: selection[0].x + selection[0].width, bottom: selection[0].y + selection[0].height }]
+      : selection.map((element) => {
       const angle = element.angle ?? 0;
       const halfWidth = Math.abs(element.width) / 2;
       const halfHeight = Math.abs(element.height) / 2;
