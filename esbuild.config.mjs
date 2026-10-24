@@ -5,7 +5,7 @@ import { builtinModules } from "node:module";
 import { fileURLToPath } from "node:url";
 import { readFile, writeFile } from "node:fs/promises";
 import { removeUnusedFirebaseConfig } from "./scripts/excalidraw-environment.mjs";
-import { hideNativeRotationGrip } from "./scripts/excalidraw-patches.mjs";
+import { excalidrawGrips } from "./scripts/excalidraw-patches.mjs";
 
 const production = process.argv[2] === "production";
 const projectDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -26,7 +26,7 @@ const context = await esbuild.context({
     "@excalidraw/excalidraw": excalidrawProductionEntry,
     "@excalidraw/mermaid-to-excalidraw": path.join(projectDirectory, "src", "mermaid-disabled.ts")
   },
-  plugins: [hideNativeRotationGrip, {
+  plugins: [excalidrawGrips, {
     name: "remove-excalidraw-dynamic-error-constructor",
     setup(build) {
       build.onLoad({ filter: /chunk-ZUYEQ4TG\.js$/ }, async (args) => ({
