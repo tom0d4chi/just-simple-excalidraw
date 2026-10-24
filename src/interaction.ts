@@ -607,26 +607,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
     tap = id ? null : { pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: Date.now() };
     if (id) {
-      /*
-       * With several shapes held, a tap adds or takes away instead of starting over: the only way
-       * to build a selection by hand, one shape at a time, without a modifier key a finger does not
-       * have. A tap on the last shape held alone keeps it - letting go is what empty paper is for.
-       */
-      const held = state.selectedElementIds ?? {};
-      const heldCount = Object.keys(held).length;
-      if (Object.hasOwn(held, id)) {
-        /* Tap on something already held: it lets go - unless it is the only thing held. */
-        if (heldCount > 1) {
-          const next: Record<string, boolean> = { ...held };
-          delete next[id];
-          api.updateScene({
-            appState: { selectedElementIds: next as never },
-            captureUpdate: "NEVER" as never
-          });
-        }
-      } else {
+      /* A tap takes one shape, alone: adding to a selection is the marquee's business, not the finger's. */
+      if (!Object.hasOwn(state.selectedElementIds ?? {}, id)) {
         api.updateScene({
-          appState: { selectedElementIds: { ...held, [id]: true } as never },
+          appState: { selectedElementIds: { [id]: true } as never },
           captureUpdate: "NEVER" as never
         });
       }
