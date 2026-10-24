@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.183 - 2026-10-23
+
+- A shape taken is one knock again: a single 38 ms pulse at full amplitude. Two beats read as two
+  events, and one event per shape is what this is.
+
 ## 0.1.182 - 2026-10-23
 
 - A shape taken is two beats now - 30 ms at full amplitude, 38 ms of silence, 30 ms again - instead of

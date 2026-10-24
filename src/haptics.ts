@@ -33,10 +33,10 @@ const SPECS: Record<HapticStyle, HapticSpec> = {
   light: { duration: 15 },                  // a button answering a press
   medium: { impact: "MEDIUM", duration: 22 }, // a middle ground, unused for now
   /*
-   * A shape taken is two beats, not one long one: length at full amplitude turns into a hum, and the
-   * finger reads a hum as softer than a knock. Two 30 ms pulses, 38 ms apart, read as weight.
+   * A shape taken: one knock. At full amplitude the length is what turns a knock into a hum, so it
+   * stays short - long enough to land, short enough to keep its edge.
    */
-  heavy: { duration: 30, pulses: 2, gap: 38 }
+  heavy: { duration: 38 }
 };
 
 interface CapacitorHaptics {
