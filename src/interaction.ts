@@ -143,6 +143,13 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
 
   let beforeGesture = new Map<string, number>();
   let lastTap: { at: number; x: number; y: number } | null = null;
+  /*
+   * A second tap is ambiguous until the finger moves: it is either a double tap (zoom) or the start
+   * of a double-tap drag (marquee). Nothing is decided on the way down - the zoom waits for the
+   * finger to lift without travelling.
+   */
+  let pendingDouble: { scene: { x: number; y: number }; x: number; y: number; pointerId: number } | null = null;
+  let doubleArmed = false;
   let pointerSnap: SnapGesture | null = null;
   let resizeGrab = false;
   /* Touch fingers are fat; Excalidraw's handles are 8 px. Reach for the nearest one
@@ -389,11 +396,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       if (near) {
         lastTap = null;
         const point = scenePoint(event);
-        if (options.onDoubleTap({ x: point.x, y: point.y })) {
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
+        pendingDouble = { scene: { x: point.x, y: point.y }, x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+        // Swallowed now: Excalidraw must not turn the second tap into a text element while we wait.
+        event.preventDefault();
+        event.stopPropagation();
+        return;
       } else {
         lastTap = { at: now, x: event.clientX, y: event.clientY };
       }
@@ -703,17 +710,25 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     restoreTint();
   };
 
-  const startBox = (event: PointerEvent): void => {
+  const startBox = (
+    event: PointerEvent,
+    forced = false,
+    origin: { x: number; y: number } = { x: event.clientX, y: event.clientY }
+  ): void => {
     tickAnchorX = event.clientX;
     tickAnchorY = event.clientY;
     tickDebt = 0;
     lastTickAt = 0;
     caught = new Set<string>();
     const state = api.getAppState();
-    if (state.activeTool.type !== "selection" || !armed() || elementUnder(event)) {
+    /*
+     * Forced, the gesture brings its own tool: a double-tap drag asks for a selection while the hand
+     * tool is still the active one, and the state has not caught up yet.
+     */
+    if (!forced && (state.activeTool.type !== "selection" || !armed() || elementUnder(event))) {
       return;
     }
-    boxStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    boxStart = { x: origin.x, y: origin.y, pointerId: event.pointerId };
     interactiveCanvas = host.querySelector<HTMLElement>(".excalidraw__canvas.interactive");
     if (interactiveCanvas) {
       interactiveCanvas.style.opacity = "0";
@@ -739,13 +754,38 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   };
 
   const endBox = (event: PointerEvent): void => {
-    if (!boxStart || event.pointerId !== boxStart.pointerId) {
+    const wasBox = Boolean(boxStart && event.pointerId === boxStart.pointerId);
+    const ids = wasBox ? [...caught] : [];
+    const forced = doubleArmed;
+    if (wasBox) {
+      clearBox();
+    }
+    if (!wasBox && !forced) {
       return;
     }
-    clearBox();
+    doubleArmed = false;
+    setArmed(false);
+    const selection = Object.fromEntries(ids.map((id) => [id, true]));
+    /*
+     * A marquee is a gesture, not a mode: the sheet goes back to the hand the moment it is released,
+     * so the next drag pans instead of drawing another box from nowhere.
+     *
+     * The order matters and it is not the obvious one: switching tools drops the selection, so the
+     * tool returns first and the selection is written after it. Deferred by a tick, so Excalidraw's
+     * own pointerup has finished speaking before the last word.
+     */
+    window.setTimeout(() => {
+      if (api.getAppState().activeTool.type === "selection") {
+        api.setActiveTool({ type: "hand", locked: false });
+      }
+      if (Object.keys(selection).length > 0) {
+        api.updateScene({
+          appState: { selectedElementIds: selection as never },
+          captureUpdate: "NEVER" as never
+        });
+      }
+    }, 0);
   };
-
-  const onMove = (event: PointerEvent): void => drawBox(event);
 
   const onDownBox = (event: PointerEvent): void => {
     if (event.pointerType === "mouse") {
@@ -753,8 +793,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
     fingers.add(event.pointerId);
     /*
-     * A second finger is a pan or a pinch, never a selection: the marquee is
-     * dropped and stays dropped until every finger is up.
+     * A second finger is a pan or a pinch, never a selection: the marquee is dropped and stays
+     * dropped until every finger is up.
      */
     if (boxStart && boxStart.pointerId !== event.pointerId) {
       multiTouch = true;
@@ -766,9 +806,51 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
   };
 
+  const onMove = (event: PointerEvent): void => {
+    /*
+     * A double-tap drag is ours from the moment it becomes a drag: the hand tool must not pan the
+     * sheet under the box, or the shapes would slide out of it while it is being drawn.
+     */
+    if (doubleArmed) {
+      event.stopPropagation();
+    }
+    if (pendingDouble && event.pointerId === pendingDouble.pointerId) {
+      const moved = Math.hypot(event.clientX - pendingDouble.x, event.clientY - pendingDouble.y);
+      if (moved > 10) {
+        const overElement = elementUnder(event);
+        /* The box starts where the finger landed, not where it has already travelled to. */
+        const origin = { x: pendingDouble.x, y: pendingDouble.y };
+        pendingDouble = null;
+        if (overElement) {
+          return;
+        }
+        doubleArmed = true;
+        // This very event must not reach Excalidraw either, or the sheet pans under the box.
+        event.stopPropagation();
+        startBox(event, true, origin);
+        return;
+      }
+    }
+    drawBox(event);
+  };
+
+  /* A second tap that never travelled is the old double tap: it zooms. */
+  const onUpDouble = (event: PointerEvent): void => {
+    if (!pendingDouble || event.pointerId !== pendingDouble.pointerId) {
+      return;
+    }
+    const { scene } = pendingDouble;
+    pendingDouble = null;
+    options.onDoubleTap?.({ x: scene.x, y: scene.y });
+  };
+
   const onUpBox = (event: PointerEvent): void => {
     if (event.pointerType === "mouse") {
       return;
+    }
+    /* The drag belonged to us from its first pixel: Excalidraw must not read it as a pan. */
+    if (doubleArmed) {
+      event.stopPropagation();
     }
     fingers.delete(event.pointerId);
     if (fingers.size === 0) {
@@ -793,6 +875,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   host.addEventListener("pointermove", onPinchMove, true);
   host.addEventListener("pointerup", onPinchUp, true);
   host.addEventListener("pointercancel", onPinchUp, true);
+  host.addEventListener("pointerup", onUpDouble, true);
+  host.addEventListener("pointercancel", onUpDouble, true);
 
   return {
     detach: () => {
@@ -814,6 +898,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       host.removeEventListener("pointermove", onPinchMove, true);
       host.removeEventListener("pointerup", onPinchUp, true);
       host.removeEventListener("pointercancel", onPinchUp, true);
+      host.removeEventListener("pointerup", onUpDouble, true);
+      host.removeEventListener("pointercancel", onUpDouble, true);
       clearBox();
       pointerSnap = null;
       options.onMarqueeCancel?.(null);
