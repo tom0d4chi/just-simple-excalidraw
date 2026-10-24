@@ -655,6 +655,13 @@ export function CanvasToolbar({
   const penAtTop = !hasSelection && toolOptions && activeTool === "freedraw";
   const penAway = hasSelection || (toolOptions && !penAtTop);
   const propertiesMode = isTouchDevice && ((stylingTarget && hasSelection) || toolOptions);
+  /*
+   * The props page keeps the pen's row for as long as it is fading out. Without it the row vanishes the
+   * instant the tool is left, and every colour and weight below it is thrown to the top of the column
+   * while the page is still on screen - the jump that made leaving the pen look broken.
+   */
+  const propsFrozenRef = useRef<ReturnType<typeof createElement>[] | null>(null);
+
 
   /*
    * What the properties layer last showed, kept while it leaves. Without this, deselecting empties
@@ -1110,6 +1117,25 @@ export function CanvasToolbar({
     }
   }, false, false, `jse-tool--collapsible${entered ? " jse-anim" : ""}${canRedo ? "" : " is-collapsed"}`);
 
+  /*
+   * The properties page keeps its last content while it slides out. Its rows change with the mode - the
+   * active tool's own row comes and goes, the pen's row comes and goes - so a page rebuilt on the way
+   * out throws every colour and weight to the top of the column while it is still on screen. Frozen, the
+   * page fades in place.
+   */
+  const propsChildren: ReturnType<typeof createElement>[] = [
+    ...(toolRow ? [toolRow] : []),
+    ...(penAtTop ? [penSlot("props")] : []),
+    ...(textAtTop ? [textSlot("props")] : []),
+    ...propertyButtons,
+    ...contextButtons
+  ];
+  const frozenPropsRef = propsFrozenRef;
+  if (propertiesMode) {
+    frozenPropsRef.current = propsChildren;
+  }
+  const shownProps = propertiesMode ? propsChildren : (frozenPropsRef.current ?? propsChildren);
+
   return createElement("div", {
     className: `jse-tools${contentUnder ? " has-content-under" : ""}`,
     // The stylesheet reads these; nothing here hardcodes a duration twice.
@@ -1146,11 +1172,7 @@ export function CanvasToolbar({
       "aria-hidden": !propertiesMode,
       inert: propertiesMode ? undefined : ""
     },
-      ...(toolRow ? [toolRow] : []),
-      ...(penAtTop ? [penSlot("props")] : []),
-      ...(textAtTop ? [textSlot("props")] : []),
-      ...propertyButtons,
-      ...contextButtons)),
+      ...shownProps)),
     openFamily
       ? createElement("div", {
           className: "jse-appearance-values",
