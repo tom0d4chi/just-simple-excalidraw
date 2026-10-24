@@ -781,7 +781,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       callback: () => void this.createDrawing()
     });
     // A canvas, not a pencil: the icon should say what the file is, not which engine draws it.
-    this.addRibbonIcon("lucide-layout-dashboard", "Create new board", () => void this.createDrawing());
+    this.addRibbonIcon("lucide-presentation", "Create new board", () => void this.createDrawing());
   }
 
   /** Live switch: the class is all the stylesheet needs. */
