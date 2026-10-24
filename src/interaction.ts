@@ -316,6 +316,9 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    * press (the circle is the target, not the canvas under it) and rotates the selection here, with the
    * same magnet on the base angles.
    */
+  /* A marquee is a gesture, not a state: its selection is only real once the finger lifts. */
+  let marqueeRunning = false;
+
   const gripTurn = {
     active: false,
     pointerId: 0,
@@ -633,7 +636,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
     const frame = selectionFrame();
     let grip = host.querySelector<HTMLElement>(".jse-rotate-grip");
-    if (!frame || !frame.canRotate) {
+    /* Nothing to turn until the box is released: the grip has no business showing mid-gesture. */
+    if (!frame || !frame.canRotate || marqueeRunning || gripTurn.active) {
       grip?.remove();
       return;
     }
@@ -1176,6 +1180,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
       return;
     }
     boxStart = { x: origin.x, y: origin.y, pointerId: event.pointerId };
+    marqueeRunning = true;
     interactiveCanvas = host.querySelector<HTMLElement>(".excalidraw__canvas.interactive");
     if (interactiveCanvas) {
       interactiveCanvas.style.opacity = "0";
@@ -1192,6 +1197,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
   const clearBox = (): void => {
     clearPreview();
     boxStart = null;
+    marqueeRunning = false;
     box?.remove();
     box = null;
     if (interactiveCanvas) {
