@@ -1187,6 +1187,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
+    /* This press stops here, so the guard below never sees it: it is ours, and it swallows swipes. */
+    swallowSwipes = true;
     gripTurn.active = true;
     gripTurn.pointerId = event.pointerId;
     gripTurn.cx = (frame.left + frame.right) / 2;
@@ -1298,11 +1300,52 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     });
   };
 
+  /*
+   * A drag inside the plugin is not a swipe of the workspace.
+   *
+   * Obsidian listens for horizontal swipes everywhere and opens the file drawer on one. Our controls
+   * are its ancestors' children, so a rotation or a slider drag also read as a swipe - the gesture
+   * turned a shape and switched pane at the same time. A touchmove that is cancelled never reaches
+   * those listeners, so any gesture starting on our own surfaces cancels its moves, unless it starts
+   * in something that actually scrolls.
+   */
+  let swallowSwipes = false;
+  const startsOnExcalidraw = (target: EventTarget | null): boolean => (
+    target instanceof Element && Boolean(target.closest(".excalidraw"))
+  );
+  const startsInScroller = (target: EventTarget | null): boolean => {
+    let element = target instanceof Element ? target : null;
+    /* Only what the plugin owns: a host theme with its own scroller above us is none of our business. */
+    while (element && element !== host) {
+      const style = window.getComputedStyle(element);
+      if (/(auto|scroll)/.test(style.overflowY) || /(auto|scroll)/.test(style.overflowX)) {
+        return true;
+      }
+      element = element.parentElement;
+    }
+    return false;
+  };
+  const onGuardDown = (event: PointerEvent): void => {
+    swallowSwipes = !startsOnExcalidraw(event.target) && !startsInScroller(event.target);
+  };
+  const onGuardUp = (): void => {
+    swallowSwipes = false;
+  };
+  const onGuardMove = (event: TouchEvent): void => {
+    if (swallowSwipes && event.cancelable) {
+      event.preventDefault();
+    }
+  };
+
   /* The grip speaks first: a press on it must never reach the selection or the marquee below. */
   host.addEventListener("pointerdown", gripDown, true);
   host.addEventListener("pointermove", gripMove, true);
   host.addEventListener("pointerup", gripUp, true);
   host.addEventListener("pointercancel", gripUp, true);
+  host.addEventListener("pointerdown", onGuardDown, true);
+  host.addEventListener("pointerup", onGuardUp, true);
+  host.addEventListener("pointercancel", onGuardUp, true);
+  host.addEventListener("touchmove", onGuardMove, { capture: true, passive: false });
   host.addEventListener("pointerdown", onDownHandles, true);
   host.addEventListener("pointerdown", onDownSnap, true);
   host.addEventListener("pointermove", onMoveSnap, true);
