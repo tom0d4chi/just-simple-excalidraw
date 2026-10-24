@@ -141,6 +141,8 @@ const mocks = {
     export const THEME = { LIGHT: "light", DARK: "dark" };
     // The plugin marks its scene writes with these; the harness only needs the names.
     export const CaptureUpdateAction = { IMMEDIATELY: "IMMEDIATELY", EVENTUALLY: "EVENTUALLY", NEVER: "NEVER" };
+    export async function exportToClipboard() {}
+    export function restoreElements(elements) { return elements; }
     export function serializeAsJSON(elements, appState, files) {
       return JSON.stringify({ elements, appState, files });
     }
