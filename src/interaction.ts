@@ -332,14 +332,32 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    * resize handle below it. The press still goes to the canvas - the circle is never in the way.
    */
   const GRIP = 30;
+  /*
+   * The accent, resolved to a colour rather than passed along as a variable: a custom property
+   * written as `var(--interactive-accent)` only works if that variable reaches the element, and the
+   * one Excalidraw paints with evidently does not. Reading it through a probe gives the actual rgb,
+   * and reading it again on every tick keeps it true when the theme or the accent changes.
+   */
+  let accentProbe: HTMLElement | null = null;
+  const accentColor = (): string => {
+    if (!accentProbe || !accentProbe.isConnected) {
+      accentProbe = document.createElement("span");
+      accentProbe.style.cssText = "position:absolute;left:-9999px;top:0;pointer-events:none;"
+        + "color:var(--interactive-accent, var(--color-accent, var(--text-accent, #6965db)));";
+      document.body.appendChild(accentProbe);
+    }
+    return window.getComputedStyle(accentProbe).color || "#6965db";
+  };
+
   const syncGrip = (): void => {
     /*
      * The frame around a selected shape: Excalidraw reads `--color-selection` off its own container,
-     * set inline because a stylesheet rule loses to whatever the host theme declares further up.
+     * so the accent is written there directly, as a resolved colour.
      */
-    for (const container of host.querySelectorAll<HTMLElement>(".excalidraw")) {
-      if (container.style.getPropertyValue("--color-selection") === "") {
-        container.style.setProperty("--color-selection", "var(--interactive-accent)");
+    const accent = accentColor();
+    for (const container of host.querySelectorAll<HTMLElement>(".excalidraw, .excalidraw-container")) {
+      if (container.style.getPropertyValue("--color-selection") !== accent) {
+        container.style.setProperty("--color-selection", accent);
       }
     }
     const frame = selectionFrame();
@@ -353,11 +371,12 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     if (!grip) {
       grip = document.createElement("div");
       grip.className = "jse-rotate-grip";
-      grip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+      grip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" '
         + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
         + '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
       host.appendChild(grip);
     }
+    grip.style.color = accent;
     grip.style.left = `${x - box.left}px`;
     grip.style.top = `${y - box.top}px`;
     grip.style.width = `${GRIP}px`;
