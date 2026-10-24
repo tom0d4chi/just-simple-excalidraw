@@ -17,7 +17,7 @@ import { CanvasToolbar } from "./src/toolbar";
 import { trackBottomUiInset } from "./src/layout";
 import type { StyleState } from "./src/appearance";
 import { JustSimpleExcalidrawSettingTab } from "./src/settings";
-import { describeHaptics, haptic, observeHaptics } from "./src/haptics";
+import { haptic } from "./src/haptics";
 import { openElementMenu } from "./src/element-menu";
 import { attachInteraction } from "./src/interaction";
 import { drawingFolder, drawingName, type DrawingFolderMode } from "./src/naming";
@@ -135,10 +135,10 @@ let currentApi: ExcalidrawImperativeAPI | null = null;
  * Where a two-finger gesture is written down. It goes to a note in the vault rather than to a console
  * we cannot open: the vault reaches this side, so the measurements of a real hand do too.
  */
-let pinchLogger: ((line: string) => void) | null = null;
+
 /* One tap in two, for an A/B the hand can feel in a single sweep. */
 let marqueeTickParity = 0;
-const PINCH_LOG = "pinch-log.md";
+
 
 function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, shouldSnapToGrid, fitOnOpen = false, ...props }: ExcalidrawCanvasProps) {
   // Declared before any hook that could run immediately (the test harness calls effects
@@ -415,7 +415,6 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
          * What a hand actually does here, measured: 80-160 ms, fingers travelling 100-300 px, ratio
          * 0.3-0.7 on a closing pinch. Any "small gesture" threshold would never fire.
          */
-        const stamp = new Date().toISOString().slice(11, 19);
         const state = api?.getAppState();
         const zoom = state ? state.zoom.value : 0;
         const elements = api ? api.getSceneElements().filter((element) => !element.isDeleted) : [];
@@ -432,9 +431,6 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
           const height = (bounds.maxY - bounds.minY) * zoom;
           fits = width > 0 && height > 0 && width <= rect.width && height <= rect.height;
         }
-        pinchLogger?.(
-          `| ${stamp} | ${sample.ms} | ${sample.spread} | ${sample.ratio} | ${sample.travel} | ${sample.drift} | ${sample.moves} | ${zoom.toFixed(2)} | ${fits ? "oui" : "non"} |`
-        );
         if (!api || !fits || sample.ratio >= 1) {
           return;
         }
@@ -859,37 +855,6 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
      */
     this.registerExtensions(["board", "excalidraw"], VIEW_TYPE_EXCALIDRAW);
 
-    /*
-     * One line per gesture, appended to a note: a table this side can actually read. The header is
-     * written when the file is empty, so the note is legible on its own.
-     */
-    /*
-     * Every haptic call, and where it went. Nothing is felt on a phone that offers neither path, and
-     * this note is the only way to tell "the plugin never asked" from "the platform said no".
-     */
-    let hapticLines = 0;
-    pinchLogger = (line: string): void => {
-      const adapter = this.app.vault.adapter;
-      void (async () => {
-        const exists = await adapter.exists(PINCH_LOG);
-        const head = "| heure | ms | écart 0 | ratio | débattement | dérive | mouvements | zoom | tient |\n|---|---|---|---|---|---|---|---|---|\n";
-        await adapter.append(PINCH_LOG, exists ? line + "\n" : head + line + "\n");
-      })();
-    };
-    observeHaptics((style, path) => {
-      if (hapticLines > 120) {
-        return;
-      }
-      hapticLines += 1;
-      const adapter = this.app.vault.adapter;
-      const stamp = new Date().toISOString().slice(11, 19);
-      const line = `| ${stamp} | ${style} | ${path} |\n`;
-      void (async () => {
-        const exists = await adapter.exists("haptic-log.md");
-        const head = `Appareil : ${describeHaptics()}\n\n| heure | style | voie |\n|---|---|---|\n`;
-        await adapter.append("haptic-log.md", exists ? line : head + line);
-      })();
-    });
     this.addCommand({
       id: "fit-drawing-to-view",
       name: "Fit board to view",
