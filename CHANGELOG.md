@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.180 - 2026-10-23
+
+- The sweep alternates one tap at 43 % (LIGHT, 50 ms) and one at 71 % (MEDIUM, 43 ms), so a single
+  sweep puts both under the same finger and the hand can choose. Temporary: it settles on one.
+
 ## 0.1.179 - 2026-10-23
 
 - The sweep takes LIGHT's amplitude - 43 % - instead of a full-amplitude pulse cut down to 11 ms. A

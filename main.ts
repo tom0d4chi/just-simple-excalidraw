@@ -134,6 +134,8 @@ let currentApi: ExcalidrawImperativeAPI | null = null;
  * we cannot open: the vault reaches this side, so the measurements of a real hand do too.
  */
 let pinchLogger: ((line: string) => void) | null = null;
+/* One tap in two, for an A/B the hand can feel in a single sweep. */
+let marqueeTickParity = 0;
 const PINCH_LOG = "pinch-log.md";
 
 function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, shouldSnapToGrid, ...props }: ExcalidrawCanvasProps) {
@@ -248,7 +250,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
        */
       onMarqueeTick: (ticks) => {
         for (let index = 0; index < Math.min(ticks, 3); index += 1) {
-          haptic("tick");
+          marqueeTickParity += 1;
+          haptic(marqueeTickParity % 2 === 0 ? "medium" : "tick");
         }
       },
       /* A shape joining the box is not more of the same: it is an event, and it lands heavier. */
