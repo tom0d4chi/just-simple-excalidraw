@@ -184,6 +184,8 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    */
   let rotating: {
     pointerId: number; cx: number; cy: number; startPointerAngle: number; startAngle: number;
+    /* The magnet: armed at the start, spent once it lets go, re-armed by a pause. */
+    armed: boolean; held: boolean; lastRaw: number; lastMoveAt: number;
   } | null = null;
   /* Touch fingers are fat; Excalidraw's touch handles are 28 px. Reach for the nearest one from
      further away by moving the pointer onto its centre, and show which one was taken. */
@@ -348,7 +350,11 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
           cx,
           cy,
           startPointerAngle: Math.atan2(best.y - cy, best.x - cx),
-          startAngle: selected[0].angle ?? 0
+          startAngle: selected[0].angle ?? 0,
+          armed: true,
+          held: false,
+          lastRaw: selected[0].angle ?? 0,
+          lastMoveAt: Date.now()
         };
       }
     }
@@ -1021,7 +1027,14 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
   };
 
-  /** Catches an angle on its base values, then hands Excalidraw the finger that would produce it. */
+  /**
+   * Catches an angle on its base values, then hands Excalidraw the finger that would produce it.
+   *
+   * The magnet is spent the moment it lets go: once an angle has been caught and the finger leaves it,
+   * nothing is caught again until the finger has been still for a moment. That is what keeps 1 degree
+   * reachable - a continuous drag passes every small angle freely - while a pause near a base still
+   * catches it, which is how someone says "here".
+   */
   const snapRotation = (event: PointerEvent): boolean => {
     if (!rotating || event.pointerId !== rotating.pointerId) {
       return false;
@@ -1035,18 +1048,40 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
     const pointerAngle = Math.atan2(dy, dx);
     const angle = startAngle + (pointerAngle - startPointerAngle);
+    /*
+     * Still, or moving? A pause is a deliberate act; a drag is not. The clock only counts a real
+     * change, so a finger resting on the glass - which sends no events at all - reads as a pause the
+     * moment it moves again.
+     */
+    const now = Date.now();
+    if (Math.abs(angle - rotating.lastRaw) > 0.0035) {
+      rotating.lastRaw = angle;
+      rotating.lastMoveAt = now;
+    }
+    if (!rotating.armed && now - rotating.lastMoveAt > 180) {
+      rotating.armed = true;
+      rotating.held = false;
+    }
     const step = Math.PI / 4;
     const target = Math.round(angle / step) * step;
-    /*
-     * A narrow window, 2.6 degrees wide, and nothing else: an angle of 3 degrees is a deliberate angle
-     * and must stay reachable, so the magnet lets go the moment the finger is past it.
-     */
-    if (Math.abs(angle - target) > 0.045) {
+    const inside = Math.abs(angle - target) <= 0.045;
+
+    if (rotating.held && !inside) {
+      /* The finger has left the base it was caught on: the magnet is spent. */
+      rotating.held = false;
+      rotating.armed = false;
+    }
+    if (!rotating.armed) {
+      return false;
+    }
+    if (!inside) {
       return false;
     }
     const needed = startPointerAngle + (target - startAngle);
     Object.defineProperty(event, "clientX", { value: cx + Math.cos(needed) * radius, configurable: true });
     Object.defineProperty(event, "clientY", { value: cy + Math.sin(needed) * radius, configurable: true });
+    rotating.held = true;
+    rotating.lastRaw = target;
     return true;
   };
 
