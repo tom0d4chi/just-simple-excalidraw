@@ -68,6 +68,17 @@ export class JustSimpleExcalidrawSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName(t("fitOnOpen"))
+      .setDesc(t("fitOnOpenDesc"))
+      .addToggle((toggle: ToggleComponent) => {
+        toggle.setValue(this.plugin.settings.fitOnOpen);
+        toggle.onChange((value: boolean) => {
+          this.plugin.settings.fitOnOpen = value;
+          void this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
       .setName(t("drawingFolder"))
       .setDesc(t("drawingFolderDesc"))
       .addDropdown((dropdown) => {

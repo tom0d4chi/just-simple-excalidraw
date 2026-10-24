@@ -53,6 +53,7 @@ type ExcalidrawCanvasProps = Omit<ComponentProps<typeof Excalidraw>, "initialDat
   snapToGrid?: boolean;
   /** Read live: the setting can change while the drawing is open. */
   shouldSnapToGrid?: () => boolean;
+  fitOnOpen?: boolean;
 };
 
 /*
@@ -138,7 +139,7 @@ let pinchLogger: ((line: string) => void) | null = null;
 let marqueeTickParity = 0;
 const PINCH_LOG = "pinch-log.md";
 
-function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, shouldSnapToGrid, ...props }: ExcalidrawCanvasProps) {
+function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, shouldSnapToGrid, fitOnOpen = false, ...props }: ExcalidrawCanvasProps) {
   // Declared before any hook that could run immediately (the test harness calls effects
   // eagerly), so nothing reaches a ref that has not been initialised yet.
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -212,6 +213,25 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
     }
     return keepViewportInSync(api, getCanvasElement);
   }, [api, getCanvasElement]);
+
+  /*
+   * A drawing opens showing the drawing, not the corner of an empty page where it was last left:
+   * Excalidraw restores scroll and zoom from the file, and a file made elsewhere can restore a
+   * viewport that has nothing in it. Deferred one frame so the scene is mounted and has a size.
+   */
+  useEffect(() => {
+    if (!api || !fitOnOpen) {
+      return undefined;
+    }
+    const handle = window.setTimeout(() => {
+      const elements = api.getSceneElements().filter((element) => !element.isDeleted);
+      if (elements.length === 0) {
+        return;
+      }
+      api.scrollToContent(elements, { fitToContent: true, animate: false, viewportZoomFactor: 0.9 });
+    }, 150);
+    return () => window.clearTimeout(handle);
+  }, [api, fitOnOpen]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -641,6 +661,8 @@ export interface JustSimpleExcalidrawSettings {
   drawingDateFormat: string;
   /** Round shapes onto the dot lattice when a gesture ends. */
   snapToGrid: boolean;
+  /** Frame the whole drawing as soon as its file opens. */
+  fitOnOpen: boolean;
 }
 
 export default class JustSimpleExcalidrawPlugin extends Plugin {
@@ -652,7 +674,8 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
     drawingPrefix: "Drawing",
     drawingSuffix: "",
     drawingDateFormat: "YYYY-MM-DD HH.mm.ss",
-    snapToGrid: true
+    snapToGrid: true,
+    fitOnOpen: true
   };
 
   async onload(): Promise<void> {
@@ -667,6 +690,7 @@ export default class JustSimpleExcalidrawPlugin extends Plugin {
       drawingSuffix: "",
       drawingDateFormat: "YYYY-MM-DD HH.mm.ss",
       snapToGrid: true,
+      fitOnOpen: true,
       ...(saved ?? {})
     };
     this.applyDotGrid();
@@ -955,6 +979,7 @@ class ExcalidrawView extends FileView {
       key: file.path,
       initialData: scene,
       dotGrid: this.plugin.settings.dotGrid,
+      fitOnOpen: this.plugin.settings.fitOnOpen,
       shouldSnapToGrid: () => this.plugin.settings.snapToGrid,
       onPaste: (_data: unknown, event: ClipboardEvent | null): boolean => {
         const image = Array.from(event?.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));

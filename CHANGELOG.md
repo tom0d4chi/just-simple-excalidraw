@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.184 - 2026-10-23
+
+- New setting, on by default: "Frame the drawing on open". A file made elsewhere can restore a viewport
+  that has nothing in it; the drawing now opens showing the drawing, framed with a tenth of margin.
+- Deferred one frame after the API appears so the scene is mounted and has a size, and skipped when the
+  file is empty.
+
 ## 0.1.183 - 2026-10-23
 
 - A shape taken is one knock again: a single 38 ms pulse at full amplitude. Two beats read as two

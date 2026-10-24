@@ -79,6 +79,8 @@ const DICTIONARIES = {
     snapToGridDesc: "À la fin d'un geste, la forme est calée sur le point le plus proche. Le crayon n'est pas concerné.",
     dotGrid: "Fond de points",
     dotGridDesc: "Dessine une grille de points à la place du quadrillage d'Excalidraw. Le fond suit le thème d'Obsidian.",
+    fitOnOpen: "Cadrer le dessin à l'ouverture",
+    fitOnOpenDesc: "À l'ouverture d'un fichier, la vue se place pour montrer tout le dessin au lieu de reprendre le dernier zoom et la dernière position.",
     settingsVersion: "Version installée",
     settingsBody: "La barre d'outils est fixée au bord droit, à la verticale. Sur mobile, un doigt utilise l'outil actif et deux doigts déplacent et zooment ; sur ordinateur, on déplace avec l'outil main."
   },
@@ -153,6 +155,8 @@ const DICTIONARIES = {
     snapToGridDesc: "When a gesture ends, the shape is lined up on the nearest dot. Freehand strokes are left alone.",
     dotGrid: "Dot grid",
     dotGridDesc: "Draws a dot grid instead of Excalidraw's ruled grid. The background follows Obsidian's theme.",
+    fitOnOpen: "Frame the drawing on open",
+    fitOnOpenDesc: "When a file opens, the view moves to show the whole drawing instead of restoring the last zoom and position.",
     settingsVersion: "Installed version",
     settingsBody: "The toolbar is fixed to the right edge, vertically. On mobile one finger uses the active tool and two fingers pan and zoom; on desktop you pan with the hand tool."
   },
@@ -227,6 +231,8 @@ const DICTIONARIES = {
     snapToGridDesc: "Al terminar un gesto, la forma se alinea con el punto más cercano. El trazo libre no se toca.",
     dotGrid: "Fondo de puntos",
     dotGridDesc: "Dibuja una cuadrícula de puntos en lugar de la retícula de Excalidraw. El fondo sigue el tema de Obsidian.",
+    fitOnOpen: "Encuadrar el dibujo al abrir",
+    fitOnOpenDesc: "Al abrir un archivo, la vista se coloca para mostrar todo el dibujo en lugar de recuperar el último zoom y la última posición.",
     settingsVersion: "Versión instalada",
     settingsBody: "La barra de herramientas está fija en el borde derecho, en vertical. En el móvil, un dedo usa la herramienta activa y dos dedos desplazan y hacen zoom; en el escritorio se arrastra con la herramienta de mano."
   }
