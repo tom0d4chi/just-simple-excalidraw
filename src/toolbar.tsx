@@ -847,9 +847,33 @@ export function CanvasToolbar({
       // report the scaled size.
       return sum + child.offsetHeight + margins;
     }, 0);
-    pill.style.height = `${content + (pad + border) * 2}px`;
+    const wanted = content + (pad + border) * 2;
+    /*
+     * A short screen - a phone on its side - must not push the last buttons off the edge. The column
+     * stops where the undo bar begins and scrolls the rest: at 44 px a target is already as small as
+     * a finger allows, so the screen is what gives way.
+     */
+    const band = pill.parentElement;
+    const history = band ? band.querySelector<HTMLElement>(":scope > .jse-tools__history") : null;
+    const gap = parseFloat(styles.getPropertyValue("--jse-nav-gap")) || 8;
+    const top = pill.getBoundingClientRect().top;
+    const available = window.innerHeight - top - (history?.offsetHeight ?? 0) - gap * 2;
+    const capped = available > 44 && wanted > available;
+    pill.style.height = `${capped ? Math.floor(available) : wanted}px`;
+    pill.classList.toggle("is-scroll", capped);
   };
   applyHeightRef.current = applyHeight;
+
+  /* Turning the phone is a new amount of screen, so the column is measured again. */
+  useEffect(() => {
+    const onResize = (): void => applyHeightRef.current?.();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     applyHeight();
@@ -865,7 +889,8 @@ export function CanvasToolbar({
       cancelAnimationFrame(later);
       window.clearTimeout(late);
     };
-  }, [propertiesMode, shownFamilies.length, shownHasSelection]);
+    // The undo bar appearing or going away changes how much screen the column may take.
+  }, [propertiesMode, shownFamilies.length, shownHasSelection, canUndo, canRedo]);
   /*
    * Always mounted, never conditional: the properties layer has to keep its height while it is
    * hidden, or the column would grow the moment something is selected.

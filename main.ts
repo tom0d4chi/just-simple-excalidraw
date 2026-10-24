@@ -253,26 +253,30 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
     if (!api || !Platform.isMobile || typeof document === "undefined") {
       return undefined;
     }
-    const onContextMenu = (event: MouseEvent): void => {
+    /*
+     * Where the finger or the pointer asks for the menu: the shape under it is selected first, so
+     * every item in the sheet has something to act on. The box is exact, then a fingertip wider, for
+     * the same reason the tap reaches 12 px - a stroke is thinner than a finger.
+     */
+    const openMenuAt = (clientX: number, clientY: number): void => {
       const host = canvasHostRef.current;
-      if (!host || !(event.target instanceof Node) || !host.contains(event.target)) {
+      if (!host) {
         return;
       }
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-
       const state = api.getAppState();
       const canvas = getCanvasElement();
       const rect = (canvas ?? host).getBoundingClientRect();
       const zoom = state.zoom.value || 1;
-      const x = (event.clientX - rect.left) / zoom - state.scrollX;
-      const y = (event.clientY - rect.top) / zoom - state.scrollY;
-      const hit = [...api.getSceneElements()].reverse().find((element) => (
-        !element.isDeleted
-        && x >= element.x && x <= element.x + Math.abs(element.width)
-        && y >= element.y && y <= element.y + Math.abs(element.height)
-      ));
+      const x = (clientX - rect.left) / zoom - state.scrollX;
+      const y = (clientY - rect.top) / zoom - state.scrollY;
+      const elements = api.getSceneElements().filter((element) => !element.isDeleted);
+      const inside = (element: (typeof elements)[number], reach: number): boolean => (
+        x >= element.x - reach && x <= element.x + Math.abs(element.width) + reach
+        && y >= element.y - reach && y <= element.y + Math.abs(element.height) + reach
+      );
+      const reach = 12 / zoom;
+      const hit = [...elements].reverse().find((element) => inside(element, 0))
+        ?? [...elements].reverse().find((element) => inside(element, reach));
       if (!hit) {
         return;
       }
@@ -288,8 +292,63 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         haptic: (style) => haptic(style === "heavy" ? "heavy" : "light")
       });
     };
+
+    const onContextMenu = (event: MouseEvent): void => {
+      const host = canvasHostRef.current;
+      if (!host || !(event.target instanceof Node) || !host.contains(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      openMenuAt(event.clientX, event.clientY);
+    };
+
+    /* WKWebView does not raise `contextmenu` reliably on a canvas, so the press is timed here. */
+    let pressTimer = 0;
+    let pressed: { x: number; y: number } | null = null;
+    const cancelPress = (): void => {
+      window.clearTimeout(pressTimer);
+      pressed = null;
+    };
+    const onPressDown = (event: PointerEvent): void => {
+      if (event.pointerType === "mouse") {
+        return;
+      }
+      const host = canvasHostRef.current;
+      if (!host || !(event.target instanceof Node) || !host.contains(event.target)) {
+        return;
+      }
+      pressed = { x: event.clientX, y: event.clientY };
+      window.clearTimeout(pressTimer);
+      pressTimer = window.setTimeout(() => {
+        const point = pressed;
+        pressed = null;
+        if (point) {
+          openMenuAt(point.x, point.y);
+        }
+      }, 500);
+    };
+    /* A press that travels is a drag, not a long press. */
+    const onPressMove = (event: PointerEvent): void => {
+      if (pressed && Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) > 10) {
+        cancelPress();
+      }
+    };
+
     document.addEventListener("contextmenu", onContextMenu, true);
-    return () => document.removeEventListener("contextmenu", onContextMenu, true);
+    document.addEventListener("pointerdown", onPressDown, true);
+    document.addEventListener("pointermove", onPressMove, true);
+    document.addEventListener("pointerup", cancelPress, true);
+    document.addEventListener("pointercancel", cancelPress, true);
+    return () => {
+      cancelPress();
+      document.removeEventListener("contextmenu", onContextMenu, true);
+      document.removeEventListener("pointerdown", onPressDown, true);
+      document.removeEventListener("pointermove", onPressMove, true);
+      document.removeEventListener("pointerup", cancelPress, true);
+      document.removeEventListener("pointercancel", cancelPress, true);
+    };
   }, [api, getCanvasElement]);
 
   /*

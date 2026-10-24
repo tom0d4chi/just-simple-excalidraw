@@ -291,6 +291,15 @@
   display: none;
 }
 
+/* A column taller than the screen scrolls, it does not shrink: see applyHeight. */
+.jse-tools__pill.is-scroll {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+
 /*
  * Motion is reversible everywhere: every state change is a transition between
  * two classes, so the way in and the way out use the same curve. Nothing pops in
