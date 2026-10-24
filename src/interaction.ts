@@ -80,6 +80,8 @@ export interface InteractionOptions {
    * crackles slowly, a fast one rattles.
    */
   onMarqueeTick?: (ticks: number) => void;
+  /** The rotation magnet just caught an angle: one tick, once per catch. */
+  onRotationSnap?: () => void;
   /** How many shapes the box just took: an arrival, heavier than the ticking of the sweep. */
   onMarqueeCatch?: (caught: number) => void;
   /**
@@ -419,6 +421,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     }
     const applied = gripTurn.armed && inside ? snapped : delta;
     if (gripTurn.armed && inside) {
+      if (!gripTurn.held) {
+        /* Caught, not held: the magnet answers once, when the angle lands. */
+        options.onRotationSnap?.();
+      }
       gripTurn.held = true;
     }
     if (Math.abs(applied) > 0.0005) {

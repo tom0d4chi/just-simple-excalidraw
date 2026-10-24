@@ -383,6 +383,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
        * The marquee clicks like a ratchet: one tap per shape it takes, so a sweep reads as tac tac tac
        * even with the eyes on the far edge of the box.
        */
+      /* A caught angle is an event, and it lands: one tick, short, like the marquee's. */
+      onRotationSnap: () => haptic("tick"),
       onMarqueeTick: (ticks) => {
         for (let index = 0; index < Math.min(ticks, 3); index += 1) {
           marqueeTickParity += 1;
