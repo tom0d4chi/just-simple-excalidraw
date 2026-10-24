@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.185 - 2026-10-23
+
+- Undo folds away when there is nothing to undo, exactly as redo does - same entrance and exit. The
+  history bar hides entirely while both are away, instead of leaving an empty pill under the column.
+- Both states are read from Excalidraw's own buttons rather than kept as a counter: there is no event
+  for what history holds, and a plugin-side count drifts as soon as anything else touches the scene.
+
 ## 0.1.184 - 2026-10-23
 
 - New setting, on by default: "Frame the drawing on open". A file made elsewhere can restore a viewport

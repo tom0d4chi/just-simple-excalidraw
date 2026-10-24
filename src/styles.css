@@ -1304,6 +1304,11 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
  * Undo and redo left the column: history is not a property of what is selected, and its place is
  * not in the middle of the tools. They get their own bar, a little below the column.
  */
+/* Nothing in history: no bar at all, rather than an empty pill sitting under the column. */
+.jse-tools__history.is-empty {
+  display: none;
+}
+
 .jse-tools__history {
   /* the same metrics as the column, which now come from the band */
   --jse-tool-ink: #3d3d3d;

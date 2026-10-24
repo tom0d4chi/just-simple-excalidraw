@@ -179,6 +179,8 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
   const [selectionArmed, setSelectionArmed] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const canRedoRef = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const canUndoRef = useRef(false);
   const manualSelectionRef = useRef(false);
   const selectionArmedRef = useRef(false);
   const cancelMarqueeRef = useRef<(() => void) | null>(null);
@@ -489,13 +491,24 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       ? window.requestAnimationFrame.bind(window)
       : (callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 16);
     schedule(() => {
-      const button = typeof document.querySelector === "function"
-        ? document.querySelector<HTMLButtonElement>('[data-testid="button-redo"]')
-        : null;
-      const next = button ? !button.disabled : false;
-      if (next !== canRedoRef.current) {
-        canRedoRef.current = next;
-        setCanRedo(next);
+      /*
+       * Excalidraw's own buttons are the source of truth for what history holds: there is no event
+       * for it, and a plugin-side counter would drift as soon as anything else touches the scene.
+       */
+      const query = typeof document.querySelector === "function"
+        ? (selector: string) => document.querySelector<HTMLButtonElement>(selector)
+        : () => null;
+      const redoButton = query('[data-testid="button-redo"]');
+      const undoButton = query('[data-testid="button-undo"]');
+      const nextRedo = redoButton ? !redoButton.disabled : false;
+      const nextUndo = undoButton ? !undoButton.disabled : false;
+      if (nextRedo !== canRedoRef.current) {
+        canRedoRef.current = nextRedo;
+        setCanRedo(nextRedo);
+      }
+      if (nextUndo !== canUndoRef.current) {
+        canUndoRef.current = nextUndo;
+        setCanUndo(nextUndo);
       }
     });
   }, []);
@@ -641,6 +654,7 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
       selectionArmed,
       onToggleSelection: toggleSelection,
       canRedo,
+      canUndo,
       isTouchDevice,
       getCanvasElement
     })

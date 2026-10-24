@@ -69,6 +69,7 @@ interface CanvasToolbarProps {
   selectionArmed: boolean;
   onToggleSelection: () => void;
   canRedo: boolean;
+  canUndo: boolean;
   isTouchDevice: boolean;
   getCanvasElement: () => HTMLElement | null;
 }
@@ -163,6 +164,7 @@ export function CanvasToolbar({
   selectionArmed,
   onToggleSelection,
   canRedo,
+  canUndo,
   isTouchDevice,
   getCanvasElement
 }: CanvasToolbarProps) {
@@ -1063,7 +1065,7 @@ export function CanvasToolbar({
     if (!pressExcalidrawButton('[data-testid="button-undo"]')) {
       replayShortcut(getCanvasElement, "z");
     }
-  });
+  }, false, false, `jse-tool--collapsible${entered ? " jse-anim" : ""}${canUndo ? "" : " is-collapsed"}`);
 
   const redoButton = actionButton("redo", "redo-2", t("redo"), (event) => {
     event.preventDefault();
@@ -1130,7 +1132,11 @@ export function CanvasToolbar({
     penElement,
     textTraveller,
   ),
-    createElement("div", { className: "jse-tools__history", role: "group", "aria-label": t("undo") },
+    createElement("div", {
+      className: `jse-tools__history${canUndo || canRedo ? "" : " is-empty"}`,
+      role: "group",
+      "aria-label": t("undo")
+    },
       redoButton,
       undoButton),
   isTouchDevice ? null : lockButton
