@@ -1317,6 +1317,29 @@ body.is-mobile .jse-root .excalidraw .welcome-screen-decor-hint {
   display: none;
 }
 
+/*
+ * The ring that answers a press on a resize or rotation handle: those targets are 28 px wide and
+ * invisible until the finger is on them, so the press itself says which one it took.
+ */
+.jse-handle-hint {
+  position: absolute;
+  z-index: 5;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 1.5px solid var(--color-primary, var(--interactive-accent, #6965db));
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--color-primary, #6965db) 16%, transparent);
+  box-sizing: border-box;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.jse-handle-hint.is-on {
+  opacity: 1;
+}
+
 .jse-tools__history {
   /* the same metrics as the column, which now come from the band */
   --jse-tool-ink: #3d3d3d;

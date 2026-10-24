@@ -1,6 +1,6 @@
 {
   "name": "obsidian-boards",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "description": "Boards: a local-first drawing board for Obsidian, forked from Just Simple Excalidraw.",
   "author": "David Hurtado",
