@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.186 - 2026-10-23
+
+- Selection changes are no longer undo steps. Excalidraw marks such writes "never capture"; the plugin
+  wrote them through updateScene without saying so, and the default is to record. The deselect on empty
+  paper and the auto-select under the finger are silent now.
+- Same for the appearance values of the next stroke, and for the fifteen frames of the double-tap zoom
+  animation - each of which could land in the history as its own step.
+- Real edits say so explicitly: an inserted image, a family change, a snap - one step each.
+
 ## 0.1.185 - 2026-10-23
 
 - Undo folds away when there is nothing to undo, exactly as redo does - same entrance and exit. The

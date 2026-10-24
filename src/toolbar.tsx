@@ -396,7 +396,9 @@ export function CanvasToolbar({
         };
         instance.updateScene({
           elements: [...instance.getSceneElements(), element as never],
-          appState: { selectedElementIds: { [element.id]: true } }
+          appState: { selectedElementIds: { [element.id]: true } },
+          // An insertion is an edit: one step, with the selection it leaves behind.
+          captureUpdate: "IMMEDIATELY" as never
         });
       });
     }, { once: true });
@@ -500,7 +502,11 @@ export function CanvasToolbar({
     if (patch.strokeStyle !== undefined) nextState.currentItemStrokeStyle = patch.strokeStyle;
     if (patch.fillStyle !== undefined) nextState.currentItemFillStyle = patch.fillStyle;
     if (patch.fontSize !== undefined) nextState.currentItemFontSize = patch.fontSize;
-    api.updateScene({ elements: elements as never, appState: nextState as never });
+    api.updateScene({
+      elements: elements as never,
+      appState: nextState as never,
+      captureUpdate: "IMMEDIATELY" as never
+    });
   };
 
   useEffect(() => {
@@ -903,7 +909,11 @@ export function CanvasToolbar({
     if (!api || patch.strokeWidth === undefined) {
       return;
     }
-    api.updateScene({ appState: { currentItemStrokeWidth: patch.strokeWidth } as never });
+    api.updateScene({
+      appState: { currentItemStrokeWidth: patch.strokeWidth } as never,
+      // What the next stroke will look like, not what the drawing is.
+      captureUpdate: "NEVER" as never
+    });
   };
 
   /*

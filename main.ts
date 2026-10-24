@@ -374,7 +374,9 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
               zoom: { value: value as never },
               scrollX: (clientX - rect.left) / value - scene.x,
               scrollY: (clientY - rect.top) / value - scene.y
-            }
+            },
+            // Fifteen frames of an animation are one gesture, not fifteen undo steps.
+            captureUpdate: "NEVER" as never
           });
           if (progress < 1) {
             zoomFrameRef.current = window.setTimeout(step, 16);
@@ -394,7 +396,11 @@ function ExcalidrawCanvas({ initialData, dotGrid = true, snapToGrid = false, sho
         const touched = new Set(elements.filter((element) => before.get(element.id) !== element.versionNonce).map((element) => element.id));
         const snap = snapElements(elements, api.getAppState().gridSize || 20, touched);
         if (snap.changed) {
-          api.updateScene({ elements: snap.elements });
+          api.updateScene({
+            elements: snap.elements,
+            // Snapping moved shapes: that is an edit, and it is this gesture's single step.
+            captureUpdate: "IMMEDIATELY" as never
+          });
         }
       }
     });

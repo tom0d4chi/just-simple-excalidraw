@@ -133,6 +133,8 @@ const mocks = {
     export function Excalidraw() {}
     Excalidraw.__testExcalidraw = true;
     export const THEME = { LIGHT: "light", DARK: "dark" };
+    // The plugin marks its scene writes with these; the harness only needs the names.
+    export const CaptureUpdateAction = { IMMEDIATELY: "IMMEDIATELY", EVENTUALLY: "EVENTUALLY", NEVER: "NEVER" };
     export function serializeAsJSON(elements, appState, files) {
       return JSON.stringify({ elements, appState, files });
     }

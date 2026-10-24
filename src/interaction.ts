@@ -361,7 +361,13 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     if (!id && Object.keys(state.selectedElementIds ?? {}).length > 0) {
       window.setTimeout(() => {
         if (Object.keys(api.getAppState().selectedElementIds ?? {}).length > 0) {
-          api.updateScene({ appState: { selectedElementIds: {} } });
+          api.updateScene({
+            appState: { selectedElementIds: {} },
+            // Moving the selection is not an edit: it must not become an undo step. Excalidraw spells
+            // its capture actions "NEVER" / "IMMEDIATELY"; importing the enum would drag the whole
+            // library into the single-module test harness.
+            captureUpdate: "NEVER" as never
+          });
         }
       }, 0);
     }
@@ -407,7 +413,10 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
     tap = id ? null : { pointerId: event.pointerId, x: event.clientX, y: event.clientY, at: Date.now() };
     if (id) {
       if (!Object.hasOwn(state.selectedElementIds ?? {}, id)) {
-        api.updateScene({ appState: { selectedElementIds: { [id]: true } } });
+        api.updateScene({
+          appState: { selectedElementIds: { [id]: true } },
+          captureUpdate: "NEVER" as never
+        });
       }
       if (tool !== "selection") {
         api.setActiveTool({ type: "selection", locked: false });
