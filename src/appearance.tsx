@@ -144,10 +144,16 @@ export function familiesFor(
     families.push({
       key: "width",
       label: t("thickness"),
-      content: createElement("span", {
-        className: "jse-appearance__bar",
-        style: { height: `${Math.min(6, Math.max(1, style.strokeWidth))}px` }
-      })
+      /*
+       * On a tool's page the weight is an icon rather than a bar: a bar shows one value, and the
+       * squiggle says what the value is about - the line itself.
+       */
+      content: options.filledStroke
+        ? createElement(Icon, { name: "line-squiggle" })
+        : createElement("span", {
+          className: "jse-appearance__bar",
+          style: { height: `${Math.min(6, Math.max(1, style.strokeWidth))}px` }
+        })
     });
   }
   if (capabilities.style) {
