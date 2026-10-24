@@ -467,17 +467,40 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
    * Every element touched keeps its original values here, and they are put back the moment the
    * gesture ends - whatever ends it - so no accent colour can ever reach the file.
    */
-  const tinted = new Map<string, { strokeColor: string; backgroundColor: string; opacity: number; version: number; versionNonce: number }>();
+  const tinted = new Map<string, {
+    strokeColor: string;
+    backgroundColor: string;
+    fillStyle: string;
+    opacity: number;
+    version: number;
+    versionNonce: number;
+  }>();
   const accent = (): string => {
     const value = typeof getComputedStyle === "function"
       ? getComputedStyle(document.body).getPropertyValue("--interactive-accent").trim()
       : "";
     return /^#[0-9a-f]{3,8}$/i.test(value) ? value : "#6965db";
   };
-  const tintable = (type: string): boolean => (
-    type === "rectangle" || type === "diamond" || type === "ellipse" || type === "line"
-    || type === "arrow" || type === "freedraw" || type === "text"
+  /* Shapes have an area to wash; a line has only a stroke; an image has neither. */
+  const hasArea = (type: string): boolean => (
+    type === "rectangle" || type === "diamond" || type === "ellipse"
   );
+  const hasStroke = (type: string): boolean => (
+    hasArea(type) || type === "line" || type === "arrow" || type === "freedraw" || type === "text"
+  );
+  /* The accent at 28 %, so the wash reads as a highlighter rather than a new fill. */
+  const wash = (colour: string): string => {
+    const hex = colour.replace("#", "");
+    const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
+    const value = parseInt(full.slice(0, 6), 16);
+    if (Number.isNaN(value)) {
+      return "rgba(105, 101, 219, 0.28)";
+    }
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    return `rgba(${r}, ${g}, ${b}, 0.28)`;
+  };
   /*
    * The tick is owed for distance, not for content: what the hand feels is how fast the box is
    * travelling, and a fixed step makes the tempo exactly proportional to that speed.
@@ -613,13 +636,24 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
           tinted.set(element.id, {
             strokeColor: element.strokeColor,
             backgroundColor: element.backgroundColor,
+            fillStyle: element.fillStyle,
             opacity: element.opacity,
             version: element.version,
             versionNonce: element.versionNonce
           });
         }
         const stamp = Date.now() % 100000;
-        return tintable(element.type)
+        if (hasArea(element.type)) {
+          return {
+            ...element,
+            strokeColor: colour,
+            backgroundColor: wash(colour),
+            fillStyle: "solid",
+            version: element.version + 1,
+            versionNonce: stamp
+          };
+        }
+        return hasStroke(element.type)
           ? { ...element, strokeColor: colour, version: element.version + 1, versionNonce: stamp }
           : { ...element, opacity: 45, version: element.version + 1, versionNonce: stamp };
       }
@@ -631,6 +665,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
         ...element,
         strokeColor: saved.strokeColor,
         backgroundColor: saved.backgroundColor,
+        fillStyle: saved.fillStyle as never,
         opacity: saved.opacity,
         version: saved.version,
         versionNonce: saved.versionNonce
@@ -653,6 +688,7 @@ export function attachInteraction(options: InteractionOptions): InteractionHandl
         ...element,
         strokeColor: saved.strokeColor,
         backgroundColor: saved.backgroundColor,
+        fillStyle: saved.fillStyle as never,
         opacity: saved.opacity,
         version: saved.version,
         versionNonce: saved.versionNonce
