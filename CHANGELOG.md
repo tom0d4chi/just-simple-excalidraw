@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## 0.1.179 - 2026-10-23
+
+- The sweep takes LIGHT's amplitude - 43 % - instead of a full-amplitude pulse cut down to 11 ms. A
+  phone hits hard at 100 % whatever the length; the only way to be softer is the other lever. It comes
+  with LIGHT's own 50 ms, so the crackle is gentler and rounder, and a shape taken keeps the full
+  amplitude at 32 ms. Two textures instead of two lengths of the same blow.
+- A style now says either an impact or a duration, never both: the vibration fallback gets the duration
+  that matches the intent.
+
 ## 0.1.178 - 2026-10-23
 
 - The sweep at 11 ms.
